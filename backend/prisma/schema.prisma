@@ -1,13 +1,282 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["views"]
 }
+
+// Mapeamento do banco definido em ../../mesaflow_schema_v1.sql.
+// CHECK constraints continuam sendo aplicados pelo SQL do banco, pois não há
+// uma representação equivalente para eles na Prisma Schema Language.
 
 datasource db {
   provider = "mysql"
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+enum AttendanceStatus {
+  OPEN
+  CLOSING_REQUESTED
+  CLOSED
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PREPARING
+  READY
+  DELIVERED
+  CANCELLED
+}
+
+enum CancellationSource {
+  CUSTOMER
+  EMPLOYEE
+  ADMIN
+}
+
+enum StockMovementType {
+  ENTRY
+  EXIT
+  ADJUSTMENT
+  SALE
+  CANCELLATION
+}
+
+enum PaymentMethod {
+  CASH
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
+enum PrintJobType {
+  ORDER
+  BILL
+}
+
+enum PrintJobStatus {
+  PENDING
+  SENT
+  PRINTED
+  FAILED
+}
+
+model User {
+  id                BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  name              String          @db.VarChar(120)
+  email             String          @unique(map: "uq_users_email") @db.VarChar(180)
+  passwordHash      String          @map("password_hash") @db.VarChar(255)
+  role              UserRole        @default(EMPLOYEE)
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  closedAttendances Attendance[]    @relation("AttendanceClosedBy")
+  createdOrders     Order[]         @relation("OrderCreatedBy")
+  cancelledOrders   Order[]         @relation("OrderCancelledBy")
+  stockMovements    StockMovement[]
+  createdPayments   Payment[]
+
+  @@map("users")
+}
+
+model Category {
+  id          BigInt    @id @default(autoincrement()) @db.UnsignedBigInt
+  name        String    @unique(map: "uq_categories_name") @db.VarChar(100)
+  description String?   @db.VarChar(255)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id             BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  categoryId     BigInt          @map("category_id") @db.UnsignedBigInt
+  name           String          @db.VarChar(150)
+  description    String?         @db.Text
+  price          Decimal         @db.Decimal(10, 2)
+  stockQuantity  Int             @default(0) @map("stock_quantity")
+  available      Boolean         @default(true)
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt      DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  category       Category        @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
+  orderItems     OrderItem[]
+  stockMovements StockMovement[]
+
+  @@index([categoryId], map: "idx_products_category_id")
+  @@index([active, available], map: "idx_products_active_available")
+  @@map("products")
+}
+
+model RestaurantTable {
+  id          BigInt       @id @default(autoincrement()) @db.UnsignedBigInt
+  number      Int          @unique(map: "uq_restaurant_tables_number") @db.UnsignedInt
+  name        String?      @db.VarChar(100)
+  qrToken     String       @unique(map: "uq_restaurant_tables_qr_token") @map("qr_token") @db.VarChar(120)
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  attendances Attendance[]
+
+  @@map("restaurant_tables")
+}
+
+model Attendance {
+  id                 BigInt           @id @default(autoincrement()) @db.UnsignedBigInt
+  tableId            BigInt           @map("table_id") @db.UnsignedBigInt
+  status             AttendanceStatus @default(OPEN)
+  openedAt           DateTime         @default(now()) @map("opened_at") @db.DateTime(0)
+  closingRequestedAt DateTime?        @map("closing_requested_at") @db.DateTime(0)
+  closedAt           DateTime?        @map("closed_at") @db.DateTime(0)
+  closedById         BigInt?          @map("closed_by") @db.UnsignedBigInt
+  createdAt          DateTime         @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  // Coluna STORED calculada pelo MariaDB; a expressão permanece no SQL-fonte.
+  activeTableId      BigInt?          @unique(map: "uq_attendances_one_active_per_table") @default(dbgenerated()) @map("active_table_id") @db.UnsignedBigInt
+  table              RestaurantTable  @relation(fields: [tableId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_attendances_table")
+  closedBy           User?            @relation("AttendanceClosedBy", fields: [closedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_attendances_closed_by")
+  orders             Order[]
+  payments           Payment[]
+  printJobs          PrintJob[]
+
+  @@index([tableId], map: "idx_attendances_table_id")
+  @@index([status], map: "idx_attendances_status")
+  @@index([openedAt], map: "idx_attendances_opened_at")
+  @@index([closedAt], map: "idx_attendances_closed_at")
+  @@map("attendances")
+}
+
+model Order {
+  id                 BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
+  attendanceId       BigInt              @map("attendance_id") @db.UnsignedBigInt
+  status             OrderStatus         @default(PENDING)
+  notes              String?             @db.Text
+  createdById        BigInt?             @map("created_by") @db.UnsignedBigInt
+  cancelledAt        DateTime?           @map("cancelled_at") @db.DateTime(0)
+  cancelledById      BigInt?             @map("cancelled_by") @db.UnsignedBigInt
+  cancellationSource CancellationSource? @map("cancellation_source")
+  cancellationReason String?             @map("cancellation_reason") @db.VarChar(500)
+  restoreStock       Boolean?            @map("restore_stock")
+  createdAt          DateTime            @default(now()) @map("created_at") @db.DateTime(0)
+  updatedAt          DateTime            @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  attendance         Attendance          @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_orders_attendance")
+  createdBy          User?               @relation("OrderCreatedBy", fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_created_by")
+  cancelledBy        User?               @relation("OrderCancelledBy", fields: [cancelledById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_orders_cancelled_by")
+  items              OrderItem[]
+  stockMovements     StockMovement[]
+  printJobs          PrintJob[]
+
+  @@index([attendanceId], map: "idx_orders_attendance_id")
+  @@index([status], map: "idx_orders_status")
+  @@index([createdAt], map: "idx_orders_created_at")
+  @@index([cancelledAt], map: "idx_orders_cancelled_at")
+  @@map("orders")
+}
+
+model OrderItem {
+  id             BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId        BigInt          @map("order_id") @db.UnsignedBigInt
+  productId      BigInt          @map("product_id") @db.UnsignedBigInt
+  quantity       Int             @db.UnsignedInt
+  unitPrice      Decimal         @map("unit_price") @db.Decimal(10, 2)
+  notes          String?         @db.VarChar(500)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.DateTime(0)
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade, map: "fk_order_items_order")
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_order_items_product")
+  stockMovements StockMovement[]
+
+  @@index([orderId], map: "idx_order_items_order_id")
+  @@index([productId], map: "idx_order_items_product_id")
+  @@map("order_items")
+}
+
+model StockMovement {
+  id          BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
+  productId   BigInt            @map("product_id") @db.UnsignedBigInt
+  userId      BigInt?           @map("user_id") @db.UnsignedBigInt
+  orderId     BigInt?           @map("order_id") @db.UnsignedBigInt
+  orderItemId BigInt?           @map("order_item_id") @db.UnsignedBigInt
+  type        StockMovementType
+  quantity    Int
+  reason      String?           @db.VarChar(255)
+  createdAt   DateTime          @default(now()) @map("created_at") @db.DateTime(0)
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_stock_movements_product")
+  user        User?             @relation(fields: [userId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_stock_movements_user")
+  order       Order?            @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_stock_movements_order")
+  orderItem   OrderItem?        @relation(fields: [orderItemId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_stock_movements_order_item")
+
+  @@index([productId], map: "idx_stock_movements_product_id")
+  @@index([orderId], map: "idx_stock_movements_order_id")
+  @@index([orderItemId], map: "idx_stock_movements_order_item_id")
+  @@index([createdAt], map: "idx_stock_movements_created_at")
+  @@map("stock_movements")
+}
+
+model Payment {
+  id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
+  attendanceId BigInt        @map("attendance_id") @db.UnsignedBigInt
+  method       PaymentMethod
+  amount       Decimal       @db.Decimal(10, 2)
+  status       PaymentStatus @default(PENDING)
+  paidAt       DateTime?     @map("paid_at") @db.DateTime(0)
+  createdById  BigInt?       @map("created_by") @db.UnsignedBigInt
+  createdAt    DateTime      @default(now()) @map("created_at") @db.DateTime(0)
+  attendance   Attendance    @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_payments_attendance")
+  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_payments_created_by")
+
+  @@index([attendanceId], map: "idx_payments_attendance_id")
+  @@index([status], map: "idx_payments_status")
+  @@index([paidAt], map: "idx_payments_paid_at")
+  @@map("payments")
+}
+
+model PrintJob {
+  id           BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  orderId      BigInt?        @map("order_id") @db.UnsignedBigInt
+  attendanceId BigInt?        @map("attendance_id") @db.UnsignedBigInt
+  type         PrintJobType
+  status       PrintJobStatus @default(PENDING)
+  attempts     Int            @default(0) @db.UnsignedInt
+  lastError    String?        @map("last_error") @db.Text
+  createdAt    DateTime       @default(now()) @map("created_at") @db.DateTime(0)
+  processedAt  DateTime?      @map("processed_at") @db.DateTime(0)
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  order        Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_print_jobs_order")
+  attendance   Attendance?    @relation(fields: [attendanceId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_print_jobs_attendance")
+
+  @@index([status], map: "idx_print_jobs_status")
+  @@index([orderId], map: "idx_print_jobs_order_id")
+  @@index([attendanceId], map: "idx_print_jobs_attendance_id")
+  @@index([createdAt], map: "idx_print_jobs_created_at")
+  @@map("print_jobs")
+}
+
+// Views são somente leitura no Prisma e devem ser criadas pelo SQL-fonte.
+view AttendanceTotal {
+  attendanceId BigInt           @unique @map("attendance_id") @db.UnsignedBigInt
+  tableId      BigInt           @map("table_id") @db.UnsignedBigInt
+  status       AttendanceStatus
+  total        Decimal          @db.Decimal(32, 2)
+
+  @@map("vw_attendance_totals")
+}
+
+view AttendancePayment {
+  attendanceId BigInt  @unique @map("attendance_id") @db.UnsignedBigInt
+  totalPaid    Decimal @map("total_paid") @db.Decimal(32, 2)
+
+  @@map("vw_attendance_payments")
 }
