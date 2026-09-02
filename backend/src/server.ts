@@ -1,10 +1,10 @@
 import { fastify } from "fastify";
-import { swaggerPlugin } from "./plugins/swagger";
-import { authPlugin } from "./plugins/auth";
-import { corsPlugin } from "./plugins/cors";
+import { env } from "./config/env.js";
+import { authPlugin } from "./plugins/auth.js";
+import { corsPlugin } from "./plugins/cors.js";
+import { swaggerPlugin } from "./plugins/swagger.js";
 
-
-const app = fastify();
+export const app = fastify({ logger: true });
 
 //plugins
 app.register(swaggerPlugin);
@@ -13,17 +13,16 @@ app.register(corsPlugin);
 
 //routers
 app.register(async (instance) => {
-
-//coloca sua rota aqui
-
+  instance.get("/health", async () => ({ status: "ok" }));
 }, { prefix: "/api/v1" });
 
 export const startServer = async () => {
   try {
-    app.listen({ port: 3333, host: "0.0.0.0" });
+    await app.listen({ port: env.PORT, host: "0.0.0.0" });
   } catch (error) {
-    console.error("Error starting server:", error);
+    app.log.error(error, "Error starting server");
+    process.exitCode = 1;
   }
 };
 
-startServer();
+await startServer();

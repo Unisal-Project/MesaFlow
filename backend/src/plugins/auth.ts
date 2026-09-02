@@ -1,5 +1,5 @@
 import { fastifyJwt } from "@fastify/jwt";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 import "dotenv/config";
 
 export async function authPlugin(fastify: FastifyInstance) {

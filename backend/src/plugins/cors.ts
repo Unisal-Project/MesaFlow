@@ -1,5 +1,5 @@
 import { fastifyCors } from "@fastify/cors";
-import { FastifyInstance } from "fastify";
+import type { FastifyInstance } from "fastify";
 
 export async function corsPlugin(fastify: FastifyInstance) {
   fastify.register(fastifyCors, {
