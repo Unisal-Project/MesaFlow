@@ -3,6 +3,8 @@ import { env } from "./config/env.js";
 import { authPlugin } from "./plugins/auth.js";
 import { corsPlugin } from "./plugins/cors.js";
 import { swaggerPlugin } from "./plugins/swagger.js";
+import { orderRoutes } from "./modules/orders/order.routes.js";
+
 
 export const app = fastify({ logger: true });
 
@@ -15,6 +17,7 @@ app.register(corsPlugin);
 app.register(async (instance) => {
   instance.get("/health", async () => ({ status: "ok" }));
 }, { prefix: "/api/v1" });
+app.register(orderRoutes, { prefix: "/api/v1" });
 
 export const startServer = async () => {
   try {
