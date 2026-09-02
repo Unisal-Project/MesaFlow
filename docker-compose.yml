@@ -12,11 +12,37 @@ services:
       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
+      # O entrypoint do MariaDB executa este arquivo ao criar um volume novo.
+      - ./mesaflow_schema_v1.sql:/docker-entrypoint-initdb.d/001-mesaflow-schema.sql:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # Reaplica o schema idempotente também quando o volume já existe.
+  # Assim, `docker compose up --build` não depende de apagar os dados locais.
+  database-init:
+    image: mariadb:11.4
+    container_name: orderflow-database-init
+    restart: "no"
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: orderflow
+    volumes:
+      - ./mesaflow_schema_v1.sql:/schema/mesaflow_schema_v1.sql:ro
+    depends_on:
+      database:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        mariadb
+        --host=database
+        --user=root
+        --password="$${MARIADB_ROOT_PASSWORD}"
+        --database="$${MARIADB_DATABASE}"
+        < /schema/mesaflow_schema_v1.sql
 
   backend:
     build:
@@ -24,13 +50,16 @@ services:
       dockerfile: Dockerfile
     container_name: orderflow-backend
     restart: unless-stopped
-    env_file:
-      - ./backend/.env
+    environment:
+      DATABASE_URL: mysql://orderflow:orderflow@database:3306/orderflow
+      JWT_SECRET: ${JWT_SECRET:-development-only-change-me}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+      PORT: 3333
     ports:
       - "3333:3333"
     depends_on:
-      database:
-        condition: service_healthy
+      database-init:
+        condition: service_completed_successfully
     develop:
       watch:
         - action: sync

@@ -1,13 +1,11 @@
 -- ============================================================
--- MesaFlow - Banco de Dados MariaDB
+-- MesaFlow - Schema do Banco de Dados MariaDB
 -- Versão inicial (V1)
 -- ============================================================
-
-CREATE DATABASE IF NOT EXISTS mesaflow
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
-
-USE mesaflow;
+--
+-- O banco deve ser selecionado por quem executa este arquivo. No Docker
+-- Compose, MARIADB_DATABASE cria o banco e o script é executado nele.
+-- Isso evita criar as tabelas em um banco diferente do DATABASE_URL da API.
 
 -- ============================================================
 -- 1. Usuários
@@ -139,7 +137,10 @@ CREATE TABLE IF NOT EXISTS attendances (
     CONSTRAINT fk_attendances_table
         FOREIGN KEY (table_id)
         REFERENCES restaurant_tables(id)
-        ON UPDATE CASCADE
+        -- MariaDB não permite ON UPDATE CASCADE aqui porque table_id também
+        -- alimenta a coluna gerada/indexada active_table_id (erro 1901).
+        -- IDs de mesa são imutáveis, portanto RESTRICT é a regra adequada.
+        ON UPDATE RESTRICT
         ON DELETE RESTRICT,
 
     CONSTRAINT fk_attendances_closed_by
@@ -401,14 +402,14 @@ CREATE TABLE IF NOT EXISTS print_jobs (
     CONSTRAINT fk_print_jobs_order
         FOREIGN KEY (order_id)
         REFERENCES orders(id)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
 
     CONSTRAINT fk_print_jobs_attendance
         FOREIGN KEY (attendance_id)
         REFERENCES attendances(id)
-        ON UPDATE CASCADE
-        ON DELETE SET NULL,
+        ON UPDATE RESTRICT
+        ON DELETE RESTRICT,
 
     CONSTRAINT chk_print_jobs_reference
         CHECK (order_id IS NOT NULL OR attendance_id IS NOT NULL),

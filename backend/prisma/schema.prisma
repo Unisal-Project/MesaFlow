@@ -146,7 +146,7 @@ model Attendance {
   updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
   // Coluna STORED calculada pelo MariaDB; a expressão permanece no SQL-fonte.
   activeTableId      BigInt?          @unique(map: "uq_attendances_one_active_per_table") @default(dbgenerated()) @map("active_table_id") @db.UnsignedBigInt
-  table              RestaurantTable  @relation(fields: [tableId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_attendances_table")
+  table              RestaurantTable  @relation(fields: [tableId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_attendances_table")
   closedBy           User?            @relation("AttendanceClosedBy", fields: [closedById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_attendances_closed_by")
   orders             Order[]
   payments           Payment[]
@@ -254,8 +254,8 @@ model PrintJob {
   createdAt    DateTime       @default(now()) @map("created_at") @db.DateTime(0)
   processedAt  DateTime?      @map("processed_at") @db.DateTime(0)
   updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  order        Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_print_jobs_order")
-  attendance   Attendance?    @relation(fields: [attendanceId], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_print_jobs_attendance")
+  order        Order?         @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_print_jobs_order")
+  attendance   Attendance?    @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_print_jobs_attendance")
 
   @@index([status], map: "idx_print_jobs_status")
   @@index([orderId], map: "idx_print_jobs_order_id")

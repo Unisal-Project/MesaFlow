@@ -2,6 +2,15 @@ MesaFlow
 
 Sistema de gerenciamento de pedidos e comandas para estabelecimentos, com atendimento por mesa via QR Code, controle de produtos e estoque, pedidos, pagamentos, histórico de vendas e integração com impressão.
 
+Os requisitos de sistema, ambiente e validação estão documentados em
+[`REQUIREMENTS.md`](REQUIREMENTS.md).
+
+Para baixar todas as bibliotecas do backend e frontend e gerar o Prisma Client:
+
+```bash
+npm run setup
+```
+
 Visão Geral
 
 Cada mesa do estabelecimento possui um QR Code próprio. Ao escanear o código, o cliente acessa um cardápio digital já identificado com a mesa correspondente.
@@ -164,6 +173,26 @@ Prisma ORM
 MariaDB
 
 ESP32
+
+Executando com Docker
+
+O ambiente completo, incluindo a criação das tabelas, é iniciado com:
+
+```bash
+docker compose up --build
+```
+
+O arquivo `mesaflow_schema_v1.sql` é aplicado automaticamente no banco
+`orderflow`. Em um volume novo, o próprio MariaDB importa o schema; em volumes
+já existentes, o serviço `database-init` reaplica as instruções idempotentes
+antes de liberar a inicialização do backend.
+
+Para conferir a inicialização e listar as tabelas:
+
+```bash
+docker compose logs database-init
+docker compose exec database mariadb -uorderflow -porderflow orderflow -e "SHOW TABLES;"
+```
 
 Módulos Planejados
 
