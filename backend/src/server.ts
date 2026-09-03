@@ -5,6 +5,8 @@ import { corsPlugin } from "./plugins/cors.js";
 import { swaggerPlugin } from "./plugins/swagger.js";
 import { registerCategoryRoutes } from "./modules/categories/category.router.js";
 import { AppError } from "./shared/errors/app-errors.js";
+import { orderRoutes } from "./modules/orders/order.routes.js";
+
 
 export const app = fastify({ logger: true });
 
@@ -18,6 +20,7 @@ app.register(
   async (instance) => {
     instance.get("/health", async () => ({ status: "ok" }));
     await instance.register(registerCategoryRoutes);
+    await instance.register( orderRoutes);
   },
   { prefix: "/api/v1" },
 );
