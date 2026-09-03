@@ -1,4 +1,5 @@
 import { prisma } from '../../database/prisma.js';
+import { AppError } from '../../shared/errors/app-errors.js';
 import type { CreateOrderInput } from './order.schema.js';
 
 export async function createOrder(data: CreateOrderInput) {
@@ -7,10 +8,10 @@ export async function createOrder(data: CreateOrderInput) {
     });
 
     if(!attendance) {
-        throw new Error("Atendimento não encontrado.");
+        throw new AppError("Atendimento não encontrado.", 404);
     }
     if(attendance.status !== "OPEN"){
-        throw new Error("Atendimento não está aberto para pedidos.");
+        throw new AppError("Atendimento não está aberto para pedidos.", 409);
     }
 
     const productIds = data.items.map((item) => {
@@ -32,7 +33,7 @@ export async function createOrder(data: CreateOrderInput) {
         )
 
         if (!product) {
-            throw new Error("Produto não encontrado ou indisponível.");
+            throw new AppError("Produto não encontrado ou indisponível.", 409);
         }
         
         return {

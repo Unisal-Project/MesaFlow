@@ -4,7 +4,7 @@ import { env } from "./config/env.js";
 import { corsPlugin } from "./plugins/cors.js";
 import { swaggerPlugin } from "./plugins/swagger.js";
 import { registerCategoryRoutes } from "./modules/categories/category.router.js";
-import { AppError } from "./shared/errors/app-errors.js";
+import { errorHandler } from "./shared/errors/error-handler.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";
 
 
@@ -25,14 +25,7 @@ app.register(
   { prefix: "/api/v1" },
 );
 
-app.setErrorHandler((error, _request, reply) => {
-  if (error instanceof AppError) {
-    return reply.status(error.statusCode).send({ message: error.message });
-  }
-
-  app.log.error(error);
-  return reply.status(500).send({ message: "Internal server error" });
-});
+app.setErrorHandler(errorHandler);
 
 export const startServer = async () => {
   try {
