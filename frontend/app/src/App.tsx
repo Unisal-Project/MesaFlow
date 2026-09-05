@@ -1,5 +1,7 @@
+import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
+
 function App() {
-  return <></>;
+  return <ConfirmOrder />;
 }
 
 export default App;
