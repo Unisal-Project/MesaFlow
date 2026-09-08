@@ -52,6 +52,7 @@ CREATE TABLE IF NOT EXISTS products (
     category_id BIGINT UNSIGNED NOT NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT NULL,
+    image_url VARCHAR(2048) NULL,
     price DECIMAL(10,2) NOT NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
     available BOOLEAN NOT NULL DEFAULT TRUE,
@@ -76,6 +77,11 @@ CREATE TABLE IF NOT EXISTS products (
     KEY idx_products_category_id (category_id),
     KEY idx_products_active_available (active, available)
 ) ENGINE=InnoDB;
+
+-- Mantém bancos criados antes da inclusão de imagens de produto compatíveis
+-- quando o database-init reaplica este schema idempotente.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS image_url VARCHAR(2048) NULL AFTER description;
 
 
 -- ============================================================

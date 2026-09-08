@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config.js";
 
 const getEnv = (name: string): string => {
   const value = process.env[name];
@@ -13,5 +13,4 @@ export const env = {
   JWT_SECRET: getEnv("JWT_SECRET"),
   FRONTEND_URL: getEnv("FRONTEND_URL"),
   DATABASE_URL: getEnv("DATABASE_URL"),
-  
-}
+};

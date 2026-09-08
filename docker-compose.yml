@@ -59,6 +59,8 @@ services:
       PORT: 3333
     ports:
       - "3333:3333"
+    volumes:
+      - product_uploads:/app/uploads
     depends_on:
       database-init:
         condition: service_completed_successfully
@@ -90,3 +92,4 @@ services:
 
 volumes:
   mariadb_data:
+  product_uploads:
