@@ -1,7 +1,7 @@
-import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
+import Products from "@/pages/admin/products";
 
 function App() {
-  return <ConfirmOrder />;
+  return <Products />;
 }
 
 export default App;

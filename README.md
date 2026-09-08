@@ -182,6 +182,10 @@ O ambiente completo, incluindo a criação das tabelas, é iniciado com:
 docker compose up --build
 ```
 
+Durante o desenvolvimento, o diretório do frontend é montado no container e o
+Vite atualiza a página automaticamente quando os arquivos locais são salvos.
+Depois da primeira construção, basta executar `docker compose up`.
+
 O arquivo `mesaflow_schema_v1.sql` é aplicado automaticamente no banco
 `orderflow`. Em um volume novo, o próprio MariaDB importa o schema; em volumes
 já existentes, o serviço `database-init` reaplica as instruções idempotentes

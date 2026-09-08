@@ -8,6 +8,11 @@ export default defineConfig({
   server: {
     host: true,   // expõe em 0.0.0.0 para funcionar dentro do Docker
     port: 5173,
+    watch: {
+      // Bind mounts nem sempre propagam eventos do sistema de arquivos.
+      usePolling: process.env.CHOKIDAR_USEPOLLING === 'true',
+      interval: 250,
+    },
   },
   resolve: {
   alias: {"@": fileURLToPath(new URL("./src", import.meta.url)),},
