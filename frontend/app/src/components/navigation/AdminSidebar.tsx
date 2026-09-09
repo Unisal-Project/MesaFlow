@@ -5,6 +5,7 @@ import dashboardIcon from "../../assets/dashboard-icon.png";
 import mesasIcon from "../../assets/mesas-icon.png";
 import pedidosIcon from "../../assets/pedidos-icon.png";
 import relatoriosIcon from "../../assets/relatorios-icon.png";
+import categoriasIcon from "../../assets/categorias-icon.png";
 
 export type SidebarItem = { id: string; label: string; icon?: ReactNode };
 
@@ -28,6 +29,11 @@ const adminSidebarItems: SidebarItem[] = [
     id: "menu",
     label: "Cardápio",
     icon: <img src={cardapioIcon} alt="" />,
+  },
+  {
+    id: "categories",
+    label: "Categorias",
+    icon: <img src={categoriasIcon} alt="" />,
   },
   {
     id: "reports",

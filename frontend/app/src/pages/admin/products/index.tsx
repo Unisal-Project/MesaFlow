@@ -83,7 +83,11 @@ const initialProducts: MockProduct[] = [
   },
 ];
 
-export default function Products() {
+type ProductsProps = {
+  onNavigate?: (id: string) => void;
+};
+
+export default function Products({ onNavigate }: ProductsProps) {
   const [activeItem, setActiveItem] = useState("menu");
   const [products, setProducts] = useState(initialProducts);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -236,7 +240,10 @@ export default function Products() {
     <div className="products-page">
       <AdminSidebar
         activeId={activeItem}
-        onChange={setActiveItem}
+        onChange={(id) => {
+          setActiveItem(id);
+          onNavigate?.(id);
+        }}
         userName="Nome do usuário"
         userRole="Administrador"
       />
