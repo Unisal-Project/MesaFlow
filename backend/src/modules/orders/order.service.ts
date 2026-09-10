@@ -56,3 +56,21 @@ export async function createOrder(data: CreateOrderInput) {
 
     return order;
 };
+
+export async function findOrdersByAttendanceId(attendanceId: bigint) {
+    const attendance = await prisma.attendance.findUnique({
+        where: { id: attendanceId },
+    });
+    
+    if(!attendance) {
+        throw new AppError("Atendimento não encontrado.", 404);
+    }
+
+    const orders = await prisma.order.findMany({
+        where: { attendanceId },
+        include: { items: true },
+        orderBy: { createdAt: 'asc' },
+    });
+    
+    return orders;
+}
