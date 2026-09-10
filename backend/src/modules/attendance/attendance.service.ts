@@ -33,3 +33,13 @@ export async function createAttendance(data: CreateAttendanceInput) {
     })
     return attendance;
 }
+
+export async function findAttendanceTotal(attendanceId: bigint) {
+    const total = await prisma.attendanceTotal.findUnique({
+        where: { attendanceId }
+    });
+    if(!total){
+        throw new AppError("Total do atendimento não encontrado",404);
+    }
+    return total;
+}

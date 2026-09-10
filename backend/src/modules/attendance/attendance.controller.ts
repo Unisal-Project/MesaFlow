@@ -1,5 +1,5 @@
-import {createAttendanceSchema, findOpenAttendanceSchema} from "./attendance.schema.js";
-import { createAttendance, findOpenAttendance } from "./attendance.service.js";
+import {createAttendanceSchema, findOpenAttendanceSchema, findAttendanceTotalSchema} from "./attendance.schema.js";
+import { createAttendance, findOpenAttendance, findAttendanceTotal } from "./attendance.service.js";
 import { AppError } from "../../shared/errors/app-errors.js";
 import { FastifyRequest, FastifyReply } from "fastify";
 
@@ -28,5 +28,12 @@ function serializeBigInt<T>(data: T): T {
       typeof value === "bigint" ? value.toString() : value
     )
   );
+}
+
+export async function findAttendanceTotalController(request: FastifyRequest, reply: FastifyReply) {
+    const {attendanceId}= findAttendanceTotalSchema.parse(request.params);
+    const total = await findAttendanceTotal(BigInt(attendanceId));
+
+    return reply.status(200).send(serializeBigInt(total));
 }
 

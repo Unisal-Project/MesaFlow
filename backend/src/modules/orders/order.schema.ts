@@ -13,4 +13,9 @@ export const createOrderSchema = z.object({
     .min(1),
 });
 
+export const findOrdersByAttendanceIdSchema = z.object({
+    attendanceId: z.string().regex(/^\d+$/, "ID do atendimento inválido"),
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
+export type findOrdersByAttendanceIdInput = z.infer<typeof findOrdersByAttendanceIdSchema>;
