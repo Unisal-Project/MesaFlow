@@ -33,7 +33,7 @@ export function ProductCard({
           {available
             ? onAdd && (
                 <Button size="small" onClick={onAdd}>
-                  Ver item
+                   {actionLabel}
                 </Button>
               )
             : <Badge variant="error">Indisponível</Badge>}
