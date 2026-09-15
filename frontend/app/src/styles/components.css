@@ -419,6 +419,13 @@
 .product-card {
   overflow: hidden;
 }
+.product-card.indisponivel{
+  opacity: 0.6;
+
+}
+.product-card.indisponivel.food-photo,.product-card.indisponivel.thumb{
+  filter: grayscale(1);
+}
 .food-photo,
 .thumb {
   background:
