@@ -1,5 +1,5 @@
-import {createAttendanceSchema, findOpenAttendanceSchema, findAttendanceTotalSchema} from "./attendance.schema.js";
-import { createAttendance, findOpenAttendance, findAttendanceTotal } from "./attendance.service.js";
+import {createAttendanceSchema, findOpenAttendanceSchema, attendanceIdParamSchema} from "./attendance.schema.js";
+import { createAttendance, findOpenAttendance, findAttendanceTotal, requestClosing, findClosingRequestedAttendances } from "./attendance.service.js";
 import { AppError } from "../../shared/errors/app-errors.js";
 import { FastifyRequest, FastifyReply } from "fastify";
 
@@ -31,9 +31,20 @@ function serializeBigInt<T>(data: T): T {
 }
 
 export async function findAttendanceTotalController(request: FastifyRequest, reply: FastifyReply) {
-    const {attendanceId}= findAttendanceTotalSchema.parse(request.params);
+    const {attendanceId}= attendanceIdParamSchema.parse(request.params);
     const total = await findAttendanceTotal(BigInt(attendanceId));
 
     return reply.status(200).send(serializeBigInt(total));
 }
 
+export async function requestClosingController(request: FastifyRequest, reply: FastifyReply) {
+    const {attendanceId}= attendanceIdParamSchema.parse(request.params);
+    const attendance = await requestClosing(BigInt(attendanceId));
+
+    return reply.status(200).send(serializeBigInt(attendance));
+}
+
+export async function findClosingRequestedAttendancesController(request: FastifyRequest, reply: FastifyReply) {
+    const attendances = await findClosingRequestedAttendances();
+    return reply.status(200).send(serializeBigInt(attendances));
+}
