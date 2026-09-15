@@ -1,0 +1,195 @@
+body:has(.order-success-page) {
+  min-width: 0;
+  min-height: 0;
+}
+
+.order-success-page {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--surface);
+}
+
+.order-success-page .client-header {
+  display: grid;
+  flex-shrink: 0;
+  grid-template-columns: 64px minmax(0, 1fr) 64px;
+  gap: 0;
+  padding: 22px;
+  border-bottom-width: 2px;
+  text-align: center;
+}
+
+.order-success-page .client-header-heading strong,
+.order-success-page .client-header-subtitle {
+  display: block;
+}
+
+.order-success-page .client-header-heading strong {
+  font: 800 27px var(--font-heading);
+}
+
+.order-success-page .client-header-subtitle {
+  color: var(--text-secondary);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.order-success-page .icon-btn {
+  width: 56px;
+  height: 56px;
+  border-width: 2px;
+  border-radius: var(--radius-large);
+}
+
+.order-success-page .client-header > .icon-btn:last-child {
+  justify-self: end;
+}
+
+.order-success-page .order-success-cart-count {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  justify-content: center;
+  width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.order-success-page .order-success-cart-count::before {
+  content: none;
+}
+
+.order-success-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  width: 100%;
+  max-width: 780px;
+  min-width: 0;
+  min-height: 0;
+  margin-inline: auto;
+  padding: var(--space-6) 28px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  text-align: center;
+}
+
+.order-success-content {
+  flex-shrink: 0;
+  width: 100%;
+  margin-block: auto;
+}
+
+.order-success-icon {
+  display: grid;
+  width: 80px;
+  height: 80px;
+  margin: 0 auto var(--space-5);
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--success) 14%, var(--surface));
+  color: var(--success);
+}
+
+.order-success-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 1.25;
+}
+
+.order-success-eyebrow {
+  margin-bottom: var(--space-5);
+  color: var(--primary-dark);
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.order-success-content h1 {
+  margin-bottom: var(--space-5);
+  font-size: clamp(28px, 4vw, 36px);
+  font-weight: 800;
+  line-height: 1.25;
+  letter-spacing: -1px;
+}
+
+.order-success-description {
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.order-success-actions {
+  display: grid;
+  gap: 14px;
+  margin-top: var(--space-5);
+}
+
+.order-success-actions .btn {
+  min-height: 52px;
+  border-radius: var(--radius-large);
+  font: 800 18px var(--font-heading);
+  white-space: normal;
+}
+
+.order-success-page .bottom-nav {
+  flex-shrink: 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  border-top: 2px solid var(--border);
+}
+
+.order-success-page .bottom-nav button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--text-secondary);
+  font: 800 14px var(--font-heading);
+}
+
+.order-success-page .bottom-nav button:hover {
+  color: var(--primary-dark);
+}
+
+@media (max-width: 600px) {
+  .order-success-main { padding: var(--space-5) 22px; }
+  .order-success-content h1 { font-size: 28px; }
+  .order-success-description { font-size: 14px; }
+}
+
+@media (max-width: 360px) {
+  .order-success-page .client-header {
+    grid-template-columns: 56px minmax(0, 1fr) 56px;
+    padding: 16px;
+  }
+  .order-success-page .client-header-heading strong { font-size: 24px; }
+}
+
+@media (max-height: 700px) {
+  .order-success-main { padding-block: var(--space-4); }
+  .order-success-icon {
+    width: 64px;
+    height: 64px;
+    margin-bottom: var(--space-4);
+  }
+  .order-success-eyebrow,
+  .order-success-content h1 { margin-bottom: var(--space-4); }
+  .order-success-actions { gap: 10px; margin-top: var(--space-4); }
+  .order-success-actions .btn { min-height: 48px; }
+}

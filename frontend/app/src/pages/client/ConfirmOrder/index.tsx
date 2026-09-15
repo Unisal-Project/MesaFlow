@@ -2,7 +2,6 @@ import { useState } from "react";
 import { ChevronLeft, ShoppingCart, Menu, Clock, ReceiptText  } from "lucide-react";
 import "./styles.css";
 
-// Estes dados virão do backend depois.
 const order = {
   id: 1842,
   item: "Risoto de cogumelos",
@@ -14,7 +13,6 @@ export function ConfirmOrder() {
   const [receiveUpdates, setReceiveUpdates] = useState(true);
 
   function handleSendOrder() {
-    // Aqui você fará o POST para o backend futuramente.
     console.log("Enviar pedido", order.id, { receiveUpdates });
   }
 
