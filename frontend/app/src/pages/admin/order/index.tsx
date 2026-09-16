@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { Bell, Plus, Search } from "lucide-react";
+import {
+  Bell,
+  CheckCircle2,
+  ClipboardList,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Search,
+} from "lucide-react";
 import { Button } from "@/components/buttons/Button";
 import { AdminSidebar } from "@/components/navigation/AdminSidebar";
 import {
@@ -12,6 +20,11 @@ import {
   type OrderStatus,
   type OrderSummary,
 } from "./orderLogic.js";
+import {
+  PaymentModal,
+  type CompletedPayment,
+} from "./PaymentModal";
+import { OrderEditPanel } from "./OrderEditPanel";
 import "./styles.css";
 
 type OrderItem = {
@@ -26,11 +39,22 @@ type Order = OrderSummary & {
   time: string;
   items: OrderItem[];
   unread?: boolean;
+  payment?: {
+    entries: CompletedPayment[];
+    closedAt: string;
+  };
 };
 
 type OrdersProps = {
   onNavigate?: (id: string) => void;
 };
+
+const paymentMethodLabels = {
+  pix: "Pix",
+  cash: "Dinheiro",
+  debit: "Débito",
+  credit: "Crédito",
+} as const;
 
 const statusDetails: Record<
   OrderStatus,
@@ -40,6 +64,7 @@ const statusDetails: Record<
   preparing: { label: "Em preparo", nextAction: "Marcar como pronto" },
   ready: { label: "Pronto", nextAction: "Pedido pronto" },
   delivered: { label: "Entregue", nextAction: "Pedido entregue" },
+  closed: { label: "Fechado", nextAction: "Pedido fechado" },
 };
 
 const orderFilters: { value: OrderFilter; label: string }[] = [
@@ -48,6 +73,7 @@ const orderFilters: { value: OrderFilter; label: string }[] = [
   { value: "preparing", label: "Em preparo" },
   { value: "ready", label: "Pronto" },
   { value: "delivered", label: "Entregue" },
+  { value: "closed", label: "Fechado" },
 ];
 
 const toDateKey = (date: Date) =>
@@ -130,6 +156,16 @@ const getOrderTotal = (order: Order) =>
     0,
   );
 
+const emptyOrderItems: OrderItem[] = [
+  { name: "", quantity: 1, unitPrice: 0, observation: "" },
+];
+
+const getCurrentTime = () =>
+  new Date().toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
 export default function Orders({ onNavigate }: OrdersProps) {
   const [orders, setOrders] = useState(initialOrders);
   const [searchQuery, setSearchQuery] = useState("");
@@ -141,6 +177,9 @@ export default function Orders({ onNavigate }: OrdersProps) {
   );
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [activityMessage, setActivityMessage] = useState("");
+  const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
 
   const periodOrders = useMemo(
     () =>
@@ -162,6 +201,7 @@ export default function Orders({ onNavigate }: OrdersProps) {
 
   const selectOrder = (orderId: number) => {
     setSelectedOrderId(orderId);
+    setEditingOrderId(null);
     setOrders((currentOrders) =>
       currentOrders.map((order) =>
         order.id === orderId ? { ...order, unread: false } : order,
@@ -175,8 +215,13 @@ export default function Orders({ onNavigate }: OrdersProps) {
   ) => {
     const currentOrder = orders.find((order) => order.id === orderId);
     if (!currentOrder) return;
-    if (direction === "next" && currentOrder.status === "delivered") return;
+    if (
+      direction === "next" &&
+      (currentOrder.status === "delivered" || currentOrder.status === "closed")
+    )
+      return;
     if (direction === "previous" && currentOrder.status === "waiting") return;
+    if (currentOrder.status === "closed") return;
 
     const nextStatus =
       direction === "next"
@@ -193,36 +238,24 @@ export default function Orders({ onNavigate }: OrdersProps) {
     );
   };
 
-  const simulateOrder = () => {
-    const nextId = Math.max(...orders.map((order) => order.id)) + 1;
+  const createOrder = (changes: Pick<Order, "table" | "time" | "items">) => {
+    const nextId = Math.max(0, ...orders.map((order) => order.id)) + 1;
     const now = new Date();
-    const simulatedOrder: Order = {
+    const newOrder: Order = {
       id: nextId,
       date: toDateKey(now),
-      table: `Mesa ${String((nextId % 12) + 1).padStart(2, "0")}`,
-      time: now.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
+      ...changes,
       status: "waiting",
-      unread: true,
-      items: [
-        { name: "X-Burger artesanal", quantity: 1, unitPrice: 28.9 },
-        {
-          name: "Batata rústica",
-          quantity: 1,
-          unitPrice: 18,
-          observation: "Molho à parte",
-        },
-        { name: "Suco de laranja", quantity: 1, unitPrice: 12 },
-      ],
+      unread: false,
     };
 
-    setOrders((currentOrders) => [simulatedOrder, ...currentOrders]);
+    setOrders((currentOrders) => [newOrder, ...currentOrders]);
     setSelectedOrderId(nextId);
     setActiveFilter("all");
+    setPeriodFilter("today");
     setSearchQuery("");
-    setActivityMessage(`Pedido #${nextId} recebido na cozinha.`);
+    setIsCreatingOrder(false);
+    setActivityMessage(`Pedido #${nextId} criado e enviado para a cozinha.`);
   };
 
   const cancelOrder = () => {
@@ -239,6 +272,54 @@ export default function Orders({ onNavigate }: OrdersProps) {
     setSelectedOrderId(remainingOrders[0]?.id ?? null);
     setActivityMessage(`Pedido #${selectedOrder.id} cancelado.`);
   };
+
+  const completeOrder = (orderId: number, entries: CompletedPayment[]) => {
+    const closedAt = new Date().toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId
+          ? { ...order, status: "closed", payment: { entries, closedAt } }
+          : order,
+      ),
+    );
+    setSelectedOrderId(orderId);
+    setPaymentOrderId(null);
+    setActivityMessage(`Pedido #${orderId} fechado com sucesso.`);
+  };
+
+  const reopenOrder = (orderId: number) => {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId
+          ? { ...order, status: "delivered", payment: undefined }
+          : order,
+      ),
+    );
+    setSelectedOrderId(orderId);
+    setEditingOrderId(null);
+    setActivityMessage(`Pedido #${orderId} reaberto e marcado como entregue.`);
+  };
+
+  const saveOrderChanges = (
+    orderId: number,
+    changes: Pick<Order, "table" | "time" | "items">,
+  ) => {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId ? { ...order, ...changes } : order,
+      ),
+    );
+    setEditingOrderId(null);
+    setActivityMessage(`Alterações do pedido #${orderId} salvas.`);
+  };
+
+  const paymentOrder =
+    orders.find((order) => order.id === paymentOrderId) ?? null;
+  const editingOrder =
+    orders.find((order) => order.id === editingOrderId) ?? null;
 
   return (
     <div className="orders-page">
@@ -386,9 +467,13 @@ export default function Orders({ onNavigate }: OrdersProps) {
             )}
           </div>
 
-          <Button onClick={simulateOrder}>
+          <Button
+            className="order-create-button"
+            aria-label="Criar pedido"
+            title="Criar pedido"
+            onClick={() => setIsCreatingOrder(true)}
+          >
             <Plus aria-hidden="true" />
-            Simular pedido
           </Button>
         </section>
 
@@ -408,8 +493,10 @@ export default function Orders({ onNavigate }: OrdersProps) {
             <div className="orders-list-body">
               {filteredOrders.map((order) => {
                 const isSelected = order.id === selectedOrderId;
-                const canAdvance = order.status !== "delivered";
-                const canRegress = order.status !== "waiting";
+                const canAdvance =
+                  order.status !== "delivered" && order.status !== "closed";
+                const canRegress =
+                  order.status !== "waiting" && order.status !== "closed";
                 return (
                   <article
                     className={`order-card ${isSelected ? "is-selected" : ""}`}
@@ -446,23 +533,48 @@ export default function Orders({ onNavigate }: OrdersProps) {
                       >
                         Ver detalhes
                       </Button>
-                      <Button
-                        variant="secondary"
-                        size="small"
-                        disabled={!canRegress}
-                        onClick={() =>
-                          updateOrderStatus(order.id, "previous")
-                        }
-                      >
-                        Regredir
-                      </Button>
-                      <Button
-                        size="small"
-                        disabled={!canAdvance}
-                        onClick={() => updateOrderStatus(order.id, "next")}
-                      >
-                        Avançar status
-                      </Button>
+                      {order.status === "closed" ? (
+                        <Button
+                          className="order-card-reopen"
+                          variant="secondary"
+                          size="small"
+                          onClick={() => reopenOrder(order.id)}
+                        >
+                          <RotateCcw aria-hidden="true" />
+                          Reabrir pedido
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="secondary"
+                            size="small"
+                            disabled={!canRegress}
+                            onClick={() =>
+                              updateOrderStatus(order.id, "previous")
+                            }
+                          >
+                            Regredir
+                          </Button>
+                          {order.status === "delivered" ? (
+                            <Button
+                              size="small"
+                              onClick={() => setPaymentOrderId(order.id)}
+                            >
+                              Finalizar pedido
+                            </Button>
+                          ) : (
+                            <Button
+                              size="small"
+                              disabled={!canAdvance}
+                              onClick={() =>
+                                updateOrderStatus(order.id, "next")
+                              }
+                            >
+                              Avançar status
+                            </Button>
+                          )}
+                        </>
+                      )}
                     </div>
                   </article>
                 );
@@ -494,46 +606,137 @@ export default function Orders({ onNavigate }: OrdersProps) {
                   {selectedOrder.table} · Enviado às {selectedOrder.time}
                 </p>
 
-                <div className="order-details-items">
-                  {selectedOrder.items.map((item) => (
-                    <div className="order-details-item" key={item.name}>
-                      <span>{item.quantity}×</span>
-                      <div>
-                        <strong>{item.name}</strong>
-                        {item.observation && <small>{item.observation}</small>}
-                      </div>
-                      <b>{formatCurrency(item.quantity * item.unitPrice)}</b>
+                <div className="order-details-tabs" role="group">
+                  <button
+                    type="button"
+                    className="active"
+                    aria-pressed="true"
+                  >
+                    <ClipboardList aria-hidden="true" />
+                    Resumo
+                  </button>
+                  <button
+                    type="button"
+                    disabled={selectedOrder.status === "closed"}
+                    title={
+                      selectedOrder.status === "closed"
+                        ? "Reabra o pedido para editar"
+                        : undefined
+                    }
+                    onClick={() => setEditingOrderId(selectedOrder.id)}
+                  >
+                    <Pencil aria-hidden="true" />
+                    Editar pedido
+                  </button>
+                </div>
+
+                <>
+                    <div className="order-details-items">
+                      {selectedOrder.items.map((item, index) => (
+                        <div
+                          className="order-details-item"
+                          key={`${item.name}-${index}`}
+                        >
+                          <span>{item.quantity}×</span>
+                          <div>
+                            <strong>{item.name}</strong>
+                            {item.observation && (
+                              <small>{item.observation}</small>
+                            )}
+                          </div>
+                          <b>
+                            {formatCurrency(item.quantity * item.unitPrice)}
+                          </b>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
 
-                <div className="order-details-total">
-                  <span>Total</span>
-                  <strong>{formatCurrency(getOrderTotal(selectedOrder))}</strong>
-                </div>
+                    <div className="order-details-total">
+                      <span>Total</span>
+                      <strong>
+                        {formatCurrency(getOrderTotal(selectedOrder))}
+                      </strong>
+                    </div>
 
-                <div className="order-details-actions">
-                  <Button
-                    variant="secondary"
-                    disabled={selectedOrder.status === "waiting"}
-                    onClick={() =>
-                      updateOrderStatus(selectedOrder.id, "previous")
-                    }
-                  >
-                    Regredir status
-                  </Button>
-                  <Button
-                    disabled={selectedOrder.status === "delivered"}
-                    onClick={() =>
-                      updateOrderStatus(selectedOrder.id, "next")
-                    }
-                  >
-                    Avançar status
-                  </Button>
-                  <Button variant="secondary" onClick={cancelOrder}>
-                    Cancelar
-                  </Button>
-                </div>
+                    {selectedOrder.status === "closed" &&
+                      selectedOrder.payment && (
+                        <section className="closed-payment-summary">
+                          <div className="closed-payment-heading">
+                            <CheckCircle2 aria-hidden="true" />
+                            <div>
+                              <strong>Pedido fechado</strong>
+                              <span>
+                                Pagamento registrado às{" "}
+                                {selectedOrder.payment.closedAt}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="closed-payment-lines">
+                            {selectedOrder.payment.entries.map(
+                              (entry, index) => (
+                                <div key={`${entry.method}-${index}`}>
+                                  <span>
+                                    {paymentMethodLabels[entry.method]}
+                                  </span>
+                                  <strong>{formatCurrency(entry.amount)}</strong>
+                                  {entry.change !== undefined &&
+                                    entry.change > 0 && (
+                                      <small>
+                                        Troco: {formatCurrency(entry.change)}
+                                      </small>
+                                    )}
+                                </div>
+                              ),
+                            )}
+                          </div>
+                        </section>
+                      )}
+
+                    <div className="order-details-actions">
+                      {selectedOrder.status === "closed" ? (
+                        <Button
+                          className="order-details-reopen"
+                          variant="secondary"
+                          onClick={() => reopenOrder(selectedOrder.id)}
+                        >
+                          <RotateCcw aria-hidden="true" />
+                          Reabrir pedido
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            variant="secondary"
+                            disabled={selectedOrder.status === "waiting"}
+                            onClick={() =>
+                              updateOrderStatus(selectedOrder.id, "previous")
+                            }
+                          >
+                            Regredir status
+                          </Button>
+                          {selectedOrder.status === "delivered" ? (
+                            <Button
+                              onClick={() =>
+                                setPaymentOrderId(selectedOrder.id)
+                              }
+                            >
+                              Finalizar pedido
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() =>
+                                updateOrderStatus(selectedOrder.id, "next")
+                              }
+                            >
+                              Avançar status
+                            </Button>
+                          )}
+                        </>
+                      )}
+                      <Button variant="secondary" onClick={cancelOrder}>
+                        Cancelar
+                      </Button>
+                    </div>
+                </>
               </>
             ) : (
               <div className="order-details-empty">
@@ -544,6 +747,38 @@ export default function Orders({ onNavigate }: OrdersProps) {
           </aside>
         </div>
       </main>
+
+      {paymentOrder && (
+        <PaymentModal
+          orderId={paymentOrder.id}
+          total={getOrderTotal(paymentOrder)}
+          onClose={() => setPaymentOrderId(null)}
+          onComplete={(payments) => completeOrder(paymentOrder.id, payments)}
+        />
+      )}
+
+      {editingOrder && (
+        <OrderEditPanel
+          key={editingOrder.id}
+          orderId={editingOrder.id}
+          table={editingOrder.table}
+          time={editingOrder.time}
+          items={editingOrder.items}
+          onCancel={() => setEditingOrderId(null)}
+          onSave={(changes) => saveOrderChanges(editingOrder.id, changes)}
+        />
+      )}
+
+      {isCreatingOrder && (
+        <OrderEditPanel
+          mode="create"
+          table="Mesa 01"
+          time={getCurrentTime()}
+          items={emptyOrderItems}
+          onCancel={() => setIsCreatingOrder(false)}
+          onSave={createOrder}
+        />
+      )}
     </div>
   );
 }

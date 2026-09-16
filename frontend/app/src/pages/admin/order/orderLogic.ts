@@ -1,4 +1,9 @@
-export type OrderStatus = "waiting" | "preparing" | "ready" | "delivered";
+export type OrderStatus =
+  | "waiting"
+  | "preparing"
+  | "ready"
+  | "delivered"
+  | "closed";
 export type OrderFilter = "all" | OrderStatus;
 export type OrderPeriod = "today" | "7days" | "30days" | "all" | "specific";
 
@@ -15,6 +20,7 @@ export const orderStatuses: OrderStatus[] = [
   "preparing",
   "ready",
   "delivered",
+  "closed",
 ];
 
 const normalizeSearchText = (value: string) =>
