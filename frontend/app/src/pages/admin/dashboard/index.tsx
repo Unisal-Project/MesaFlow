@@ -7,6 +7,26 @@ import { Button } from "@/components/buttons/Button";
 import { IconButton } from "@/components/buttons/IconButton";
 import "./styles.css";
 
+// Dados demonstrativos locais para a representação visual do Dashboard.
+const weeklySales = [4200, 5800, 4900, 7200, 6100, 8400, 7500];
+const chartSalesHistory = Array.from({ length: 30 }, (_, index) => {
+  const daysAgo = 29 - index;
+  return weeklySales[6 - (daysAgo % 7)];
+});
+const chartPeriods = [7, 14, 30];
+const topProducts = [
+  { name: "Risoto de cogumelos", quantity: 42 },
+  { name: "Nhoque artesanal", quantity: 36 },
+  { name: "Limonada com hortelã", quantity: 31 },
+  { name: "Pudim de doce de leite", quantity: 24 },
+];
+const operationalSummary = [
+  { label: "Tempo médio de preparo", value: "18 min" },
+  { label: "Mesas atendidas", value: "52" },
+  { label: "Pedidos cancelados", value: "2" },
+  { label: "Pagamentos concluídos", value: "47" },
+];
+
 type DashboardPeriod = "today" | "7days" | "30days" | "all" | "specific";
 
 const dateDaysAgo = (days: number) => {
@@ -68,6 +88,17 @@ const tableLabels: Record<string, string> = {
 type DashboardProps = { onNavigate?: (id: string) => void };
 
 export default function Dashboard({ onNavigate }: DashboardProps) {
+  const [chartPeriod, setChartPeriod] = useState(7);
+  const salesDays = chartSalesHistory.slice(-chartPeriod).map((value, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (chartPeriod - 1 - index));
+    return {
+      value,
+      label: date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+    };
+  });
+
+
   const [period, setPeriod] = useState<DashboardPeriod>("today");
   const [specificDate, setSpecificDate] = useState(() => dateDaysAgo(0));
   const today = dateDaysAgo(0);
@@ -251,6 +282,74 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 </div>
               ))}
             </div>
+          </section>
+        </div>
+
+        <div className="mf-dashboard-analytics-grid">
+          <section className="mf-dashboard-panel mf-dashboard-analytics-card" aria-labelledby="dashboard-analytics-sales-title">
+            <div className="mf-dashboard-panel-heading mf-dashboard-analytics-heading">
+              <h2 id="dashboard-analytics-sales-title">Vendas por período</h2>
+              <label className="mf-dashboard-period-filter mf-dashboard-analytics-period">
+                <span>Período das vendas</span>
+                <select
+                  value={chartPeriod}
+                  onChange={(event) => setChartPeriod(Number(event.target.value))}
+                >
+                  {chartPeriods.map((days) => (
+                    <option key={days} value={days}>Últimos {days} dias</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <div
+              className="mf-dashboard-analytics-chart"
+              style={{ gridTemplateColumns: `repeat(${salesDays.length}, minmax(28px, 1fr))` }}
+              tabIndex={0}
+              role="img"
+              aria-label={`Vendas demonstrativas dos últimos ${chartPeriod} dias. ${salesDays.map(({ label, value }) => `${label}: ${currency(value)}`).join("; ")}.`}
+            >
+              {salesDays.map(({ label, value }) => (
+                <div className="mf-dashboard-analytics-chart-column" key={label} aria-hidden="true">
+                  <div className="mf-dashboard-analytics-bar-track">
+                    <div
+                      className="mf-dashboard-analytics-bar"
+                      style={{ height: `${(value / Math.max(...salesDays.map((day) => day.value))) * 100}%` }}
+                      title={`${label}: ${currency(value)}`}
+                    />
+                  </div>
+                  <span>{label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="mf-dashboard-panel mf-dashboard-analytics-card" aria-labelledby="dashboard-analytics-products-title">
+            <div className="mf-dashboard-panel-heading">
+              <h2 id="dashboard-analytics-products-title">Produtos mais vendidos</h2>
+            </div>
+            <ol className="mf-dashboard-analytics-ranking">
+              {topProducts.map(({ name, quantity }, index) => (
+                <li className="mf-dashboard-analytics-row" key={name}>
+                  <span className="mf-dashboard-analytics-rank" aria-hidden="true">{index + 1}</span>
+                  <span className="mf-dashboard-analytics-product">{name}</span>
+                  <strong>{quantity} un.</strong>
+                </li>
+              ))}
+            </ol>
+          </section>
+
+          <section className="mf-dashboard-panel mf-dashboard-analytics-card" aria-labelledby="dashboard-analytics-summary-title">
+            <div className="mf-dashboard-panel-heading">
+              <h2 id="dashboard-analytics-summary-title">Resumo operacional</h2>
+            </div>
+            <dl className="mf-dashboard-analytics-summary">
+              {operationalSummary.map(({ label, value }) => (
+                <div className="mf-dashboard-analytics-row" key={label}>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
+                </div>
+              ))}
+            </dl>
           </section>
         </div>
       </main>
