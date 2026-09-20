@@ -3,10 +3,12 @@ import Categories from "@/pages/admin/categories";
 import Orders from "@/pages/admin/order";
 import Products from "@/pages/admin/products";
 import Tables from "@/pages/admin/table";
+import Dashboard from "@/pages/admin/dashboard";
 
-type AdminPage = "products" | "categories" | "orders" | "tables";
+type AdminPage = "products" | "categories" | "orders" | "tables" | "dashboard";
 
 const pageFromPath = (): AdminPage => {
+  if (window.location.pathname.endsWith("/dashboard")) return "dashboard";
   if (window.location.pathname.endsWith("/categories")) return "categories";
   if (
     window.location.pathname.endsWith("/order") ||
@@ -35,7 +37,9 @@ function App() {
 
   const navigate = (id: string) => {
     const destination =
-      id === "categories"
+      id === "dashboard"
+        ? { page: "dashboard" as const, path: "/admin/dashboard" }
+        : id === "categories"
         ? { page: "categories" as const, path: "/admin/categories" }
         : id === "orders"
           ? { page: "orders" as const, path: "/admin/order" }
@@ -51,6 +55,7 @@ function App() {
     setPage(destination.page);
   };
 
+  if (page === "dashboard") return <Dashboard onNavigate={navigate} />;
   if (page === "categories") return <Categories onNavigate={navigate} />;
   if (page === "orders") return <Orders onNavigate={navigate} />;
   if (page === "tables") return <Tables onNavigate={navigate} />;
