@@ -12,6 +12,7 @@ import fastifyStatic from "@fastify/static";
 import { uploadsRootDirectory } from "./shared/storage/storage.config.js";
 import { mkdir } from "node:fs/promises";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
+import { tableRoutes } from "./modules/tables/table.routers.js";
 
 export const app = fastify({ logger: true });
 
@@ -50,6 +51,7 @@ app.register(
     await instance.register(registerProductRoutes);
     await instance.register(orderRoutes);
     await instance.register(attendanceRoutes);
+    await instance.register(tableRoutes);
   },
   { prefix: "/api/v1" },
 );
