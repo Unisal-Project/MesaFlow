@@ -6,6 +6,7 @@ import { createOrder, CURRENT_ATTENDANCE_ID } from "@/_services/orders.service";
 import "./styles.css";
 
 type CartPageProps = {
+  allowOrdering?: boolean;
   onBack: () => void;
   onGoToMenu: () => void;
   onOrderConfirmed: () => void;
@@ -15,13 +16,17 @@ function formatPrice(value: number) {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
-export function Cart({ onBack, onGoToMenu, onOrderConfirmed }: CartPageProps) {
+export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = true }: CartPageProps) {
  const { items, itemCount, subtotal, serviceFee, total, removeItem, updateQuantity, updateNotes, splitLine, clearCart } = useCart();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderPlaced, setOrderPlaced] = useState(false);
 
   async function handleConfirm() {
+    if (!allowOrdering) {
+      setError("Pedidos pelo QR Code ainda não estão disponíveis. Solicite ao atendente.");
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -63,6 +68,7 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed }: CartPageProps) {
       </header>
 
       <main className="cart-content">
+        {!allowOrdering && <p role="status">Pedidos pelo QR Code ainda não estão disponíveis. Solicite ao atendente.</p>}
         {orderPlaced ? (
           <div className="empty-cart">
             <ShoppingCart aria-hidden="true" />
@@ -164,7 +170,7 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed }: CartPageProps) {
 
                 {error && <p className="cart-error">{error}</p>}
 
-                <Button className="continue-button" onClick={handleConfirm} loading={isSubmitting}>
+                <Button className="continue-button" onClick={handleConfirm} loading={isSubmitting} disabled={!allowOrdering}>
                   Continuar
                 </Button>
               </>

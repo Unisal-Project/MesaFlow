@@ -1,9 +1,28 @@
 import { TableService } from "./table.service.js";
-import { TableSchema, TableIdSchema } from "./table.schema.js";
+import { TableSchema, TableIdSchema, TableTokenSchema, TableStatusChangeSchema } from "./table.schema.js";
 import { FastifyReply, FastifyRequest } from "fastify";
 
 export class TableController {
   constructor(private readonly tableService: TableService) {}
+
+  async changeStatus(request: FastifyRequest, reply: FastifyReply) {
+    const params = TableIdSchema.parse(request.params);
+    const change = TableStatusChangeSchema.parse(request.body);
+    reply.header("Cache-Control", "no-store");
+    return this.tableService.changeStatus(params, change);
+  }
+
+  async getTableByToken(request: FastifyRequest, reply: FastifyReply) {
+    const { token } = TableTokenSchema.parse(request.params);
+    reply.header("Cache-Control", "no-store");
+    return this.tableService.getTableByToken(token);
+  }
+
+  async getQrCode(request: FastifyRequest, reply: FastifyReply) {
+    const params = TableIdSchema.parse(request.params);
+    const image = await this.tableService.getQrCode(params);
+    return reply.type("image/png").header("Content-Disposition", `inline; filename="mesa-${params.id}.png"`).send(image);
+  }
 
   async createTable(request: FastifyRequest, reply: FastifyReply) {
     const table = TableSchema.safeParse(request.body);
@@ -37,6 +56,7 @@ export class TableController {
   }
 
   async getTableById(request: FastifyRequest, reply: FastifyReply) {
+    reply.header("Cache-Control", "no-store");
     const tableId = TableIdSchema.safeParse(request.params);
 
     if (!tableId.success) {
@@ -47,6 +67,7 @@ export class TableController {
   }
 
   async getAllTables(request: FastifyRequest, reply: FastifyReply) {
+    reply.header("Cache-Control", "no-store");
     return await this.tableService.getAllTables();
   }
 }

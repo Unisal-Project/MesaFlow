@@ -201,6 +201,10 @@
   --table-accent: #b87412;
   --table-accent-soft: rgb(184 116 18 / 11%);
 }
+.table-card.closing_requested {
+  --table-accent: #8b5bb5;
+  --table-accent-soft: rgb(139 91 181 / 10%);
+}
 .table-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow);
@@ -255,6 +259,10 @@
 .table-status.awaiting_payment {
   background: rgb(184 116 18 / 14%);
   color: #9b5d08;
+}
+.table-status.closing_requested {
+  background: rgb(139 91 181 / 12%);
+  color: #75469d;
 }
 .table-card-info {
   margin: auto 0 0;

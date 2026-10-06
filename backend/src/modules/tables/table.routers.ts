@@ -4,10 +4,16 @@ import { prisma } from "../../database/prisma.js";
 import { FastifyInstance } from "fastify";
 
 
-const tableService = new TableService(prisma);
+import { env } from "../../config/env.js";
+
+const tableService = new TableService(prisma, env.FRONTEND_URL);
 const tableController = new TableController(tableService);
 
 export function tableRoutes(app: FastifyInstance) {
+  app.patch("/tables/:id/status", (request, reply) => tableController.changeStatus(request, reply));
+  app.get("/tables/by-token/:token", (request, reply) => tableController.getTableByToken(request, reply));
+  app.get("/tables/:id/qrcode", (request, reply) => tableController.getQrCode(request, reply));
+
   app.post("/tables", (request, reply) =>
     tableController.createTable(request, reply),
   );

@@ -1,11 +1,11 @@
 import { prisma } from "../../../database/prisma.js";
+import { Prisma } from "../../../generated/prisma/client.js";
 import ProductsRepository from "./products.repository.js";
 import {
   ProductInput,
   ProductOutput,
   ProductUpdateInput,
 } from "../entity/products.entity.js";
-import { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 
 export default class PrismaProductsRepository extends ProductsRepository {

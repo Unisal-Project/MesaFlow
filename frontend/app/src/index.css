@@ -141,3 +141,5 @@ svg {
     transition-duration: .01ms !important;
   }
 }
+
+.table-origin { padding: 12px 20px; background: #f5eee6; color: #493529; text-align: center; font-weight: 600; }

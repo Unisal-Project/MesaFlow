@@ -6,7 +6,7 @@ import type { Product } from "@/_services/menu.service";
 
 type Screen = "menu" | "product" | "cart";
 
-export function ClientFlow() {
+export function ClientFlow({ allowOrdering = true }: { allowOrdering?: boolean }) {
   const [screen, setScreen] = useState<Screen>("menu");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedCategoryName, setSelectedCategoryName] = useState("");
@@ -32,6 +32,7 @@ export function ClientFlow() {
   if (screen === "cart") {
     return (
       <Cart
+        allowOrdering={allowOrdering}
         onBack={() => setScreen("menu")}
         onGoToMenu={() => setScreen("menu")}
         onOrderConfirmed={() => setScreen("menu")}

@@ -116,7 +116,8 @@ CREATE TABLE IF NOT EXISTS attendances (
         'OPEN',
         'CLOSING_REQUESTED',
         'CLOSED',
-        'CANCELLED'
+        'CANCELLED',
+        'AWAITING_PAYMENT'
     ) NOT NULL DEFAULT 'OPEN',
 
     opened_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -128,11 +129,11 @@ CREATE TABLE IF NOT EXISTS attendances (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     -- Garante no banco que uma mesa não possua dois atendimentos
-    -- OPEN/CLOSING_REQUESTED ao mesmo tempo.
+    -- OPEN/CLOSING_REQUESTED/AWAITING_PAYMENT ao mesmo tempo.
     active_table_id BIGINT UNSIGNED
         AS (
             CASE
-                WHEN status IN ('OPEN', 'CLOSING_REQUESTED')
+                WHEN status IN ('OPEN', 'CLOSING_REQUESTED', 'AWAITING_PAYMENT')
                 THEN table_id
                 ELSE NULL
             END
@@ -162,6 +163,14 @@ CREATE TABLE IF NOT EXISTS attendances (
     KEY idx_attendances_opened_at (opened_at),
     KEY idx_attendances_closed_at (closed_at)
 ) ENGINE=InnoDB;
+
+-- Atualiza também volumes existentes, sem apagar atendimentos ou seu histórico.
+-- Mantém os valores anteriores do ENUM na mesma ordem.
+ALTER TABLE attendances
+    MODIFY COLUMN status ENUM('OPEN', 'CLOSING_REQUESTED', 'CLOSED', 'CANCELLED', 'AWAITING_PAYMENT') NOT NULL DEFAULT 'OPEN',
+    MODIFY COLUMN active_table_id BIGINT UNSIGNED
+        AS (CASE WHEN status IN ('OPEN', 'CLOSING_REQUESTED', 'AWAITING_PAYMENT')
+            THEN table_id ELSE NULL END) STORED;
 
 
 -- ============================================================
@@ -466,7 +475,7 @@ GROUP BY attendance_id;
 --
 -- 1. O QR Code identifica a mesa através de restaurant_tables.qr_token.
 --
--- 2. Uma mesa só pode ter um atendimento OPEN/CLOSING_REQUESTED por vez.
+-- 2. Uma mesa só pode ter um atendimento OPEN/CLOSING_REQUESTED/AWAITING_PAYMENT por vez.
 --    Essa regra também é garantida por uq_attendances_one_active_per_table.
 --
 -- 3. Um atendimento pode possuir vários pedidos.

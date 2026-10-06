@@ -17,7 +17,7 @@ export type Product = {
   active: boolean;
 };
 
-const API_URL = "http://localhost:3333/api/v1";
+import { API_URL } from "./api";
 
 export async function fetchCategories(): Promise<Category[]> {
   const response = await fetch(`${API_URL}/categories`);

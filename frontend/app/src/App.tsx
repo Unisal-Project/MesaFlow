@@ -1,3 +1,4 @@
+import { TableEntry } from "@/pages/client/TableEntry";
 import { useEffect, useState } from "react";
 import Categories from "@/pages/admin/categories";
 import Orders from "@/pages/admin/order";
@@ -5,9 +6,10 @@ import Products from "@/pages/admin/products";
 import Tables from "@/pages/admin/table";
 import Dashboard from "@/pages/admin/dashboard";
 
-type AdminPage = "products" | "categories" | "orders" | "tables" | "dashboard";
+type AdminPage = "client" | "products" | "categories" | "orders" | "tables" | "dashboard";
 
 const pageFromPath = (): AdminPage => {
+  if (window.location.pathname === "/cardapio") return "client";
   if (window.location.pathname.endsWith("/dashboard")) return "dashboard";
   if (window.location.pathname.endsWith("/categories")) return "categories";
   if (
@@ -55,6 +57,7 @@ function App() {
     setPage(destination.page);
   };
 
+  if (page === "client") return <TableEntry />;
   if (page === "dashboard") return <Dashboard onNavigate={navigate} />;
   if (page === "categories") return <Categories onNavigate={navigate} />;
   if (page === "orders") return <Orders onNavigate={navigate} />;

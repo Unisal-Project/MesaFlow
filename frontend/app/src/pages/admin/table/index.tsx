@@ -1,4 +1,5 @@
-import { useState, type ComponentProps } from "react";
+import { fetchTables, saveTable as persistTable, removeTable, tableQrUrl, downloadTableQr, changeTableStatus, type TableRecord, type TableStatus } from "@/_services/tables.service";
+import { useEffect, useState, type ComponentProps } from "react";
 import {
   Armchair,
   Bell,
@@ -15,105 +16,41 @@ import { TextField } from "@/components/inputs/TextField";
 import trashIcon from "@/assets/lixeira-icon.png";
 import "./styles.css";
 
-type TableStatus = "available" | "occupied" | "awaiting_payment";
 type OrderItem = { name: string; quantity: number; price: string };
-type RestaurantTable = {
-  id: number;
-  name: string;
-  status: TableStatus;
-  orderValue?: string;
-  order?: OrderItem[];
-};
-type TableForm = Pick<RestaurantTable, "name" | "status" | "orderValue">;
+type RestaurantTable = Omit<TableRecord, "name"> & { name: string; orderValue?: string; order?: OrderItem[] };
+type TableForm = { name: string; number: string; active: boolean };
 type TablesProps = { onNavigate?: (id: string) => void };
 type FormSubmitEvent = Parameters<
   NonNullable<ComponentProps<"form">["onSubmit"]>
 >[0];
 
-const initialTables: RestaurantTable[] = [
-  { id: 1, name: "Mesa 01", status: "available" },
-  {
-    id: 2,
-    name: "Mesa 02",
-    status: "occupied",
-    orderValue: "R$ 86,40",
-    order: [
-      { name: "X-Burger artesanal", quantity: 2, price: "R$ 57,80" },
-      { name: "Batata rústica", quantity: 1, price: "R$ 18,00" },
-      { name: "Refrigerante lata", quantity: 1, price: "R$ 10,60" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Mesa 03",
-    status: "awaiting_payment",
-    orderValue: "R$ 54,90",
-    order: [
-      { name: "Pizza individual", quantity: 1, price: "R$ 44,90" },
-      { name: "Água sem gás", quantity: 1, price: "R$ 10,00" },
-    ],
-  },
-  { id: 4, name: "Mesa 04", status: "available" },
-  {
-    id: 5,
-    name: "Mesa 05",
-    status: "occupied",
-    orderValue: "R$ 42,90",
-    order: [
-      { name: "Combo executivo", quantity: 1, price: "R$ 34,90" },
-      { name: "Suco de laranja", quantity: 1, price: "R$ 8,00" },
-    ],
-  },
-  { id: 6, name: "Mesa 06", status: "available" },
-  {
-    id: 7,
-    name: "Mesa 07",
-    status: "awaiting_payment",
-    orderValue: "R$ 118,00",
-    order: [
-      { name: "Pizza família", quantity: 1, price: "R$ 78,00" },
-      { name: "Refrigerante 2L", quantity: 2, price: "R$ 24,00" },
-      { name: "Brownie", quantity: 2, price: "R$ 16,00" },
-    ],
-  },
-  { id: 8, name: "Mesa 08", status: "available" },
-];
-
-const emptyTableForm: TableForm = {
-  name: "",
-  status: "available",
-  orderValue: "",
-};
+const emptyTableForm: TableForm = { name: "", number: "", active: true };
 const statusInfo: Record<TableStatus, { label: string; description: string }> =
   {
     available: {
-      label: "Livre",
+      label: "Disponível",
       description: "Disponível para novo atendimento",
     },
-    occupied: { label: "Ocupada", description: "Conta em andamento" },
+    occupied: { label: "Em aberto", description: "Mesa ocupada • atendimento em andamento" },
+    closing_requested: { label: "Conta solicitada", description: "Mesa ocupada • preparando a conta" },
     awaiting_payment: {
       label: "Aguardando pagamento",
-      description: "Conta em andamento",
+      description: "Mesa ocupada • aguardando fechamento",
     },
   };
-
-function VisualQrCode() {
-  return (
-    <div className="visual-qr" aria-label="QR Code da mesa">
-      <span />
-      <span />
-      <span />
-      <i />
-    </div>
-  );
-}
+const nextStatus: Record<TableStatus, { status: TableStatus; label: string }> = {
+  available: { status: "occupied", label: "Iniciar atendimento" },
+  occupied: { status: "closing_requested", label: "Solicitar conta" },
+  closing_requested: { status: "awaiting_payment", label: "Aguardar pagamento" },
+  awaiting_payment: { status: "available", label: "Fechar atendimento e liberar mesa" },
+};
 
 export default function Tables({ onNavigate }: TablesProps) {
-  const [tables, setTables] = useState(initialTables);
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TableStatus>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTableId, setEditingTableId] = useState<number | null>(null);
+  const [editingTableId, setEditingTableId] = useState<string | null>(null);
   const [tableForm, setTableForm] = useState<TableForm>(emptyTableForm);
   const [selectedTable, setSelectedTable] = useState<RestaurantTable | null>(
     null,
@@ -124,6 +61,23 @@ export default function Tables({ onNavigate }: TablesProps) {
   const [tableToDelete, setTableToDelete] = useState<RestaurantTable | null>(
     null,
   );
+
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const refresh = async () => {
+    const data = await fetchTables();
+    const updated = data.map((table) => ({ ...table, name: table.name || `Mesa ${table.number}` }));
+    setTables(updated);
+    setSelectedTable((current) => current ? updated.find((table) => table.id === current.id) ?? null : null);
+  };
+  useEffect(() => {
+    let cancelled = false;
+    fetchTables().then((data) => {
+      if (!cancelled) setTables(data.map((table) => ({ ...table, name: table.name || `Mesa ${table.number}` })));
+    }).catch((reason: Error) => { if (!cancelled) setError(reason.message); }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase("pt-BR");
   const filteredTables = tables.filter(
@@ -146,54 +100,48 @@ export default function Tables({ onNavigate }: TablesProps) {
     setEditingTableId(table.id);
     setTableForm({
       name: table.name,
-      status: table.status,
-      orderValue: table.orderValue ?? "",
+      number: String(table.number),
+      active: table.active,
     });
     setIsFormOpen(true);
   };
 
-  const saveTable = (event: FormSubmitEvent) => {
+  const saveTable = async (event: FormSubmitEvent) => {
     event.preventDefault();
-    const name = tableForm.name.trim();
-    const hasAccount = tableForm.status !== "available";
-    setTables((current) => {
-      if (editingTableId !== null)
-        return current.map((table) =>
-          table.id === editingTableId
-            ? {
-                ...table,
-                name,
-                status: tableForm.status,
-                orderValue: hasAccount
-                  ? tableForm.orderValue || "R$ 0,00"
-                  : undefined,
-                order: hasAccount ? (table.order ?? []) : undefined,
-              }
-            : table,
-        );
-      const id = Math.max(0, ...current.map((table) => table.id)) + 1;
-      return [
-        ...current,
-        {
-          id,
-          name,
-          status: tableForm.status,
-          orderValue: hasAccount
-            ? tableForm.orderValue || "R$ 0,00"
-            : undefined,
-          order: hasAccount ? [] : undefined,
-        },
-      ];
-    });
-    closeForm();
+    setBusy(true);
+    setError("");
+    try {
+      await persistTable({ name: tableForm.name.trim(), number: Number(tableForm.number), active: tableForm.active }, editingTableId ?? undefined);
+      await refresh();
+      closeForm();
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setBusy(false); }
   };
-  const deleteTable = () => {
+  const deleteTable = async () => {
     if (!tableToDelete) return;
-    setTables((current) =>
-      current.filter((table) => table.id !== tableToDelete.id),
-    );
-    setTableToDelete(null);
-    setSelectedTable(null);
+    setBusy(true);
+    setError("");
+    try {
+      await removeTable(tableToDelete.id);
+      await refresh();
+      setTableToDelete(null);
+      setSelectedTable(null);
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setBusy(false); }
+  };
+  const advanceStatus = async () => {
+    if (!selectedTable || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await changeTableStatus(selectedTable, nextStatus[selectedTable.status].status);
+      const table = { ...updated, name: updated.name || `Mesa ${updated.number}` };
+      setTables((current) => current.map((item) => item.id === table.id ? table : item));
+      setSelectedTable(table);
+    } catch (reason) {
+      setError((reason as Error).message);
+      await refresh().catch(() => undefined);
+    } finally { setBusy(false); }
   };
 
   return (
@@ -205,6 +153,8 @@ export default function Tables({ onNavigate }: TablesProps) {
         userRole="Administrador"
       />
       <main className="tables-content">
+        {error && <p role="alert">{error}</p>}
+        {loading && <p role="status">Carregando mesas…</p>}
         <div className="tables-topbar">
           <header className="tables-heading">
             <span>SALÃO</span>
@@ -231,7 +181,7 @@ export default function Tables({ onNavigate }: TablesProps) {
             </button>
             <Button onClick={openNewTable}>
               <Plus aria-hidden="true" />
-              Abrir mesa
+              Cadastrar mesa
             </Button>
           </div>
         </div>
@@ -251,7 +201,7 @@ export default function Tables({ onNavigate }: TablesProps) {
             className={statusFilter === "available" ? "active" : ""}
             onClick={() => setStatusFilter("available")}
           >
-            Livres{" "}
+            Disponíveis{" "}
             <span>
               {tables.filter((table) => table.status === "available").length}
             </span>
@@ -261,10 +211,17 @@ export default function Tables({ onNavigate }: TablesProps) {
             className={statusFilter === "occupied" ? "active" : ""}
             onClick={() => setStatusFilter("occupied")}
           >
-            Ocupadas{" "}
+            Em aberto{" "}
             <span>
               {tables.filter((table) => table.status === "occupied").length}
             </span>
+          </button>
+          <button
+            type="button"
+            className={statusFilter === "closing_requested" ? "active" : ""}
+            onClick={() => setStatusFilter("closing_requested")}
+          >
+            Conta solicitada <span>{tables.filter((table) => table.status === "closing_requested").length}</span>
           </button>
           <button
             type="button"
@@ -298,6 +255,7 @@ export default function Tables({ onNavigate }: TablesProps) {
                   type="button"
                   className="table-card-main"
                   onClick={() => {
+                    setError("");
                     setSelectedTable(table);
                     setSelectedDetail(null);
                   }}
@@ -305,20 +263,20 @@ export default function Tables({ onNavigate }: TablesProps) {
                 >
                   <div className="table-card-topline">
                     <strong className="table-number">
-                      {String(table.id).padStart(2, "0")}
+                      {String(table.number).padStart(2, "0")}
                     </strong>
                     <span className={`table-status ${table.status}`}>
                       {statusInfo[table.status].label}
                     </span>
                   </div>
                   <div className="table-card-info">
-                    <h3>{table.name}</h3>
+                    <h3>{table.name}{!table.active && " (Inativa)"}</h3>
                     <p>{statusInfo[table.status].description}</p>
                   </div>
                 </button>
                 <footer className="table-card-value">
                   <span>Valor atual</span>
-                  <strong>{table.orderValue ?? "R$ 0,00"}</strong>
+                  <strong>{table.orderValue ?? "—"}</strong>
                 </footer>
               </article>
             ))}
@@ -364,8 +322,12 @@ export default function Tables({ onNavigate }: TablesProps) {
               </button>
             </header>
             <div className="table-modal-body">
+              {error && selectedDetail !== "qr" && <p role="alert">{error}</p>}
               {selectedDetail === null && (
                 <div className="table-options">
+                  <Button type="button" disabled={busy || (!selectedTable.active && selectedTable.status === "available")} onClick={advanceStatus}>
+                    {busy ? "Atualizando…" : nextStatus[selectedTable.status].label}
+                  </Button>
                   <p>O que você deseja consultar?</p>
                   <Button
                     type="button"
@@ -386,7 +348,7 @@ export default function Tables({ onNavigate }: TablesProps) {
                     </Button>
                   ) : (
                     <span className="table-no-order">
-                      Esta mesa ainda não possui pedido.
+                      Detalhes dos pedidos disponíveis na área de pedidos.
                     </span>
                   )}
                 </div>
@@ -397,13 +359,14 @@ export default function Tables({ onNavigate }: TablesProps) {
                   <h3>QR Code da mesa</h3>
                   <p>
                     O cliente usa este código para acessar o cardápio e
-                    acompanhar o pedido.
+                    identificar a mesa de origem.
                   </p>
-                  <VisualQrCode />
-                  <small>mesaflow.app/mesa/{selectedTable.id}</small>
-                  <Button type="button" variant="secondary">
+                  <img src={tableQrUrl(selectedTable.id)} alt={`QR Code da mesa ${selectedTable.number}`} width={240} height={240} onError={() => setError("Não foi possível carregar o QR Code")} />
+                  <small><a href={selectedTable.menuUrl} target="_blank" rel="noreferrer">Abrir cardápio desta mesa</a></small>
+                  {error && <p role="alert">{error}</p>}
+                  <Button type="button" variant="secondary" onClick={() => downloadTableQr(selectedTable.id).catch((reason: Error) => setError(reason.message))}>
                     <Download aria-hidden="true" />
-                    Instalar
+                    Baixar PNG
                   </Button>
                 </div>
               )}
@@ -450,6 +413,7 @@ export default function Tables({ onNavigate }: TablesProps) {
               )}
               <Button
                 type="button"
+                disabled={busy}
                 onClick={() => openEditTable(selectedTable)}
               >
                 <Pencil aria-hidden="true" />
@@ -495,7 +459,7 @@ export default function Tables({ onNavigate }: TablesProps) {
             </header>
             <form className="table-form" onSubmit={saveTable}>
               <TextField
-                label="Nome ou número da mesa"
+                label="Nome da mesa"
                 autoFocus
                 required
                 maxLength={40}
@@ -508,36 +472,9 @@ export default function Tables({ onNavigate }: TablesProps) {
                   }))
                 }
               />
-              <label className="table-status-field">
-                <span>Status da mesa</span>
-                <select
-                  value={tableForm.status}
-                  onChange={(event) =>
-                    setTableForm((current) => ({
-                      ...current,
-                      status: event.target.value as TableStatus,
-                    }))
-                  }
-                >
-                  <option value="available">Livre</option>
-                  <option value="occupied">Ocupada</option>
-                  <option value="awaiting_payment">Aguardando pagamento</option>
-                </select>
-              </label>
-              {tableForm.status !== "available" && (
-                <TextField
-                  label="Valor atual da conta"
-                  required
-                  placeholder="Ex.: R$ 86,40"
-                  value={tableForm.orderValue}
-                  onChange={(event) =>
-                    setTableForm((current) => ({
-                      ...current,
-                      orderValue: event.target.value,
-                    }))
-                  }
-                />
-              )}
+              <TextField label="Número da mesa" type="number" min={1} step={1} required value={tableForm.number} onChange={(event) => setTableForm((current) => ({ ...current, number: event.target.value }))} />
+              <label><input type="checkbox" checked={tableForm.active} onChange={(event) => setTableForm((current) => ({ ...current, active: event.target.checked }))} /> Mesa ativa</label>
+              {error && <p role="alert">{error}</p>}
               <footer className="table-modal-actions">
                 <div>
                   {editingTableId !== null && (
@@ -562,7 +499,7 @@ export default function Tables({ onNavigate }: TablesProps) {
                   <Button type="button" variant="ghost" onClick={closeForm}>
                     Cancelar
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={busy}>
                     {editingTableId === null
                       ? "Cadastrar mesa"
                       : "Salvar alterações"}
@@ -591,6 +528,7 @@ export default function Tables({ onNavigate }: TablesProps) {
               <img src={trashIcon} alt="" />
             </div>
             <h2 id="delete-table-title">Excluir mesa?</h2>
+            {error && <p role="alert">{error}</p>}
             <p>
               “{tableToDelete.name}” será removida permanentemente da lista de
               mesas.
@@ -603,7 +541,7 @@ export default function Tables({ onNavigate }: TablesProps) {
               >
                 Cancelar
               </Button>
-              <Button type="button" variant="danger" onClick={deleteTable}>
+              <Button type="button" variant="danger" disabled={busy} onClick={deleteTable}>
                 Excluir
               </Button>
             </footer>
