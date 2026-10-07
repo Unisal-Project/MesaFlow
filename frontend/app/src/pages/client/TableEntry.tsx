@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { resolveTable, type TableIdentity } from "@/_services/tables.service";
+import { resolveTable, type TableIdentity } from "@/services/tables.service";
 import { ClientFlow } from "./ClientFlow";
 
 export function TableEntry() {

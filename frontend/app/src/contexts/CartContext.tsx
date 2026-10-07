@@ -1,5 +1,5 @@
 import {createContext,useContext,useEffect,useState,type ReactNode,} from "react";
-import type { Product } from "@/_services/menu.service";
+import type { Product } from "@/services/menu.service";
 
 export type CartLine = {
   id: string;

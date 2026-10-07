@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, ShoppingCart, Menu as MenuIcon, Clock, ReceiptText } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { QuantitySelector, TextAreaField, Button } from "@/components";
-import type { Product } from "@/_services/menu.service";
+import type { Product } from "@/services/menu.service";
 import "./styles.css";
 
 type ProductDetailProps = {

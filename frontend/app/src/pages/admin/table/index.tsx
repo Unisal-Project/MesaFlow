@@ -1,8 +1,7 @@
-import { fetchTables, saveTable as persistTable, removeTable, tableQrUrl, downloadTableQr, changeTableStatus, type TableRecord, type TableStatus } from "@/_services/tables.service";
+import { fetchTables, saveTable as persistTable, removeTable, tableQrUrl, downloadTableQr, changeTableStatus, type TableRecord, type TableStatus } from "@/services/tables.service";
 import { useEffect, useState, type ComponentProps } from "react";
 import {
   Armchair,
-  Bell,
   Download,
   Pencil,
   Plus,
@@ -14,6 +13,7 @@ import { Button } from "@/components/buttons/Button";
 import { AdminSidebar } from "@/components/navigation/AdminSidebar";
 import { TextField } from "@/components/inputs/TextField";
 import trashIcon from "@/assets/lixeira-icon.png";
+import { Notifications } from "../../../components/notifications";
 import "./styles.css";
 
 type OrderItem = { name: string; quantity: number; price: string };
@@ -172,13 +172,7 @@ export default function Tables({ onNavigate }: TablesProps) {
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </label>
-            <button
-              type="button"
-              className="table-notifications"
-              aria-label="Notificações"
-            >
-              <Bell aria-hidden="true" />
-            </button>
+            <Notifications />
             <Button onClick={openNewTable}>
               <Plus aria-hidden="true" />
               Cadastrar mesa

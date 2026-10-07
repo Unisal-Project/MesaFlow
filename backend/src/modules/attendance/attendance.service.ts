@@ -79,3 +79,34 @@ export async function findClosingRequestedAttendances() {
         orderBy: { closingRequestedAt: "asc" }
     });
 }
+
+export async function requestCancelled(attendanceId: bigint) {
+    const attendance = await prisma.attendance.findUnique({
+        where: { id: attendanceId }
+    });
+
+    if (!attendance) {
+        throw new AppError("Atendimento não encontrado", 404);
+    }
+
+    if (attendance.status !== "OPEN") {
+        throw new AppError("Apenas atendimentos abertos podem solicitar cancelamento", 409);
+    }
+
+    const updatedAttendance = await prisma.attendance.update({
+        where: { id: attendanceId },
+        data: { status: "CANCELLED" }
+    });
+
+    return updatedAttendance;
+}
+
+export async function findCancelledAttendances() {
+    return prisma.attendance.findMany({
+        where: { status: "CANCELLED" },
+        include: { table: {
+            select: { id: true, number: true, name: true}
+        }},
+        orderBy: { closingRequestedAt: "asc"}
+    });
+}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ShoppingCart } from "lucide-react";
-import { fetchCategories, fetchProducts, type Category, type Product } from "@/_services/menu.service";
+import { fetchCategories, fetchProducts, type Category, type Product } from "@/services/menu.service";
 import { ClientHeader, CategoryTabs, ProductCard } from "@/components";
 import { useCart } from "@/contexts/CartContext";
 import "./styles.css";

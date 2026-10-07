@@ -1,13 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  Bell,
-  CheckCircle2,
-  ClipboardList,
-  Pencil,
-  Plus,
-  RotateCcw,
-  Search,
-} from "lucide-react";
+import { CheckCircle2, ClipboardList, Pencil, Plus, RotateCcw, Search } from "lucide-react";
 import { Button } from "@/components/buttons/Button";
 import { AdminSidebar } from "@/components/navigation/AdminSidebar";
 import {
@@ -25,6 +17,7 @@ import {
   type CompletedPayment,
 } from "./PaymentModal";
 import { OrderEditPanel } from "./OrderEditPanel";
+import { Notifications } from "../../../components/notifications/index.js";
 import "./styles.css";
 
 type OrderItem = {
@@ -175,7 +168,6 @@ export default function Orders({ onNavigate }: OrdersProps) {
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(
     initialOrders[0].id,
   );
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [activityMessage, setActivityMessage] = useState("");
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
@@ -197,7 +189,6 @@ export default function Orders({ onNavigate }: OrdersProps) {
   );
   const selectedOrder =
     orders.find((order) => order.id === selectedOrderId) ?? null;
-  const unreadOrders = orders.filter((order) => order.unread);
 
   const selectOrder = (orderId: number) => {
     setSelectedOrderId(orderId);
@@ -350,66 +341,7 @@ export default function Orders({ onNavigate }: OrdersProps) {
               />
             </label>
 
-            <div className="order-notifications">
-              <button
-                type="button"
-                className="order-notification-button"
-                aria-label={`${unreadOrders.length} notificações não lidas`}
-                aria-expanded={notificationsOpen}
-                onClick={() => setNotificationsOpen((current) => !current)}
-              >
-                <Bell aria-hidden="true" />
-                {unreadOrders.length > 0 && (
-                  <span aria-hidden="true">{unreadOrders.length}</span>
-                )}
-              </button>
-
-              {notificationsOpen && (
-                <section
-                  className="order-notification-panel"
-                  aria-label="Notificações de pedidos"
-                >
-                  <div>
-                    <strong>Novos pedidos</strong>
-                    {unreadOrders.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setOrders((currentOrders) =>
-                            currentOrders.map((order) => ({
-                              ...order,
-                              unread: false,
-                            })),
-                          )
-                        }
-                      >
-                        Marcar como lidas
-                      </button>
-                    )}
-                  </div>
-                  {unreadOrders.length > 0 ? (
-                    unreadOrders.map((order) => (
-                      <button
-                        type="button"
-                        className="order-notification-item"
-                        key={order.id}
-                        onClick={() => {
-                          selectOrder(order.id);
-                          setNotificationsOpen(false);
-                        }}
-                      >
-                        <span>Pedido #{order.id}</span>
-                        <small>
-                          {order.table} · {order.time}
-                        </small>
-                      </button>
-                    ))
-                  ) : (
-                    <p>Você está em dia com os novos pedidos.</p>
-                  )}
-                </section>
-              )}
-            </div>
+            <Notifications />
           </div>
         </div>
 

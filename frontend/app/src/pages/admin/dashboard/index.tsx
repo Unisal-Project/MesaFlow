@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { Bell, Info, Search } from "lucide-react";
+import { Info, Search } from "lucide-react";
 import { AdminSidebar } from "@/components/navigation/AdminSidebar";
 import { StatCard } from "@/components/cards/StatCard";
 import { Badge } from "@/components/status/Badge";
 import { Button } from "@/components/buttons/Button";
-import { IconButton } from "@/components/buttons/IconButton";
+import { Notifications } from "../../../components/notifications";
 import "./styles.css";
 
 // Dados demonstrativos locais para a representação visual do Dashboard.
@@ -34,6 +34,8 @@ const dateDaysAgo = (days: number) => {
   date.setDate(date.getDate() - days);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 };
+
+
 
 // Histórico demonstrativo local, sem integração com serviços.
 const salesHistory = [
@@ -165,14 +167,7 @@ export default function Dashboard({ onNavigate }: DashboardProps) {
                 placeholder="Buscar pedidos, mesas ou produtos"
               />
             </label>
-            <IconButton
-              className="mf-dashboard-notifications"
-              type="button"
-              label="Notificações: há uma nova notificação"
-            >
-              <Bell aria-hidden="true" />
-              <span />
-            </IconButton>
+            <Notifications />
           </div>
         </header>
 

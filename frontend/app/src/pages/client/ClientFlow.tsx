@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Menu } from "@/pages/client/Menu";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { Cart } from "@/pages/client/Cart";
-import type { Product } from "@/_services/menu.service";
+import type { Product } from "@/services/menu.service";
 
 type Screen = "menu" | "product" | "cart";
 
