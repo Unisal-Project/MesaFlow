@@ -31,3 +31,5 @@ frontend/app/
 | `npm run preview` | Pré-visualiza o build            |
 
 > Para iniciar frontend e backend juntos, use `npm start` na raiz do monorepo.
+
+.
