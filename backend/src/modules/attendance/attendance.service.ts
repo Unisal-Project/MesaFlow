@@ -1,6 +1,6 @@
 import { AppError } from "../../shared/errors/app-errors.js";
 
-import type { AttendanceRepository } from "./repository/attendance.repository.js";
+import type { AttendanceRepository } from "./repositories/attendance.repository.js";
 import type { TableRepository } from "../tables/repository/table.repository.js";
 
 import type { CreateAttendanceDTO } from "./dto/create-attendance.dto.js";

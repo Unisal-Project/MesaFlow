@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import ProductsController from "./products.controller.js";
 import ProductService from "./products.service.js";
-import PrismaProductsRepository from "./repository/prisma-products.repository.js";
+import { PrismaProductRepository } from "./repositories/prisma-products.repository.js";
 import { LocalStorageService } from "../../shared/storage/local-storage.service.js";
 
-const productRepository = new PrismaProductsRepository();
+const productRepository = new PrismaProductRepository();
 const storageService = new LocalStorageService();
 const productService = new ProductService(productRepository, storageService);
 const productController = new ProductsController(productService);

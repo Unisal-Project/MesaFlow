@@ -24,4 +24,8 @@ export class AttendanceEntity{
     canRequestCancellation(): boolean {
         return this.isOpen();
     }
+
+    canReceiveOrders(): boolean{
+        return this.isOpen()
+    }
 }

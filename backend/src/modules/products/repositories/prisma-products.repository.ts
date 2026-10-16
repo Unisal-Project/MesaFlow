@@ -8,7 +8,7 @@ import {
 } from "../entity/products.entity.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 
-export default class PrismaProductsRepository extends ProductsRepository {
+export class PrismaProductRepository extends ProductsRepository {
   constructor(private readonly prismaClient: typeof prisma = prisma) {
     super();
   }
@@ -115,6 +115,22 @@ export default class PrismaProductsRepository extends ProductsRepository {
     } catch (error) {
       this.handlePrismaError(error);
     }
+  }
+
+  async findAvailableByIds(ids: bigint[]): Promise<{id: bigint, price: string}[]> {
+
+    const products = await this.prismaClient.product.findMany({
+      where: {
+        id: { in: ids },
+        active: true,
+        available: true,
+      }
+    });
+
+    return products.map((product) => ({
+      id: product.id,
+      price: product.price.toString()
+    }));
   }
 
   private handlePrismaError(error: unknown): never {

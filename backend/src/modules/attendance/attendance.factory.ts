@@ -1,6 +1,6 @@
 import { AttendanceService } from "./attendance.service.js";
-import { PrismaAttendanceRepository } from "./repository/prisma-attendance.repository.js";
-import { PrismaTableRepository } from "./repository/prisma-attendance.repository.js";
+import { PrismaAttendanceRepository } from "./repositories/prisma-attendance.repository.js";
+import { PrismaTableRepository } from "./repositories/prisma-attendance.repository.js";
 
 export function makeAttendanceService(): AttendanceService{
     const attendanceRepository = new PrismaAttendanceRepository;
