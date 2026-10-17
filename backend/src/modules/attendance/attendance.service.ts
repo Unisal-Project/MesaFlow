@@ -1,112 +1,92 @@
-import {prisma} from "../../database/prisma.js";
 import { AppError } from "../../shared/errors/app-errors.js";
-import type { CreateAttendanceInput } from "./attendance.schema.js";
 
-export async function findOpenAttendance(tableId: bigint) {
-    return prisma.attendance.findFirst({
-        where:{
-            tableId, status:"OPEN"
+import type { AttendanceRepository } from "./repositories/attendance.repository.js";
+import type { TableRepository } from "../tables/repository/table.repository.js";
+
+import type { CreateAttendanceDTO } from "./dto/create-attendance.dto.js";
+
+export class AttendanceService{
+    constructor(
+        private readonly attendanceRepository: AttendanceRepository,
+        private readonly tableRepository: TableRepository,
+    ) {}
+
+    async findOpenAttendance(tableId: bigint) {
+        const attendance = await this.attendanceRepository.findOpenByTableId(tableId);
+        
+        if (!attendance){
+            throw new AppError("nenhum atendimento aberto nessa mesa", 404);
         }
-    })
     
-}
-
-export async function createAttendance(data: CreateAttendanceInput) {
-    const tableId = BigInt(data.tableId);
-
-    const table= await prisma.restaurantTable.findUnique({
-        where:{id:tableId}
-    })
-    if(!table){
-        throw new AppError("Mesa não encontrada",404);
+        return attendance;
     }
-    const existingOpenAttendance = await findOpenAttendance(tableId); 
 
-    if(existingOpenAttendance){
-        throw new AppError("atendimento já aberto",409);
-    }
-    const attendance = await prisma.attendance.create({
-        data: {
-            tableId
+    async createAttendance(data: CreateAttendanceDTO) {
+        const tableId = BigInt(data.tableId);
+    
+        const tableExists= await this.tableRepository.existsById(tableId);
+    
+        if(!tableExists){
+            throw new AppError("Mesa não encontrada",404);
         }
-    })
-    return attendance;
-}
+    
+        const existingOpenAttendance = await this.attendanceRepository.findOpenByTableId(tableId);
+        
+        if(existingOpenAttendance){
+            throw new AppError("atendimento já aberto",409);
+        }
+        
+        const attendance = await this.attendanceRepository.create(tableId);
 
-export async function findAttendanceTotal(attendanceId: bigint) {
-    const total = await prisma.attendanceTotal.findUnique({
-        where: { attendanceId }
-    });
-    if(!total){
-        throw new AppError("Total do atendimento não encontrado",404);
-    }
-    return total;
-}
-
-export async function requestClosing(attendanceId: bigint) {
-    const attendance = await prisma.attendance.findUnique({
-        where: { id: attendanceId }
-    });
-
-    if (!attendance) {
-        throw new AppError("Atendimento não encontrado", 404);
+        return attendance;
     }
 
-    if (attendance.status !== "OPEN") {
-        throw new AppError("Apenas atendimentos abertos podem solicitar fechamento", 409);
+    async findAttendanceTotal(attendanceId: bigint) {
+        const total = await this.attendanceRepository.findTotalByAttendanceId(attendanceId)
+    
+        if(!total){
+            throw new AppError("Total do atendimento não encontrado",404);
+        }
+    
+        return total;
     }
-    const updatedAttendance = await prisma.$transaction(async(tx)=> {
-        const update = await tx.attendance.update({
-            where: { id: attendanceId },
-            data: { status: "CLOSING_REQUESTED", closingRequestedAt: new Date() }
-        });
-
-        await tx.printJob.create({
-            data:{attendanceId, type: "BILL"}
-        });
-
-        return update;
-    });
-    return updatedAttendance;
-}
-
-export async function findClosingRequestedAttendances() {
-    return prisma.attendance.findMany({
-        where: { status: "CLOSING_REQUESTED" },
-        include: { table: {
-            select: { id: true,number: true, name: true }
-        }},
-        orderBy: { closingRequestedAt: "asc" }
-    });
-}
-
-export async function requestCancelled(attendanceId: bigint) {
-    const attendance = await prisma.attendance.findUnique({
-        where: { id: attendanceId }
-    });
-
-    if (!attendance) {
-        throw new AppError("Atendimento não encontrado", 404);
+    
+    async requestClosing(attendanceId: bigint) {
+        const attendance = await this.attendanceRepository.findById(attendanceId);
+    
+        if (!attendance) {
+            throw new AppError("Atendimento não encontrado", 404);
+        }
+    
+        if (!attendance.canRequestClosing()) {
+            throw new AppError("Apenas atendimentos abertos podem solicitar fechamento", 409);
+        }
+    
+        const requestedAt = new Date();
+    
+        return this.attendanceRepository.requestClosing(attendanceId, requestedAt);
     }
 
-    if (attendance.status !== "OPEN") {
-        throw new AppError("Apenas atendimentos abertos podem solicitar cancelamento", 409);
+    async requestCancelled(attendanceId: bigint) {
+        const attendance = await this.attendanceRepository.findById(attendanceId);
+    
+        if (!attendance) {
+            throw new AppError("Atendimento não encontrado", 404);
+        }
+    
+        if (!attendance.canRequestCancellation()) {
+            throw new AppError("Apenas atendimentos abertos podem solicitar cancelamento", 409);
+        }
+    
+        return this.attendanceRepository.requestCancelled(attendanceId);
     }
 
-    const updatedAttendance = await prisma.attendance.update({
-        where: { id: attendanceId },
-        data: { status: "CANCELLED" }
-    });
-
-    return updatedAttendance;
+    async findClosingRequestedAttendances() {
+        return this.attendanceRepository.findAllByStatus("CLOSING_REQUESTED");
+    }
+    
+    async findCancelledAttendances() {
+        return this.attendanceRepository.findAllByStatus("CANCELLED");
+    }
 }
 
-export async function findCancelledAttendances() {
-    return prisma.attendance.findMany({
-        where: { status: "CANCELLED" },
-        include: { table: {
-            select: { id: true, number: true, name: true}
-        }},
-        orderBy: { closingRequestedAt: "asc"}
-    });
-}

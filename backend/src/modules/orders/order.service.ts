@@ -1,76 +1,77 @@
-import { prisma } from '../../database/prisma.js';
 import { AppError } from '../../shared/errors/app-errors.js';
-import type { CreateOrderInput } from './order.schema.js';
 
-export async function createOrder(data: CreateOrderInput) {
-    const attendance = await prisma.attendance.findUnique({
-        where: { id: BigInt(data.attendanceId) },
-    });
+import type { CreateOrderDTO } from './dto/create-order.dto.js';
+import type { OrderRepository } from './repositories/order.repository.js';
+import type { AttendanceRepository } from '../attendance/repositories/attendance.repository.js';
+import type { ProductRepository } from './repositories/product.repository.js';
 
-    if(!attendance) {
-        throw new AppError("Atendimento não encontrado.", 404);
-    }
-    if(attendance.status !== "OPEN"){
-        throw new AppError("Atendimento não está aberto para pedidos.", 409);
-    }
+export class OrderService {
+    constructor(
+        private readonly orderRepository: OrderRepository,
+        private readonly attendanceRepository: AttendanceRepository,
+        private readonly productRepository: ProductRepository
+    ){}
 
-    const productIds = data.items.map((item) => {
-        return BigInt(item.productId);
-    })
-
-    const products = await prisma.product.findMany({
-        where: { 
-            id: { in: productIds }, 
-            active: true,
-            available: true,
-        },
-    });
-
-    //montando pedido com os itens
-    const orderItems = data.items.map((item) => {
-        const product = products.find(
-            (product) => product.id === BigInt(item.productId),
-        )
-
-        if (!product) {
-            throw new AppError("Produto não encontrado ou indisponível.", 409);
-        }
+    async createOrder(data: CreateOrderDTO) {
         
-        return {
-            productId: product.id,
-            quantity: item.quantity,
-            unitPrice: product.price,
-            notes: item.notes,
-        };
-    })
-
-    //criando pedido no banco
-    const order = await prisma.order.create({
-        data: {
-            attendanceId: BigInt(data.attendanceId),
+        // Validar atendimento
+        const attendance = await this.attendanceRepository.findById(
+            BigInt(data.attendanceId)
+        )
+    
+        if(!attendance) {
+            throw new AppError("Atendimento não encontrado.", 404);
+        }
+        if(!attendance.canReceiveOrders()){
+            throw new AppError("Atendimento não está aberto para pedidos.", 409);
+        }
+    
+        // Buscar produtos disponíveis
+        const productIds = data.items.map((item) => {
+            return BigInt(item.productId);
+        })
+    
+        const products = await this.productRepository.findAvailableByIds(
+            productIds
+        )
+    
+        // Montar itens
+        const orderItems = data.items.map((item) => {
+            const product = products.find(
+                (product) => product.id === BigInt(item.productId),
+            )
+    
+            if (!product) {
+                throw new AppError("Produto não encontrado ou indisponível.", 409);
+            }
+            
+            return {
+                productId: product.id,
+                quantity: item.quantity,
+                unitPrice: product.price,
+                notes: item.notes,
+            };
+        })
+    
+        // Criar pedido pelo OrderRepository
+        return this.orderRepository.create({
+            attendanceId: attendance.id,
             notes: data.notes,
-            items: { create: orderItems },
-        },
-        include: { items: true },
-    });
+            items: orderItems
+        });
+    };
 
-    return order;
-};
+    async findOrdersByAttendanceId(attendanceId: bigint) {
+        // Validar atendimento
+        const attendance = await this.attendanceRepository.findById(
+            attendanceId
+        )
+        
+        if(!attendance) {
+            throw new AppError("Atendimento não encontrado.", 404);
+        }
 
-export async function findOrdersByAttendanceId(attendanceId: bigint) {
-    const attendance = await prisma.attendance.findUnique({
-        where: { id: attendanceId },
-    });
-    
-    if(!attendance) {
-        throw new AppError("Atendimento não encontrado.", 404);
+        // Buscar pedidos pelo OrderRepository
+        return this.orderRepository.findByAttendanceId(attendanceId);
     }
-
-    const orders = await prisma.order.findMany({
-        where: { attendanceId },
-        include: { items: true },
-        orderBy: { createdAt: 'asc' },
-    });
-    
-    return orders;
 }

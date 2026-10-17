@@ -1,5 +1,5 @@
 import { ProductDTO, ProductUpdateDTO } from "./dto/products.dto.js";
-import ProductRepository from "./repository/products.repository.js";
+import ProductRepository from "./repositories/products.repository.js";
 import type { ProductOutput } from "./entity/products.entity.js";
 import { AppError } from "../../shared/errors/app-errors.js";
 import type {

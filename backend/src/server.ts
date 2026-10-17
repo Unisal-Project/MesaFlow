@@ -3,7 +3,7 @@ import { fastifyJwt } from "@fastify/jwt";
 import { fastifyCors } from "@fastify/cors";
 import { env } from "./config/env.js";
 import { swaggerPlugin } from "./plugins/swagger.js";
-import { registerCategoryRoutes } from "./modules/categories/category.router.js";
+import { registerCategoryRoutes } from "./modules/categories/category.routes.js";
 import { errorHandler } from "./shared/errors/error-handler.js";
 import { registerProductRoutes } from "./modules/products/products.router.js";
 import { orderRoutes } from "./modules/orders/order.routes.js";

@@ -1,48 +1,42 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
-import { createOrderSchema, findOrdersByAttendanceIdSchema } from "./order.schema.js";
-import { createOrder, findOrdersByAttendanceId } from "./order.service.js";
+import { createOrderSchema } from "./dto/create-order.dto.js";
+import { findOrdersByAttendanceIdSchema } from "./dto/find-orders-attendance.dto.js";
+
+import { makeOrderService } from "./order.factory.js";
+
+import { serializeBigInt } from "../../shared/utils/serialize-bigint.js";
+
+const orderService = makeOrderService();
 
 export async function createOrderController(request: FastifyRequest, reply: FastifyReply){
-    //validar o body
+
     const data =createOrderSchema.parse(request.body);
     
-    //chamando o service
-    const order = await createOrder(data);
+    const result = await orderService.createOrder(data);
 
-    const response = {
-        ...order,
-        id: order.id.toString(),
-        attendanceId: order.attendanceId.toString(),
-        items: order.items.map((item) => ({
-            ...item,
-            id: item.id.toString(),
-            orderId: item.orderId.toString(),
-            productId: item.productId.toString(),
-        })),
-    };
-
-    return reply.status(201).send(response);
+    return reply.status(201).send(
+        serializeBigInt({
+            ...result.order,
+            items: result.items
+        })
+    );
 }
 
 export async function findOrdersByAttendanceIdController(request: FastifyRequest, reply: FastifyReply){
-    //validar o params
+
     const {attendanceId} = findOrdersByAttendanceIdSchema.parse(request.params);
     
-    //chamando o service
-    const orders = await findOrdersByAttendanceId(BigInt(attendanceId));
+    const results = await orderService.findOrdersByAttendanceId(
+        BigInt(attendanceId)
+    );
 
-    const response = orders.map((order) => ({
-        ...order,
-        id: order.id.toString(),
-        attendanceId: order.attendanceId.toString(),
-        items: order.items.map((item) => ({
-            ...item,
-            id: item.id.toString(),
-            orderId: item.orderId.toString(),
-            productId: item.productId.toString(),
-        })),
+    const response = results.map((result) => ({
+        ...result.order,
+        items: result.items
     }));
 
-    return reply.status(200).send(response);
+    return reply.status(200).send(
+        serializeBigInt(response)
+    );
 }

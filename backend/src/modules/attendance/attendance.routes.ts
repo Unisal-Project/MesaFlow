@@ -10,7 +10,7 @@ import {
 } from "./attendance.controller.js";
 
 export async function attendanceRoutes(app: FastifyInstance){
-   app.get("/attendances/open", findOpenAttendanceController);
+   app.get("/attendances/:tableId/open", findOpenAttendanceController);
    app.get("/attendances/:attendanceId/total", findAttendanceTotalController);
    app.get("/attendances/closing-requested", findClosingRequestedAttendancesController);
    app.get("/attendances/cancelled", findCancelledAttendancesController);
