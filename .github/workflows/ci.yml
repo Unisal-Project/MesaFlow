@@ -17,14 +17,14 @@ permissions:
 jobs:
   validate:
     name: Validar aplicação
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Baixar código
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configurar Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -43,3 +43,24 @@ jobs:
 
       - name: Compilar frontend
         run: npm run build:frontend
+
+  security:
+    name: Auditoria de segurança
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v7
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Auditar dependências da raiz
+        run: npm audit --audit-level=moderate
+
+      - name: Auditar dependências do backend
+        working-directory: ./backend
+        run: npm audit --workspaces=false --audit-level=moderate
