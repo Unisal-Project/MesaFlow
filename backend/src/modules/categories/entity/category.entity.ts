@@ -1,25 +1,14 @@
-export type CategoryInput = {
-  name: string;
-  description?: string | null;
-  active: boolean;
-  createdAt?: Date;
-  updatedAt: Date;
-};
+export class CategoryEntity {
+  constructor(
+    public readonly id: bigint,
+    public name: string,
+    public description: string | null,
+    public active: boolean,
+    public readonly createdAt: Date,
+    public updatedAt: Date
+  ) {}
 
-export type CategoryOutput = {
-  id: bigint;
-  name: string;
-  description?: string | null;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-export type CategoryResponse = {
-  id: string;
-  name: string;
-  description?: string | null;
-  active: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-};
+  isActive(): boolean{
+    return this.active
+  }
+}

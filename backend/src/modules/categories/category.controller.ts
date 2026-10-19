@@ -1,92 +1,81 @@
+import type { FastifyRequest, FastifyReply } from "fastify";
+
 import CategoryService from "./category.service.js";
-import { CategoryIdSchema, CategorySchema } from "./dto/category.dto.js";
-import { CategoryOutput, CategoryResponse } from "./entity/category.entity.js";
-import { FastifyRequest, FastifyReply } from "fastify";
+
+import { createCategorySchema } from "./dto/create-category.dto.js";
+import { updateCategorySchema } from "./dto/update-category.dto.js";
+import { categoryIdSchema } from "./dto/category-id.dto.js";
+
+import type { CategoryEntity } from "./entity/category.entity.js";
 
 export default class CategoryController {
-  constructor(private readonly categoryService: CategoryService) {}
 
-  async createCategory(request: FastifyRequest, reply: FastifyReply) {
-    const parsedBody = CategorySchema.safeParse(request.body);
+    constructor(
+        private readonly categoryService: CategoryService
+    ) {}
 
-    if (!parsedBody.success) {
-      return this.sendValidationError(reply, parsedBody.error.issues);
+    async createCategory(request: FastifyRequest, reply: FastifyReply) {
+
+        const data = createCategorySchema.parse(request.body);
+
+        const category = await this.categoryService.createCategory(data);
+
+        return reply.status(201).send(this.toResponse(category));
     }
 
-    const category = await this.categoryService.createCategory(parsedBody.data);
-    return reply.status(201).send(this.toResponse(category));
-  }
+    async getAllCategories(_request: FastifyRequest, reply: FastifyReply) {
 
-  async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
+        const categories = await this.categoryService.getAllCategories();
 
-    await this.categoryService.deleteCategory(id);
-    return reply.status(204).send();
-  }
-
-  async getAllCategories(_request: FastifyRequest, reply: FastifyReply) {
-    const categories = await this.categoryService.getAllCategories();
-    return reply
-      .status(200)
-      .send(categories.map((category) => this.toResponse(category)));
-  }
-
-  async getCategoryById(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
-
-    const category = await this.categoryService.getCategoryById(id);
-    if (!category) {
-      return reply.status(404).send({ message: "Category not found" });
-    }
-    return reply.status(200).send(this.toResponse(category));
-  }
-
-  async updateCategory(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
-
-    const parsedBody = CategorySchema.safeParse(request.body);
-    if (!parsedBody.success) {
-      return this.sendValidationError(reply, parsedBody.error.issues);
+        return reply.status(200).send(
+            categories.map((category) => this.toResponse(category))
+        );
     }
 
-    const category = await this.categoryService.updateCategory(
-      id,
-      parsedBody.data,
-    );
-    return reply.status(200).send(this.toResponse(category));
-  }
+    async getCategoryById(request: FastifyRequest, reply: FastifyReply) {
 
-  private parseId(request: FastifyRequest, reply: FastifyReply): bigint | null {
-    const { id } = request.params as { id: string };
-    const parsedId = CategoryIdSchema.safeParse(id);
+        const { id } = categoryIdSchema.parse(request.params);
 
-    if (!parsedId.success) {
-      this.sendValidationError(
-        reply,
-        parsedId.error.issues,
-        "Invalid category id",
-      );
-      return null;
+        const category = await this.categoryService.getCategoryById(id);
+
+        if (!category) {
+            return reply.status(404).send({
+                message: "Category not found"
+            });
+        }
+
+        return reply.status(200).send(this.toResponse(category));
     }
 
-    return parsedId.data;
-  }
+    async updateCategory(request: FastifyRequest, reply: FastifyReply) {
 
-  private sendValidationError(
-    reply: FastifyReply,
-    issues: unknown,
-    message = "Invalid request body",
-  ) {
-    return reply.status(400).send({ message, issues });
-  }
+        const { id } = categoryIdSchema.parse(request.params);
 
-  private toResponse(category: CategoryOutput): CategoryResponse {
-    return {
-      ...category,
-      id: category.id.toString(),
-    };
-  }
+        const data = updateCategorySchema.parse(request.body);
+
+        const category = await this.categoryService.updateCategory(id, data);
+
+        return reply.status(200).send(this.toResponse(category));
+    }
+
+    async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
+
+        const { id } = categoryIdSchema.parse(request.params);
+
+        await this.categoryService.deleteCategory(id);
+
+        return reply.status(204).send();
+    }
+
+    private toResponse(category: CategoryEntity) {
+
+        return {
+            id: category.id.toString(),
+            name: category.name,
+            description: category.description,
+            active: category.active,
+            createdAt: category.createdAt,
+            updatedAt: category.updatedAt
+        };
+    }
 }
