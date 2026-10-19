@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ChevronLeft, ShoppingCart, Menu as MenuIcon, Clock, ReceiptText } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/contexts/useCart";
 import { QuantitySelector, Button } from "@/components";
 import { createOrder, CURRENT_ATTENDANCE_ID } from "@/services/orders.service";
 import "./styles.css";
