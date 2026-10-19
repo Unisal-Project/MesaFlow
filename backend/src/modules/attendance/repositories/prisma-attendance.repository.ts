@@ -1,12 +1,11 @@
 import { prisma } from "../../../database/prisma.js";
-import { Attendance, AttendanceTotal } from "../../../generated/prisma/client.js";
+import type { Attendance } from "../../../generated/prisma/client.js";
 
 import { AttendanceEntity } from "../entity/attendance.entity.js";
-import { AttendanceRepository } from "./attendance.repository.js";
+import type { AttendanceRepository } from "./attendance.repository.js";
 
-import { TableRepository } from "../../tables/repository/table.repository.js";
-
-import type { AttendanceStatus } from "../../../generated/prisma/client.js";
+import type { AttendanceStatus } from "../entity/attendance.entity.js";
+import type { AttendanceTotal } from "../entity/attendance-total.entity.js";
 import type { AttendanceListItem } from "../types/ttendance-list-item.type.js";
 
 export class PrismaAttendanceRepository implements AttendanceRepository{
@@ -52,7 +51,16 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
             where: { attendanceId }
         });
 
-        return total;
+        if (!total) {
+            return null;
+        }
+
+        return {
+            attendanceId: total.attendanceId,
+            tableId: total.tableId,
+            status: total.status,
+            total: total.total.toString(),
+        };
     }
 
     async requestClosing(attendanceId: bigint, requestedAt: Date): Promise<AttendanceEntity> {
@@ -129,16 +137,5 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
             attendance.createdAt,
             attendance.updatedAt
         );
-    }
-}
-
-export class PrismaTableRepository implements TableRepository{
-    async existsById(id: bigint): Promise<boolean> {
-        const table = await prisma.restaurantTable.findUnique({
-            where: { id },
-            select: { id: true }
-        });
-
-        return table !== null;
     }
 }
