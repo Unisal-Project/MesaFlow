@@ -4,13 +4,12 @@ import { AppError } from "../../../shared/errors/app-errors.js";
 import type { TableRepository, CreateTableData, UpdateTableData } from "./table.repository.js";
 import type { RestaurantTable } from "../../../generated/prisma/client.js";
 import type { TableWithAttendance } from "./table-with-attendance.repository.js";
-import type { TableStatusChangeDTO } from "../dto/table-status-change.dto.js";
-import type { TableStatusDTO } from "../dto/table-status.dto.js";
+import type { TableStatusChange } from "../enity/table-status.js";
 
 import type { Prisma } from "../../../generated/prisma/client.js";
 
 import { TableEntity } from "../enity/table.entity.js";
-import { resolveTableStatus } from "../utils/resolve-table-status.js";
+import { resolveAttendanceTransition } from "../utils/resolve-attendance-transition.js";
 
 const attendanceInclude = {
   attendances: {
@@ -35,17 +34,15 @@ const attendanceInclude = {
   },
 } satisfies Prisma.RestaurantTableInclude;
 
-const nextStatus: Record<TableStatusDTO, TableStatusDTO> = {
-    available: "occupied",
-    occupied: "closing_requested",
-    closing_requested: "awaiting_payment",
-    awaiting_payment: "available"
-};
+type PrismaTableWithAttendance = Prisma.RestaurantTableGetPayload<{
+    include: typeof attendanceInclude;
+}>;
 
 export class PrismaTableRepository implements TableRepository {
+    constructor(private readonly prismaClient: typeof prisma = prisma) {}
 
     async existsById(id: bigint): Promise<boolean> {
-        const table = await prisma.restaurantTable.findUnique({
+        const table = await this.prismaClient.restaurantTable.findUnique({
             where: { id },
             select: { id: true }
         });
@@ -54,20 +51,24 @@ export class PrismaTableRepository implements TableRepository {
     }
 
     async create(data: CreateTableData): Promise<TableEntity> {
-        const table= await prisma.restaurantTable.create({
-            data: {
-                number: data.number,
-                name: data.name,
-                active: data.active,
-                qrToken: data.qrToken,
-            }
-        });
+        try {
+            const table= await this.prismaClient.restaurantTable.create({
+                data: {
+                    number: data.number,
+                    name: data.name,
+                    active: data.active,
+                    qrToken: data.qrToken,
+                }
+            });
 
-        return this.toEntity(table);
+            return this.toEntity(table);
+        } catch (error) {
+            this.handleWriteError(error);
+        }
     }
 
     async findById(id: bigint): Promise<TableEntity | null> {
-        const table = await prisma.restaurantTable.findUnique({
+        const table = await this.prismaClient.restaurantTable.findUnique({
             where: { id }
         });
 
@@ -79,7 +80,7 @@ export class PrismaTableRepository implements TableRepository {
     }
 
     async findAll(): Promise<TableEntity[]> {
-        const tables = await prisma.restaurantTable.findMany({
+        const tables = await this.prismaClient.restaurantTable.findMany({
             orderBy: {
                 number: "asc"
             }
@@ -89,15 +90,19 @@ export class PrismaTableRepository implements TableRepository {
     }
 
     async delete(id: bigint): Promise<TableEntity> {
-        const table = await prisma.restaurantTable.delete({
-            where: { id }
-        });
+        try {
+            const table = await this.prismaClient.restaurantTable.delete({
+                where: { id }
+            });
 
-        return this.toEntity(table);
+            return this.toEntity(table);
+        } catch (error) {
+            this.handleWriteError(error);
+        }
     }
 
     async findByToken(token: string): Promise<TableEntity | null> {
-        const table = await prisma.restaurantTable.findUnique({
+        const table = await this.prismaClient.restaurantTable.findUnique({
             where: { qrToken: token }
         });
 
@@ -109,7 +114,7 @@ export class PrismaTableRepository implements TableRepository {
     }
 
     async findByIdWithAttendance(id: bigint): Promise<TableWithAttendance | null> {
-        const table = await prisma.restaurantTable.findUnique({
+        const table = await this.prismaClient.restaurantTable.findUnique({
             where: { id },
             include: attendanceInclude
         });
@@ -118,28 +123,22 @@ export class PrismaTableRepository implements TableRepository {
             return null;
         }
 
-        return {
-            table: this.toEntity(table),
-            attendance: table.attendances[0] ?? null
-        }
+        return this.toWithAttendance(table);
     }
 
     async findAllWithAttendance(): Promise<TableWithAttendance[]> {
-        const tables = await prisma.restaurantTable.findMany({
+        const tables = await this.prismaClient.restaurantTable.findMany({
             include: attendanceInclude,
             orderBy: {
                 number: "asc"
             }
         });
 
-        return tables.map(table => ({
-            table: this.toEntity(table),
-            attendance: table.attendances[0] ?? null
-        }));
+        return tables.map(table => this.toWithAttendance(table));
     }
 
     async updateWithAttendanceCheck(id: bigint, data: UpdateTableData): Promise<TableWithAttendance> {
-        return prisma.$transaction(async (tx) => {
+        return this.prismaClient.$transaction(async (tx) => {
             //bloquea a mesa durante uma transação
             await tx.$queryRaw`
                 SELECT id
@@ -174,15 +173,12 @@ export class PrismaTableRepository implements TableRepository {
                 include: attendanceInclude,
             });
 
-            return {
-                table: this.toEntity(updated),
-                attendance: updated.attendances[0] ?? null,
-            }
-        })
+            return this.toWithAttendance(updated);
+        }).catch(error => this.handleWriteError(error));
     }
 
-    async changeStatusTransaction(id: bigint, change: TableStatusChangeDTO): Promise<TableWithAttendance> {
-        return prisma.$transaction(async (tx) => {
+    async changeStatusTransaction(id: bigint, change: TableStatusChange): Promise<TableWithAttendance> {
+        return this.prismaClient.$transaction(async (tx) => {
             //bloquear a mesa
             await tx.$queryRaw`
                 SELECT id
@@ -203,39 +199,17 @@ export class PrismaTableRepository implements TableRepository {
 
             const attendance = table.attendances[0] ?? null;
 
-            //descobrir o status atual
-            const currentStatus = resolveTableStatus(attendance)
+            // As regras usam o estado lido sob o bloqueio da transação.
+            const status = resolveAttendanceTransition(table.active, attendance, change);
 
-            //verifcar se o atendimento mudou
-            if ((attendance?.id ?? null) !== change.attendanceId){
-                throw new AppError("O atendimento da mesa mudou. Atualize a mesa e tente novamente", 409);
-            }
-
-            //validar a transicao
-            if (nextStatus[currentStatus] !== change.status) {
-                throw new AppError("Transição de estado inválida para esta mesa", 409);
-            }
-
-            //abre um atendimento
             if (!attendance) {
-                if (!table.active) {
-                    throw new AppError("Mesa inativa nao pode iniciar atendimento", 409);
-                }
-
                 await tx.attendance.create({
                     data: {
                         tableId: id,
-                        status: "OPEN"
+                        status,
                     }
                 });
             } else {
-                //determinar o proximo status do atendimento
-                const status = change.status === "closing_requested"
-                    ? "CLOSING_REQUESTED"
-                    : change.status === "awaiting_payment"
-                        ? "AWAITING_PAYMENT"
-                        : "CLOSED";
-
                 //atualizar o atendimento
                 const updated = await tx.attendance.updateMany({
                     where: {
@@ -274,11 +248,41 @@ export class PrismaTableRepository implements TableRepository {
                 include: attendanceInclude
             });
 
-            return {
-                table: this.toEntity(result),
-                attendance: result.attendances[0] ?? null
-            };
+            return this.toWithAttendance(result);
+        }).catch((error: unknown) => {
+            if ((error as { code?: string })?.code === "P2002") {
+                throw new AppError("Mesa já possui atendimento em andamento", 409);
+            }
+
+            throw error;
         });
+    }
+
+    private handleWriteError(error: unknown): never {
+        const code = (error as { code?: string })?.code;
+
+        if (code === "P2002") {
+            throw new AppError("Número de mesa já cadastrado", 409);
+        }
+
+        if (code === "P2025") {
+            throw new AppError("Mesa não encontrada", 404);
+        }
+
+        if (code === "P2003") {
+            throw new AppError("Mesa com histórico de atendimento não pode ser excluída; desative-a", 409);
+        }
+
+        throw error;
+    }
+
+    private toWithAttendance(table: PrismaTableWithAttendance): TableWithAttendance {
+        const attendance = table.attendances[0];
+
+        return {
+            table: this.toEntity(table),
+            attendance: attendance ? { id: attendance.id, status: attendance.status } : null,
+        };
     }
 
     private toEntity(table: RestaurantTable): TableEntity {

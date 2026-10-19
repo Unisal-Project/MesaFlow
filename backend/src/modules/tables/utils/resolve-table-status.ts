@@ -1,9 +1,9 @@
 import type { AttendanceStatus } from "../../attendance/entity/attendance.entity.js";
-import type { TableStatusDTO } from "../dto/table-status.dto.js";
+import type { TableStatus } from "../enity/table-status.js";
 
 export function resolveTableStatus(
     attendance: { status: AttendanceStatus } | null
-): TableStatusDTO {
+): TableStatus {
 
     if (!attendance) {
         return "available";

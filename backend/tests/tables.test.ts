@@ -4,23 +4,48 @@ import Fastify from 'fastify';
 import { TableService } from '../src/modules/tables/table.service.js';
 import { TableController } from '../src/modules/tables/table.controller.js';
 import { errorHandler } from '../src/shared/errors/error-handler.js';
+import { AppError } from '../src/shared/errors/app-errors.js';
+import { TableEntity } from '../src/modules/tables/enity/table.entity.js';
+import type { TableRepository } from '../src/modules/tables/repositories/table.repository.js';
+import type { PrismaClient } from '../src/generated/prisma/client.js';
+
+// O cliente real é apenas construído pelo módulo; todas as operações usam o double abaixo.
+process.env.DATABASE_URL ??= 'mysql://test:test@127.0.0.1:1/tables_test';
+process.env.JWT_SECRET ??= 'tables-test-secret';
+process.env.FRONTEND_URL ??= 'https://menu.example';
+const { PrismaTableRepository } = await import('../src/modules/tables/repositories/prisma-table.repository.js');
+const { Prisma } = await import('../src/generated/prisma/client.js');
+
+function databaseError(code: string) {
+  return new Prisma.PrismaClientKnownRequestError('Database error', { code, clientVersion: 'test' });
+}
 
 function fixture(initialStatus?: string) {
-  let row = { id: 9007199254740993n, number: 5, name: 'Varanda', active: true, qrToken: 'existing-token' };
+  let row = { id: 9007199254740993n, number: 5, name: 'Varanda', active: true, qrToken: 'existing-token', createdAt: new Date(), updatedAt: new Date() };
   let nextId = 1n;
   let attendances: any[] = initialStatus ? [{ id: nextId++, tableId: row.id, status: initialStatus }] : [];
   let printJobs: any[] = [];
   const present = () => ({ ...row, attendances: attendances.filter((item) => ['OPEN', 'CLOSING_REQUESTED', 'AWAITING_PAYMENT'].includes(item.status)) });
-  const repository: any = { restaurantTable: {
-    create: async ({ data }: any) => { row = { ...row, ...data }; return row; },
-    update: async ({ data }: any) => { row = { ...row, ...data }; return present(); },
-    findUnique: async ({ where }: any) => where.id === row.id || where.qrToken === row.qrToken ? present() : null,
+  let inTransaction = false;
+  let locked = false;
+  const assertLocked = () => {
+    if (inTransaction) assert.equal(locked, true, 'transaction must lock the table before reading or writing');
+  };
+  const client: any = { restaurantTable: {
+    create: async ({ data }: any) => { assertLocked(); row = { ...row, ...data }; return row; },
+    update: async ({ data }: any) => { assertLocked(); row = { ...row, ...data }; return present(); },
+    delete: async () => row,
+    findUnique: async ({ where }: any) => {
+      assertLocked();
+      return where.id === row.id || where.qrToken === row.qrToken ? present() : null;
+    },
     findUniqueOrThrow: async () => present(),
     findMany: async () => [present()],
   },
   attendance: {
-    create: async ({ data }: any) => { const item = { ...data, id: nextId++ }; attendances.push(item); return item; },
+    create: async ({ data }: any) => { assertLocked(); const item = { ...data, id: nextId++ }; attendances.push(item); return item; },
     updateMany: async ({ where, data }: any) => {
+      assertLocked();
       const item = attendances.find((item) => item.id === where.id && item.status === where.status);
       if (!item) return { count: 0 };
       Object.assign(item, data);
@@ -28,18 +53,30 @@ function fixture(initialStatus?: string) {
     },
   },
   printJob: { create: async ({ data }: any) => { printJobs.push(data); return data; } },
-  $queryRaw: async () => [{ id: row.id }],
+  $queryRaw: async (sql: TemplateStringsArray, id: bigint) => {
+    assert.equal(inTransaction, true);
+    assert.match(sql.join('?'), /SELECT id\s+FROM restaurant_tables\s+WHERE id = \?\s+FOR UPDATE/);
+    assert.equal(typeof id, 'bigint');
+    locked = true;
+    return id === row.id ? [{ id: row.id }] : [];
+  },
   $transaction: async (callback: any) => {
     const snapshot = structuredClone({ row, attendances, printJobs });
-    try { return await callback(repository); }
+    inTransaction = true;
+    locked = false;
+    try { return await callback(client); }
     catch (error) {
       ({ row, attendances, printJobs } = snapshot);
       throw error;
+    } finally {
+      inTransaction = false;
+      locked = false;
     }
   },
   };
-  const service = new TableService(repository as any, 'https://menu.example');
-  return { service, repository, row: () => row, attendances: () => attendances, printJobs: () => printJobs };
+  const repository = new PrismaTableRepository(client as PrismaClient);
+  const service = new TableService(repository, 'https://menu.example');
+  return { service, repository, client, row: () => row, attendances: () => attendances, printJobs: () => printJobs };
 }
 
 test('creation assigns unique tokens; editing preserves the QR URL', async () => {
@@ -116,18 +153,18 @@ test('inactive and missing tables cannot start; occupied tables cannot be deacti
 });
 
 test('stale attendance, duplicate starts and lost updates return conflicts', async () => {
-  const { service, row, repository } = fixture('OPEN');
+  const { service, row, client } = fixture('OPEN');
   await assert.rejects(service.changeStatus({ id: row().id }, { status: 'closing_requested', attendanceId: 99n }), { statusCode: 409 });
-  repository.attendance.updateMany = async () => ({ count: 0 });
+  client.attendance.updateMany = async () => ({ count: 0 });
   await assert.rejects(service.changeStatus({ id: row().id }, { status: 'closing_requested', attendanceId: 1n }), { statusCode: 409 });
   const available = fixture();
-  available.repository.attendance.create = async () => { throw { code: 'P2002' }; };
+  available.client.attendance.create = async () => { throw databaseError('P2002'); };
   await assert.rejects(available.service.changeStatus({ id: available.row().id }, { status: 'occupied', attendanceId: null }), { statusCode: 409, message: 'Mesa já possui atendimento em andamento' });
 });
 
 test('bill request rolls back if the print job fails', async () => {
-  const { service, row, repository, printJobs } = fixture('OPEN');
-  repository.printJob.create = async () => { throw new Error('Print queue unavailable'); };
+  const { service, row, client, printJobs } = fixture('OPEN');
+  client.printJob.create = async () => { throw new Error('Print queue unavailable'); };
   await assert.rejects(service.changeStatus({ id: row().id }, { status: 'closing_requested', attendanceId: 1n }), /Print queue unavailable/);
   assert.equal((await service.getTableById({ id: row().id })).status, 'occupied');
   assert.equal(printJobs().length, 0);
@@ -139,7 +176,7 @@ test('HTTP status endpoint validates IDs and bodies and returns serializable sta
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.patch('/tables/:id/status', (req, reply) => controller.changeStatus(req, reply));
-  const patch = (payload: unknown, id = row().id.toString()) => app.inject({ method: 'PATCH', url: `/tables/${id}/status`, payload });
+  const patch = (payload: Record<string, unknown>, id = row().id.toString()) => app.inject({ method: 'PATCH', url: `/tables/${id}/status`, payload });
   try {
     for (const payload of [{}, { status: 'unknown', attendanceId: null }, { status: 'occupied' }, { status: 'occupied', attendanceId: '0' }]) {
       assert.equal((await patch(payload)).statusCode, 400);
@@ -176,4 +213,97 @@ test('HTTP routes return PNG, identity, 404 and validation errors', async () => 
     assert.equal(identity.headers['cache-control'], 'no-store');
     assert.equal((await app.inject('/tables/by-token/missing')).statusCode, 404);
   } finally { await app.close(); }
+});
+
+test('write errors keep their application messages and status codes', async () => {
+  const scenarios = [
+    { operation: 'create', code: 'P2002', statusCode: 409, message: 'Número de mesa já cadastrado' },
+    { operation: 'update', code: 'P2002', statusCode: 409, message: 'Número de mesa já cadastrado' },
+    { operation: 'update', code: 'P2025', statusCode: 404, message: 'Mesa não encontrada' },
+    { operation: 'delete', code: 'P2025', statusCode: 404, message: 'Mesa não encontrada' },
+    { operation: 'delete', code: 'P2003', statusCode: 409, message: 'Mesa com histórico de atendimento não pode ser excluída; desative-a' },
+  ];
+
+  for (const { operation, code, statusCode, message } of scenarios) {
+    const { service, client, row } = fixture();
+    client.restaurantTable[operation] = async () => { throw databaseError(code); };
+    const data = { number: 5, name: 'Varanda', active: true };
+    const result = operation === 'create'
+      ? service.createTable(data)
+      : operation === 'update'
+        ? service.editTable({ id: row().id }, data)
+        : service.deleteTable({ id: row().id });
+    await assert.rejects(result, (error: unknown) => {
+      assert.ok(error instanceof AppError);
+      assert.equal(error.statusCode, statusCode);
+      assert.equal(error.message, message);
+      return true;
+    });
+  }
+});
+
+test('unexpected failures are preserved and status changes do not reuse CRUD error mappings', async () => {
+  const { service, client, row } = fixture();
+  for (const error of [new Error('Connection lost'), databaseError('P2025'), databaseError('P2003')]) {
+    client.attendance.create = async () => { throw error; };
+    await assert.rejects(
+      service.changeStatus({ id: row().id }, { status: 'occupied', attendanceId: null }),
+      (actual: unknown) => actual === error,
+    );
+  }
+
+  const unexpected = new Error('Database unavailable');
+  client.restaurantTable.create = async () => { throw unexpected; };
+  await assert.rejects(
+    service.createTable({ number: 5, name: 'Varanda', active: true }),
+    (actual: unknown) => actual === unexpected,
+  );
+});
+
+test('repository returns domain entities and copies attendance projections', async () => {
+  const { repository, row, attendances } = fixture('OPEN');
+  for (const table of [
+    await repository.findById(row().id),
+    await repository.findByToken(row().qrToken),
+    ...(await repository.findAll()),
+  ]) {
+    assert.ok(table instanceof TableEntity);
+    assert.equal(table.canBeUsed(), true);
+    assert.equal(table.createdAt, row().createdAt);
+    assert.equal('attendances' in table, false);
+  }
+
+  const result = await repository.findByIdWithAttendance(row().id);
+  assert.ok(result?.table instanceof TableEntity);
+  assert.deepEqual(result.attendance, { id: 1n, status: 'OPEN' });
+  assert.notEqual(result.attendance, attendances()[0]);
+  result.attendance!.status = 'CANCELLED';
+  assert.equal(attendances()[0].status, 'OPEN');
+  assert.deepEqual((await repository.findAllWithAttendance())[0].attendance, { id: 1n, status: 'OPEN' });
+  assert.equal(await repository.findById(99n), null);
+  assert.equal(await repository.findByIdWithAttendance(99n), null);
+});
+
+test('service works with a repository interface and propagates application errors', async () => {
+  const table = new TableEntity(1n, 5, 'Varanda', true, 'token', new Date(), new Date());
+  const conflict = new AppError('Conflito de domínio', 409);
+  const unexpected = async (): Promise<never> => { throw new Error('Unexpected repository call'); };
+  const repository: TableRepository = {
+    existsById: unexpected,
+    create: unexpected,
+    findById: unexpected,
+    findAll: unexpected,
+    delete: unexpected,
+    findByToken: async () => table,
+    findByIdWithAttendance: unexpected,
+    findAllWithAttendance: unexpected,
+    updateWithAttendanceCheck: unexpected,
+    changeStatusTransaction: async () => { throw conflict; },
+  };
+  const service = new TableService(repository, 'https://menu.example');
+  assert.deepEqual(await service.getTableByToken('token'), { id: '1', number: 5, name: 'Varanda' });
+  await assert.rejects(
+    service.changeStatus({ id: 1n }, { status: 'occupied', attendanceId: null }),
+    (error: unknown) => error === conflict,
+  );
 });

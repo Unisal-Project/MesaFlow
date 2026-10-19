@@ -1,10 +1,6 @@
 import { z } from "zod";
+import { tableStatuses } from "../enity/table-status.js";
 
-export const tableStatusSchema = z.enum([
-    "available", 
-    "occupied", 
-    "closing_requested", 
-    "awaiting_payment"
-]);
+export const tableStatusSchema = z.enum(tableStatuses);
 
 export type TableStatusDTO = z.infer<typeof tableStatusSchema>;

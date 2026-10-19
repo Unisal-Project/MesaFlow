@@ -4,8 +4,7 @@ import QRCode from "qrcode";
 import { AppError } from "../../shared/errors/app-errors.js";
 
 import type { CreateTableDTO } from "./dto/create-table.dto.js";
-import type { TableStatusDTO } from "./dto/table-status.dto.js";
-import type { TableStatusChangeDTO } from "./dto/table-status-change.dto.js";
+import type { TableStatusChange } from "./enity/table-status.js";
 import type { TableIdDTO } from "./dto/table-id.dto.js";
 import type { UpdateTableDTO } from "./dto/update-table.dto.js";
 
@@ -39,19 +38,14 @@ export class TableService {
   }
 
   async createTable(data: CreateTableDTO) {
-    try {
-      const table = await this.tableRepository.create({ 
-        number: data.number,
-        name: data.name,
-        active: data.active,
-        qrToken: randomUUID()
-      });
+    const table = await this.tableRepository.create({
+      number: data.number,
+      name: data.name,
+      active: data.active,
+      qrToken: randomUUID()
+    });
 
-      return this.present({table, attendance: null});
-
-    } catch (error) { 
-      return this.handleWriteError(error); 
-    }
+    return this.present({table, attendance: null});
   }
 
   async getTableById({ id }: TableIdDTO) {
@@ -71,43 +65,23 @@ export class TableService {
   }
 
   async deleteTable({ id }: TableIdDTO) {
-    try {
-      const table = await this.tableRepository.delete(id);
+    const table = await this.tableRepository.delete(id);
 
-      return this.present({table, attendance: null});
-
-    } catch (error) { 
-      return this.handleWriteError(error); 
-    }
+    return this.present({table, attendance: null});
   }
 
   async editTable({ id }: TableIdDTO, data: UpdateTableDTO) {
-    try {
-      const updated = await this.tableRepository.updateWithAttendanceCheck(
-        id, data
-      );
+    const updated = await this.tableRepository.updateWithAttendanceCheck(
+      id, data
+    );
 
-      return this.present(updated);
-
-    } catch (error) { 
-      return this.handleWriteError(error); 
-    }
+    return this.present(updated);
   }
 
-  async changeStatus({ id }: TableIdDTO, change: TableStatusChangeDTO) {
-    try {
-      const result = await this.tableRepository.changeStatusTransaction(id, change);
+  async changeStatus({ id }: TableIdDTO, change: TableStatusChange) {
+    const result = await this.tableRepository.changeStatusTransaction(id, change);
 
-      return this.present(result);
-
-    } catch (error) {
-      if ((error as { code?: string })?.code === "P2002"){
-        throw new AppError("Mesa já possui atendimento em andamento", 409);
-      }
-
-      throw error;
-
-    }
+    return this.present(result);
   }
 
   async getTableByToken(token: string) {
@@ -136,23 +110,5 @@ export class TableService {
         errorCorrectionLevel: "M" 
       }
     );
-  }
-
-  private handleWriteError(error: unknown): never {
-    const code = (error as { code?: string })?.code;
-
-    if (code === "P2002") {
-      throw new AppError("Número de mesa já cadastrado", 409);
-    };
-
-    if (code === "P2025") {
-      throw new AppError("Mesa não encontrada", 404);
-    };
-
-    if (code === "P2003") {
-      throw new AppError("Mesa com histórico de atendimento não pode ser excluída; desative-a", 409);
-    };
-    
-    throw error;
   }
 }

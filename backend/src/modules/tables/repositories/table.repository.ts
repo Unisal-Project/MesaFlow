@@ -1,6 +1,6 @@
-import { TableEntity } from "../enity/table.entity.js";
+import type { TableEntity } from "../enity/table.entity.js";
 import type { TableWithAttendance } from "./table-with-attendance.repository.js";
-import type { TableStatusChangeDTO } from "../dto/table-status-change.dto.js";
+import type { TableStatusChange } from "../enity/table-status.js";
 
 export interface TableRepository {
     existsById (id: bigint): Promise<boolean>;
@@ -26,7 +26,7 @@ export interface TableRepository {
 
     changeStatusTransaction(
         id: bigint,
-        change: TableStatusChangeDTO
+        change: TableStatusChange
     ): Promise<TableWithAttendance>;
 }
 
