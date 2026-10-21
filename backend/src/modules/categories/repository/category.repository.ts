@@ -1,16 +1,25 @@
-import { CategoryInput, CategoryOutput } from "../entity/category.entity.js";
+import type { CategoryEntity } from "../entity/category.entity.js";
 
-export default abstract class CategoryRepository {
-  abstract createCategory(category: CategoryInput): Promise<CategoryOutput>;
+export type CreateCategoryData = {
+  name: string;
+  description?: string | null;
+  active: boolean;
+};
 
-  abstract getAllCategories(): Promise<CategoryOutput[]>;
+export type UpdateCategoryData = {
+  name: string;
+  description?: string | null;
+  active: boolean;
+};
 
-  abstract getCategoryById(id: bigint): Promise<CategoryOutput | null>;
+export interface CategoryRepository {
+  create(data: CreateCategoryData): Promise<CategoryEntity>;
 
-  abstract updateCategory(
-    id: bigint,
-    category: CategoryInput,
-  ): Promise<CategoryOutput>;
+  findAll(): Promise<CategoryEntity[]>;
 
-  abstract deleteCategory(id: bigint): Promise<void>;
+  findById(id: bigint): Promise<CategoryEntity | null>;
+
+  update(id: bigint, data: UpdateCategoryData): Promise<CategoryEntity>;
+
+  delete(id: bigint): Promise<void>;
 }

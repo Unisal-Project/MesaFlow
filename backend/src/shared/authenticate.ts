@@ -1,18 +1,14 @@
-import type {
-  FastifyReply,
-  FastifyRequest
-} from "fastify"
+import type { FastifyReply, FastifyRequest } from "fastify";
 
 export async function authenticate(
   request: FastifyRequest,
-  reply: FastifyReply
+  reply: FastifyReply,
 ) {
   try {
-    await request.jwtVerify()
+    await request.jwtVerify();
   } catch {
     return reply.status(401).send({
-      message: "Token inválido ou não informado"
-    })
+      message: "Token inválido ou não informado",
+    });
   }
 }
-

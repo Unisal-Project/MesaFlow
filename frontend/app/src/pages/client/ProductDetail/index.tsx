@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { ChevronLeft, ShoppingCart, Menu as MenuIcon, Clock, ReceiptText } from "lucide-react";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/contexts/useCart";
 import { QuantitySelector, TextAreaField, Button } from "@/components";
 import type { Product } from "@/services/menu.service";
 import "./styles.css";
@@ -19,14 +19,16 @@ function formatPrice(price: string) {
 
 export function ProductDetail({ product, categoryName, onBack, onAdded, onGoToCart }: ProductDetailProps) {
   const { itemCount, items, addItem } = useCart();
-  const [quantity, setQuantity] = useState(1);
-  const [notes, setNotes] = useState("");
 
-  useEffect(() => {
+  const [quantity, setQuantity] = useState(() => {
     const existingLine = items.find((line) => line.product.id === product.id);
-    setQuantity(existingLine?.quantity ?? 1);
-    setNotes(existingLine?.notes ?? "");
-  }, [product.id]);
+    return existingLine?.quantity ?? 1;
+  });
+
+  const [notes, setNotes] = useState(() => {
+    const existingLine = items.find((line) => line.product.id === product.id);
+    return existingLine?.notes ?? "";
+  });
 
   const quantityReservedElsewhere = items
     .filter((line) => line.product.id === product.id && line.notes !== notes)

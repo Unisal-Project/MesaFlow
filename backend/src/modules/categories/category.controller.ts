@@ -1,92 +1,72 @@
+import type { FastifyRequest, FastifyReply } from "fastify";
+
 import CategoryService from "./category.service.js";
-import { CategoryIdSchema, CategorySchema } from "./dto/category.dto.js";
-import { CategoryOutput, CategoryResponse } from "./entity/category.entity.js";
-import { FastifyRequest, FastifyReply } from "fastify";
+
+import { createCategorySchema } from "./dto/create-category.dto.js";
+import { updateCategorySchema } from "./dto/update-category.dto.js";
+import { categoryIdSchema } from "./dto/category-id.dto.js";
+
+import type { CategoryEntity } from "./entity/category.entity.js";
 
 export default class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   async createCategory(request: FastifyRequest, reply: FastifyReply) {
-    const parsedBody = CategorySchema.safeParse(request.body);
+    const data = createCategorySchema.parse(request.body);
 
-    if (!parsedBody.success) {
-      return this.sendValidationError(reply, parsedBody.error.issues);
-    }
+    const category = await this.categoryService.createCategory(data);
 
-    const category = await this.categoryService.createCategory(parsedBody.data);
     return reply.status(201).send(this.toResponse(category));
-  }
-
-  async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
-
-    await this.categoryService.deleteCategory(id);
-    return reply.status(204).send();
   }
 
   async getAllCategories(_request: FastifyRequest, reply: FastifyReply) {
     const categories = await this.categoryService.getAllCategories();
+
     return reply
       .status(200)
       .send(categories.map((category) => this.toResponse(category)));
   }
 
   async getCategoryById(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
+    const { id } = categoryIdSchema.parse(request.params);
 
     const category = await this.categoryService.getCategoryById(id);
+
     if (!category) {
-      return reply.status(404).send({ message: "Category not found" });
+      return reply.status(404).send({
+        message: "Category not found",
+      });
     }
+
     return reply.status(200).send(this.toResponse(category));
   }
 
   async updateCategory(request: FastifyRequest, reply: FastifyReply) {
-    const id = this.parseId(request, reply);
-    if (id === null) return;
+    const { id } = categoryIdSchema.parse(request.params);
 
-    const parsedBody = CategorySchema.safeParse(request.body);
-    if (!parsedBody.success) {
-      return this.sendValidationError(reply, parsedBody.error.issues);
-    }
+    const data = updateCategorySchema.parse(request.body);
 
-    const category = await this.categoryService.updateCategory(
-      id,
-      parsedBody.data,
-    );
+    const category = await this.categoryService.updateCategory(id, data);
+
     return reply.status(200).send(this.toResponse(category));
   }
 
-  private parseId(request: FastifyRequest, reply: FastifyReply): bigint | null {
-    const { id } = request.params as { id: string };
-    const parsedId = CategoryIdSchema.safeParse(id);
+  async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = categoryIdSchema.parse(request.params);
 
-    if (!parsedId.success) {
-      this.sendValidationError(
-        reply,
-        parsedId.error.issues,
-        "Invalid category id",
-      );
-      return null;
-    }
+    await this.categoryService.deleteCategory(id);
 
-    return parsedId.data;
+    return reply.status(204).send();
   }
 
-  private sendValidationError(
-    reply: FastifyReply,
-    issues: unknown,
-    message = "Invalid request body",
-  ) {
-    return reply.status(400).send({ message, issues });
-  }
-
-  private toResponse(category: CategoryOutput): CategoryResponse {
+  private toResponse(category: CategoryEntity) {
     return {
-      ...category,
       id: category.id.toString(),
+      name: category.name,
+      description: category.description,
+      active: category.active,
+      createdAt: category.createdAt,
+      updatedAt: category.updatedAt,
     };
   }
 }

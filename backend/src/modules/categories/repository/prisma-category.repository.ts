@@ -1,28 +1,78 @@
-import { CategoryInput, CategoryOutput } from "../entity/category.entity.js";
-import { prisma } from "../../../database/prisma.js";
+import { PrismaConnector } from "../../../database/prisma.js";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
-import CategoryRepository from "./category.repository.js";
 
-export default class PrismaCategoryRepository extends CategoryRepository {
-  constructor(private readonly prismaClient: typeof prisma = prisma) {
-    super();
+import { CategoryEntity } from "../entity/category.entity.js";
+
+import type {
+  CategoryRepository,
+  CreateCategoryData,
+  UpdateCategoryData,
+} from "./category.repository.js";
+
+export class PrismaCategoryRepository implements CategoryRepository {
+  constructor(
+    private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
+  ) {}
+
+  private toEntity(category: {
+    id: bigint;
+    name: string;
+    description: string | null;
+    active: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+  }): CategoryEntity {
+    return new CategoryEntity(
+      category.id,
+      category.name,
+      category.description,
+      category.active,
+      category.createdAt,
+      category.updatedAt,
+    );
   }
 
-  async createCategory(category: CategoryInput): Promise<CategoryOutput> {
+  async create(data: CreateCategoryData): Promise<CategoryEntity> {
     try {
-      return await this.prismaClient.category.create({
-        data: {
-          ...category,
-          createdAt: category.createdAt ?? undefined,
-        },
+      const category = await this.prismaClient.category.create({
+        data,
       });
+
+      return this.toEntity(category);
     } catch (error) {
       this.handlePrismaError(error);
     }
   }
 
-  async deleteCategory(id: bigint): Promise<void> {
+  async findAll(): Promise<CategoryEntity[]> {
+    const categories = await this.prismaClient.category.findMany();
+
+    return categories.map((category) => this.toEntity(category));
+  }
+
+  async findById(id: bigint): Promise<CategoryEntity | null> {
+    const category = await this.prismaClient.category.findUnique({
+      where: { id },
+    });
+
+    return category ? this.toEntity(category) : null;
+  }
+
+  async update(id: bigint, data: UpdateCategoryData): Promise<CategoryEntity> {
+    try {
+      const category = await this.prismaClient.category.update({
+        where: { id },
+        data,
+      });
+
+      return this.toEntity(category);
+    } catch (error) {
+      this.handlePrismaError(error);
+    }
+  }
+
+  async delete(id: bigint): Promise<void> {
     try {
       await this.prismaClient.category.delete({
         where: { id },
@@ -32,45 +82,21 @@ export default class PrismaCategoryRepository extends CategoryRepository {
     }
   }
 
-  async getAllCategories(): Promise<CategoryOutput[]> {
-    return this.prismaClient.category.findMany();
-  }
-
-  async getCategoryById(id: bigint): Promise<CategoryOutput | null> {
-    return this.prismaClient.category.findUnique({
-      where: { id },
-    });
-  }
-
-  async updateCategory(
-    id: bigint,
-    category: CategoryInput,
-  ): Promise<CategoryOutput> {
-    try {
-      return await this.prismaClient.category.update({
-        where: { id },
-        data: {
-          ...category,
-          createdAt: category.createdAt ?? undefined,
-        },
-      });
-    } catch (error) {
-      this.handlePrismaError(error);
-    }
-  }
-
   private handlePrismaError(error: unknown): never {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === "P2002") {
-        throw new AppError("Category name already exists", 409);
+        throw new AppError("Já existe uma categoria com esse nome", 409);
       }
 
       if (error.code === "P2025") {
-        throw new AppError("Category not found", 404);
+        throw new AppError("Categoria não encontrada", 404);
       }
 
       if (error.code === "P2003") {
-        throw new AppError("Category cannot be deleted because it has products", 409);
+        throw new AppError(
+          "Não é possível excluir uma categoria que possui produtos",
+          409,
+        );
       }
     }
 

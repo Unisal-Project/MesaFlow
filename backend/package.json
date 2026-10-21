@@ -10,7 +10,14 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:unit",
+    "test:unit": "node --test-force-exit --import tsx --test tests/*.test.ts",
+    "test:db": "RUN_TABLES_DB_TESTS=1 node --test-force-exit --import tsx --test tests/tables.integration.test.ts",
+    "typecheck": "tsc -p tsconfig.tests.json",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "lint": "npm run typecheck && npm run format:check",
+    "check": "npm run lint && npm test"
   },
   "keywords": [],
   "author": "",

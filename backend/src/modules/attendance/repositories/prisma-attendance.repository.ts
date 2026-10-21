@@ -1,144 +1,164 @@
-import { prisma } from "../../../database/prisma.js";
-import { Attendance, AttendanceTotal } from "../../../generated/prisma/client.js";
+import { PrismaConnector } from "../../../database/prisma.js";
+import type { Attendance } from "../../../generated/prisma/client.js";
 
 import { AttendanceEntity } from "../entity/attendance.entity.js";
-import { AttendanceRepository } from "./attendance.repository.js";
+import type { AttendanceRepository } from "./attendance.repository.js";
 
-import { TableRepository } from "../../tables/repository/table.repository.js";
-
-import type { AttendanceStatus } from "../../../generated/prisma/client.js";
+import type { AttendanceStatus } from "../entity/attendance.entity.js";
+import type { AttendanceTotal } from "../entity/attendance-total.entity.js";
 import type { AttendanceListItem } from "../types/ttendance-list-item.type.js";
 
-export class PrismaAttendanceRepository implements AttendanceRepository{
-    async findById(id: bigint): Promise<AttendanceEntity | null> {
-        const attendance = await prisma.attendance.findUnique({
-            where:{id},
-        });
+export class PrismaAttendanceRepository implements AttendanceRepository {
+  constructor(
+    private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
+  ) {}
 
-        if (!attendance) {
-            return null;
-        }
+  async findById(id: bigint): Promise<AttendanceEntity | null> {
+    const attendance = await this.prismaClient.attendance.findUnique({
+      where: { id },
+    });
 
-        return this.toEntity(attendance);
+    if (!attendance) {
+      return null;
     }
 
-    async findOpenByTableId(tableId: bigint): Promise<AttendanceEntity | null> {
-        const attendance = await prisma.attendance.findFirst({
-            where: {
-                tableId,
-                status: "OPEN",
-            },
-        });
+    return this.toEntity(attendance);
+  }
 
-        if (!attendance){
-            return null;
-        }
+  async findOpenByTableId(tableId: bigint): Promise<AttendanceEntity | null> {
+    const attendance = await this.prismaClient.attendance.findFirst({
+      where: {
+        tableId,
+        status: "OPEN",
+      },
+    });
 
-        return this.toEntity(attendance);
+    if (!attendance) {
+      return null;
     }
 
-    async create(tableId: bigint): Promise<AttendanceEntity> {
-        const attendance = await prisma.attendance.create({
-            data: {
-                tableId,
-            },
-        });
+    return this.toEntity(attendance);
+  }
 
-        return this.toEntity(attendance);
+  async create(tableId: bigint): Promise<AttendanceEntity> {
+    const attendance = await this.prismaClient.attendance.create({
+      data: {
+        tableId,
+      },
+    });
+
+    return this.toEntity(attendance);
+  }
+
+  async findTotalByAttendanceId(
+    attendanceId: bigint,
+  ): Promise<AttendanceTotal | null> {
+    const total = await this.prismaClient.attendanceTotal.findUnique({
+      where: { attendanceId },
+    });
+
+    if (!total) {
+      return null;
     }
 
-    async findTotalByAttendanceId(attendanceId: bigint): Promise<AttendanceTotal | null> {
-        const total = await prisma.attendanceTotal.findUnique({
-            where: { attendanceId }
-        });
+    return {
+      attendanceId: total.attendanceId,
+      tableId: total.tableId,
+      status: total.status,
+      total: total.total.toString(),
+    };
+  }
 
-        return total;
-    }
+  async requestClosing(
+    attendanceId: bigint,
+    requestedAt: Date,
+  ): Promise<AttendanceEntity> {
+    const attendance = await this.prismaClient.$transaction(async (tx) => {
+      const updatedAttendance = await tx.attendance.update({
+        where: {
+          id: attendanceId,
+        },
+        data: {
+          status: "CLOSING_REQUESTED",
+          closingRequestedAt: requestedAt,
+        },
+      });
 
-    async requestClosing(attendanceId: bigint, requestedAt: Date): Promise<AttendanceEntity> {
+      await tx.printJob.create({
+        data: {
+          attendanceId,
+          type: "BILL",
+        },
+      });
 
-        const attendance = await prisma.$transaction(async (tx) => {
+      return updatedAttendance;
+    });
 
-            const updatedAttendance = await tx.attendance.update({
-                where: {
-                    id: attendanceId
-                },
-                data: {
-                    status: "CLOSING_REQUESTED",
-                    closingRequestedAt: requestedAt
-                }
-            });
+    return this.toEntity(attendance);
+  }
 
-            await tx.printJob.create({
-                data: {
-                    attendanceId,
-                    type: "BILL"
-                }
-            });
+  async requestCancelled(attendanceId: bigint): Promise<AttendanceEntity> {
+    const attendance = await this.prismaClient.attendance.update({
+      where: {
+        id: attendanceId,
+      },
+      data: {
+        status: "CANCELLED",
+      },
+    });
 
-            return updatedAttendance;
-        });
+    return this.toEntity(attendance);
+  }
 
-        return this.toEntity(attendance);
-    }
+  async findAllByStatus(
+    status: AttendanceStatus,
+  ): Promise<AttendanceListItem[]> {
+    const attendances = await this.prismaClient.attendance.findMany({
+      where: {
+        status,
+      },
+      include: {
+        table: {
+          select: {
+            id: true,
+            number: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        closingRequestedAt: "asc",
+      },
+    });
 
-    async requestCancelled(attendanceId: bigint): Promise<AttendanceEntity> {
-        
-        const attendance = await prisma.attendance.update({
-            where: {
-                id: attendanceId,
-            },
-            data: {
-                status: "CANCELLED",
-            }
-        });
+    return attendances.map((attendance) => this.toListItem(attendance));
+  }
 
-        return this.toEntity(attendance);
-    }
+  private toListItem(
+    attendance: Attendance & { table: AttendanceListItem["table"] },
+  ): AttendanceListItem {
+    return {
+      ...this.toEntity(attendance),
+      activeTableId: attendance.activeTableId,
+      table: {
+        id: attendance.table.id,
+        number: attendance.table.number,
+        name: attendance.table.name,
+      },
+    };
+  }
 
-    async findAllByStatus(status: AttendanceStatus): Promise<AttendanceListItem[]> {
-
-        return prisma.attendance.findMany({
-            where: {
-                status
-            },
-            include: {
-                table: {
-                    select: {
-                        id: true,
-                        number: true,
-                        name: true
-                    }
-                }
-            },
-            orderBy: {
-                closingRequestedAt: "asc"
-            }
-        });
-    }
-
-    private toEntity(attendance: Attendance): AttendanceEntity {
-        return new AttendanceEntity(
-            attendance.id,
-            attendance.tableId,
-            attendance.status,
-            attendance.openedAt,
-            attendance.closingRequestedAt,
-            attendance.closedAt,
-            attendance.closedById,
-            attendance.createdAt,
-            attendance.updatedAt
-        );
-    }
-}
-
-export class PrismaTableRepository implements TableRepository{
-    async existsById(id: bigint): Promise<boolean> {
-        const table = await prisma.restaurantTable.findUnique({
-            where: { id },
-            select: { id: true }
-        });
-
-        return table !== null;
-    }
+  private toEntity(attendance: Attendance): AttendanceEntity {
+    return new AttendanceEntity(
+      attendance.id,
+      attendance.tableId,
+      attendance.status,
+      attendance.openedAt,
+      attendance.closingRequestedAt,
+      attendance.closedAt,
+      attendance.closedById,
+      attendance.createdAt,
+      attendance.updatedAt,
+    );
+  }
 }

@@ -4,22 +4,19 @@ import {
   ProductUpdateInput,
 } from "../entity/products.entity.js";
 
-export default abstract class ProductsRepository {
-  abstract createProduct(productInput: ProductInput): Promise<ProductOutput>;
+export default interface ProductsRepository {
+  createProduct(productInput: ProductInput): Promise<ProductOutput>;
 
-  abstract getProductById(id: bigint): Promise<ProductOutput | null>;
+  getProductById(id: bigint): Promise<ProductOutput | null>;
 
-  abstract getAllProducts(): Promise<ProductOutput[]>;
+  getAllProducts(): Promise<ProductOutput[]>;
 
-  abstract updateProduct(
+  updateProduct(
     id: bigint,
     productUpdateInput: ProductUpdateInput,
   ): Promise<ProductOutput>;
 
-  abstract deactivateProduct(id: bigint): Promise<void>;
+  deactivateProduct(id: bigint): Promise<void>;
 
-  abstract switchCategory(
-    id: bigint,
-    newCategoryId: bigint,
-  ): Promise<ProductOutput>;
+  switchCategory(id: bigint, newCategoryId: bigint): Promise<ProductOutput>;
 }

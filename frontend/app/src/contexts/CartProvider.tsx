@@ -1,31 +1,9 @@
-import {createContext,useContext,useEffect,useState,type ReactNode,} from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { Product } from "@/services/menu.service";
-
-export type CartLine = {
-  id: string;
-  product: Product;
-  quantity: number;
-  notes: string;
-};
-
-type CartContextValue = {
-  items: CartLine[];
-  itemCount: number;
-  subtotal: number;
-  serviceFee: number;
-  total: number;
-  addItem: (product: Product, quantity: number, notes: string) => void;
-  removeItem: (lineId: string) => void;
-  updateQuantity: (lineId: string, quantity: number) => void;
-  updateNotes: (lineId: string, notes: string) => void;
-  clearCart: () => void;
- splitLine: (lineId: string) => void;
-};
+import { CartContext, type CartLine } from "./CartContext";
 
 const CART_STORAGE_KEY = "mesaflow:cart";
 const SERVICE_FEE_RATE = 0.1;
-
-const CartContext = createContext<CartContextValue | undefined>(undefined);
 
 function createLineId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -131,14 +109,4 @@ export function CartProvider({ children }: { children: ReactNode }) {
       {children}
     </CartContext.Provider>
   );
-}
-
-export function useCart() {
-  const context = useContext(CartContext);
-
-  if (!context) {
-    throw new Error("useCart precisa ser usado dentro de um <CartProvider>");
-  }
-
-  return context;
 }

@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './styles/components.css'
 import App from './App.tsx'
-import { CartProvider } from './contexts/CartContext'
+import { CartProvider } from './contexts/CartProvider.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -13,6 +13,7 @@ import { uploadsRootDirectory } from "./shared/storage/storage.config.js";
 import { mkdir } from "node:fs/promises";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
 import { tableRoutes } from "./modules/tables/table.routers.js";
+import { paymentRoutes } from "./modules/payments/payment.routes.js";
 
 export const app = fastify({ logger: true });
 
@@ -34,7 +35,6 @@ app.register(fastifyMultipart, {
     fields: 0,
     parts: 1,
   },
-
 });
 
 app.register(fastifyStatic, {
@@ -52,12 +52,12 @@ app.register(
     await instance.register(orderRoutes);
     await instance.register(attendanceRoutes);
     await instance.register(tableRoutes);
+    await instance.register(paymentRoutes);
   },
   { prefix: "/api/v1" },
 );
 
 app.setErrorHandler(errorHandler);
-
 
 export const startServer = async () => {
   try {

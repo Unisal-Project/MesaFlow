@@ -1,44 +1,34 @@
-import { CategoryDtoType } from "./dto/category.dto.js";
-export type { CategoryDtoType } from "./dto/category.dto.js";
-import CategoryRepository from "./repository/category.repository.js";
-import { CategoryInput, CategoryOutput } from "./entity/category.entity.js";
+import type { CreateCategoryDTO } from "./dto/create-category.dto.js";
+import type { UpdateCategoryDTO } from "./dto/update-category.dto.js";
+
+import type { CategoryEntity } from "./entity/category.entity.js";
+import type { CategoryRepository } from "./repository/category.repository.js";
 
 export default class CategoryService {
   constructor(private readonly categoryRepository: CategoryRepository) {}
 
-  async createCategory(categoryDto: CategoryDtoType): Promise<CategoryOutput> {
-    const categoryInput: CategoryInput = {
-      name: categoryDto.name,
-      description: categoryDto.description,
-      active: categoryDto.active,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    return this.categoryRepository.createCategory(categoryInput);
+  async createCategory(
+    categoryDto: CreateCategoryDTO,
+  ): Promise<CategoryEntity> {
+    return this.categoryRepository.create(categoryDto);
   }
 
-  async getAllCategories(): Promise<CategoryOutput[]> {
-    return this.categoryRepository.getAllCategories();
+  async getAllCategories(): Promise<CategoryEntity[]> {
+    return this.categoryRepository.findAll();
   }
 
-  async getCategoryById(id: bigint): Promise<CategoryOutput | null> {
-    return this.categoryRepository.getCategoryById(id);
+  async getCategoryById(id: bigint): Promise<CategoryEntity | null> {
+    return this.categoryRepository.findById(id);
   }
 
   async updateCategory(
     id: bigint,
-    categoryDto: CategoryDtoType,
-  ): Promise<CategoryOutput> {
-    const categoryInput: CategoryInput = {
-      name: categoryDto.name,
-      description: categoryDto.description,
-      active: categoryDto.active,
-      updatedAt: new Date(),
-    };
-    return this.categoryRepository.updateCategory(id, categoryInput);
+    categoryDto: UpdateCategoryDTO,
+  ): Promise<CategoryEntity> {
+    return this.categoryRepository.update(id, categoryDto);
   }
 
   async deleteCategory(id: bigint): Promise<void> {
-    return this.categoryRepository.deleteCategory(id);
+    await this.categoryRepository.delete(id);
   }
 }
