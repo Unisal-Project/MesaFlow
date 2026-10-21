@@ -15,11 +15,11 @@ import { resolveTableStatus } from "./utils/resolve-table-status.js";
 
 export class TableService {
   constructor(
-    private readonly tableRepository: TableRepository, 
-    private readonly frontendUrl: string
+    private readonly tableRepository: TableRepository,
+    private readonly frontendUrl: string,
   ) {}
 
-  private present ({table, attendance}: TableWithAttendance) {
+  private present({ table, attendance }: TableWithAttendance) {
     const url = new URL("/cardapio", this.frontendUrl);
 
     url.searchParams.set("mesa", table.qrToken);
@@ -33,8 +33,8 @@ export class TableService {
       active: table.active,
       menuUrl: url.toString(),
       status,
-      attendanceId: attendance?.id.toString() ?? null
-    }
+      attendanceId: attendance?.id.toString() ?? null,
+    };
   }
 
   async createTable(data: CreateTableDTO) {
@@ -42,10 +42,10 @@ export class TableService {
       number: data.number,
       name: data.name,
       active: data.active,
-      qrToken: randomUUID()
+      qrToken: randomUUID(),
     });
 
-    return this.present({table, attendance: null});
+    return this.present({ table, attendance: null });
   }
 
   async getTableById({ id }: TableIdDTO) {
@@ -53,7 +53,7 @@ export class TableService {
 
     if (!table) {
       throw new AppError("Mesa não encontrada", 404);
-    };
+    }
 
     return this.present(table);
   }
@@ -67,19 +67,23 @@ export class TableService {
   async deleteTable({ id }: TableIdDTO) {
     const table = await this.tableRepository.delete(id);
 
-    return this.present({table, attendance: null});
+    return this.present({ table, attendance: null });
   }
 
   async editTable({ id }: TableIdDTO, data: UpdateTableDTO) {
     const updated = await this.tableRepository.updateWithAttendanceCheck(
-      id, data
+      id,
+      data,
     );
 
     return this.present(updated);
   }
 
   async changeStatus({ id }: TableIdDTO, change: TableStatusChange) {
-    const result = await this.tableRepository.changeStatusTransaction(id, change);
+    const result = await this.tableRepository.changeStatusTransaction(
+      id,
+      change,
+    );
 
     return this.present(result);
   }
@@ -91,24 +95,21 @@ export class TableService {
       throw new AppError("QR Code inválido ou mesa indisponível", 404);
     }
 
-    return { 
-      id: table.id.toString(), 
-      number: table.number, 
-      name: table.name 
+    return {
+      id: table.id.toString(),
+      number: table.number,
+      name: table.name,
     };
   }
 
   async getQrCode(id: TableIdDTO) {
     const table = await this.getTableById(id);
 
-    return QRCode.toBuffer(
-      table.menuUrl, 
-      { 
-        type: "png",
-        width: 512, 
-        margin: 4, 
-        errorCorrectionLevel: "M" 
-      }
-    );
+    return QRCode.toBuffer(table.menuUrl, {
+      type: "png",
+      width: 512,
+      margin: 4,
+      errorCorrectionLevel: "M",
+    });
   }
 }

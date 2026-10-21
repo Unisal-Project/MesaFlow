@@ -190,6 +190,7 @@ CREATE TABLE IF NOT EXISTS orders (
     ) NOT NULL DEFAULT 'PENDING',
 
     notes TEXT NULL,
+    customer_name VARCHAR(100) NULL,
 
     -- NULL quando o pedido for realizado diretamente pelo cliente.
     created_by BIGINT UNSIGNED NULL,
@@ -340,13 +341,6 @@ CREATE TABLE IF NOT EXISTS stock_movements (
 CREATE TABLE IF NOT EXISTS payments (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     attendance_id BIGINT UNSIGNED NOT NULL,
-
-    method ENUM(
-        'CASH',
-        'PIX',
-        'CREDIT_CARD',
-        'DEBIT_CARD'
-    ) NOT NULL,
 
     amount DECIMAL(10,2) NOT NULL,
 

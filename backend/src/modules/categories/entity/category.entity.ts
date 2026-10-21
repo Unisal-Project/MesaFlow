@@ -5,10 +5,10 @@ export class CategoryEntity {
     public description: string | null,
     public active: boolean,
     public readonly createdAt: Date,
-    public updatedAt: Date
+    public updatedAt: Date,
   ) {}
 
-  isActive(): boolean{
-    return this.active
+  isActive(): boolean {
+    return this.active;
   }
 }

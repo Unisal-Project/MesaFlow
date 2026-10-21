@@ -5,10 +5,7 @@ import { TableService } from "./table.service.js";
 import { PrismaTableRepository } from "./repositories/prisma-table.repository.js";
 
 export function makeTableService(): TableService {
-    const tableRepository = new PrismaTableRepository();
+  const tableRepository = new PrismaTableRepository();
 
-    return new TableService (
-        tableRepository,
-        env.FRONTEND_URL
-    )
+  return new TableService(tableRepository, env.FRONTEND_URL);
 }

@@ -1,6 +1,6 @@
-import { prisma } from "../../../database/prisma.js";
+import { PrismaConnector } from "../../../database/prisma.js";
 import { Prisma } from "../../../generated/prisma/client.js";
-import ProductsRepository from "./products.repository.js";
+import type ProductsRepository from "./products.repository.js";
 import {
   ProductInput,
   ProductOutput,
@@ -8,10 +8,10 @@ import {
 } from "../entity/products.entity.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 
-export class PrismaProductRepository extends ProductsRepository {
-  constructor(private readonly prismaClient: typeof prisma = prisma) {
-    super();
-  }
+export class PrismaProductRepository implements ProductsRepository {
+  constructor(
+    private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
+  ) {}
 
   async createProduct(productInput: ProductInput): Promise<ProductOutput> {
     try {
@@ -117,19 +117,20 @@ export class PrismaProductRepository extends ProductsRepository {
     }
   }
 
-  async findAvailableByIds(ids: bigint[]): Promise<{id: bigint, price: string}[]> {
-
+  async findAvailableByIds(
+    ids: bigint[],
+  ): Promise<{ id: bigint; price: string }[]> {
     const products = await this.prismaClient.product.findMany({
       where: {
         id: { in: ids },
         active: true,
         available: true,
-      }
+      },
     });
 
     return products.map((product) => ({
       id: product.id,
-      price: product.price.toString()
+      price: product.price.toString(),
     }));
   }
 

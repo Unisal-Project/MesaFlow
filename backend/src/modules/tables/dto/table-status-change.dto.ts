@@ -1,8 +1,7 @@
 import { z } from "zod";
 
-import { tableStatusSchema } from "./table-status.dto.js"
+import { tableStatusSchema } from "./table-status.dto.js";
 import { tableIdSchema } from "./table-id.dto.js";
-
 
 export const tableStatusChangeSchema = z.object({
   status: tableStatusSchema,

@@ -13,6 +13,6 @@ const adapter = new PrismaMariaDb({
   allowPublicKeyRetrieval: true, // Allow public key retrieval for MariaDB
 });
 
-export const prisma = new PrismaClient({
+export const PrismaConnector = new PrismaClient({
   adapter,
 });
