@@ -4,16 +4,15 @@ import { PrismaAttendanceRepository } from "../attendance/repositories/prisma-at
 import { PrismaProductRepository } from "../products/repositories/prisma-products.repository.js";
 
 export function makeOrderService(): OrderService {
+  const orderRepository = new PrismaOrderRepository();
 
-    const orderRepository = new PrismaOrderRepository();
+  const attendanceRepository = new PrismaAttendanceRepository();
 
-    const attendanceRepository = new PrismaAttendanceRepository();
+  const productRepository = new PrismaProductRepository();
 
-    const productRepository = new PrismaProductRepository();
-
-    return new OrderService(
-        orderRepository,
-        attendanceRepository,
-        productRepository
-    );
+  return new OrderService(
+    orderRepository,
+    attendanceRepository,
+    productRepository,
+  );
 }

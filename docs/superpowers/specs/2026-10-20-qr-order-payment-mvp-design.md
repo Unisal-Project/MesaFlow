@@ -114,9 +114,8 @@ ativo, a mesa volta a ser apresentada como `available`.
 - Pagamento consolidado: atendimento, valor total, `PAID`, data/hora e,
   futuramente, operador que confirmou.
 
-O modelo atual de `payments` já contém `attendance_id`, `amount`, `status` e
-`paid_at`. Para o MVP, o campo obrigatório de método deve aceitar um valor
-neutro como `OTHER`/`NOT_INFORMED`, em vez de gravar um método falso.
+O modelo de `payments` contém `attendance_id`, `amount`, `status` e `paid_at`.
+O MVP não armazena modalidade de pagamento.
 
 ## Dashboard
 

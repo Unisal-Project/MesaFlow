@@ -47,13 +47,6 @@ enum StockMovementType {
   CANCELLATION
 }
 
-enum PaymentMethod {
-  CASH
-  PIX
-  CREDIT_CARD
-  DEBIT_CARD
-}
-
 enum PaymentStatus {
   PENDING
   PAID
@@ -166,6 +159,7 @@ model Order {
   attendanceId       BigInt              @map("attendance_id") @db.UnsignedBigInt
   status             OrderStatus         @default(PENDING)
   notes              String?             @db.Text
+  customerName       String?             @map("customer_name") @db.VarChar(100)
   createdById        BigInt?             @map("created_by") @db.UnsignedBigInt
   cancelledAt        DateTime?           @map("cancelled_at") @db.DateTime(0)
   cancelledById      BigInt?             @map("cancelled_by") @db.UnsignedBigInt
@@ -230,7 +224,6 @@ model StockMovement {
 model Payment {
   id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
   attendanceId BigInt        @map("attendance_id") @db.UnsignedBigInt
-  method       PaymentMethod
   amount       Decimal       @db.Decimal(10, 2)
   status       PaymentStatus @default(PENDING)
   paidAt       DateTime?     @map("paid_at") @db.DateTime(0)

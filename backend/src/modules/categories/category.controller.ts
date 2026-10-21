@@ -9,73 +9,64 @@ import { categoryIdSchema } from "./dto/category-id.dto.js";
 import type { CategoryEntity } from "./entity/category.entity.js";
 
 export default class CategoryController {
+  constructor(private readonly categoryService: CategoryService) {}
 
-    constructor(
-        private readonly categoryService: CategoryService
-    ) {}
+  async createCategory(request: FastifyRequest, reply: FastifyReply) {
+    const data = createCategorySchema.parse(request.body);
 
-    async createCategory(request: FastifyRequest, reply: FastifyReply) {
+    const category = await this.categoryService.createCategory(data);
 
-        const data = createCategorySchema.parse(request.body);
+    return reply.status(201).send(this.toResponse(category));
+  }
 
-        const category = await this.categoryService.createCategory(data);
+  async getAllCategories(_request: FastifyRequest, reply: FastifyReply) {
+    const categories = await this.categoryService.getAllCategories();
 
-        return reply.status(201).send(this.toResponse(category));
+    return reply
+      .status(200)
+      .send(categories.map((category) => this.toResponse(category)));
+  }
+
+  async getCategoryById(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = categoryIdSchema.parse(request.params);
+
+    const category = await this.categoryService.getCategoryById(id);
+
+    if (!category) {
+      return reply.status(404).send({
+        message: "Category not found",
+      });
     }
 
-    async getAllCategories(_request: FastifyRequest, reply: FastifyReply) {
+    return reply.status(200).send(this.toResponse(category));
+  }
 
-        const categories = await this.categoryService.getAllCategories();
+  async updateCategory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = categoryIdSchema.parse(request.params);
 
-        return reply.status(200).send(
-            categories.map((category) => this.toResponse(category))
-        );
-    }
+    const data = updateCategorySchema.parse(request.body);
 
-    async getCategoryById(request: FastifyRequest, reply: FastifyReply) {
+    const category = await this.categoryService.updateCategory(id, data);
 
-        const { id } = categoryIdSchema.parse(request.params);
+    return reply.status(200).send(this.toResponse(category));
+  }
 
-        const category = await this.categoryService.getCategoryById(id);
+  async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = categoryIdSchema.parse(request.params);
 
-        if (!category) {
-            return reply.status(404).send({
-                message: "Category not found"
-            });
-        }
+    await this.categoryService.deleteCategory(id);
 
-        return reply.status(200).send(this.toResponse(category));
-    }
+    return reply.status(204).send();
+  }
 
-    async updateCategory(request: FastifyRequest, reply: FastifyReply) {
-
-        const { id } = categoryIdSchema.parse(request.params);
-
-        const data = updateCategorySchema.parse(request.body);
-
-        const category = await this.categoryService.updateCategory(id, data);
-
-        return reply.status(200).send(this.toResponse(category));
-    }
-
-    async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
-
-        const { id } = categoryIdSchema.parse(request.params);
-
-        await this.categoryService.deleteCategory(id);
-
-        return reply.status(204).send();
-    }
-
-    private toResponse(category: CategoryEntity) {
-
-        return {
-            id: category.id.toString(),
-            name: category.name,
-            description: category.description,
-            active: category.active,
-            createdAt: category.createdAt,
-            updatedAt: category.updatedAt
-        };
-    }
+  private toResponse(category: CategoryEntity) {
+    return {
+      id: category.id.toString(),
+      name: category.name,
+      description: category.description,
+      active: category.active,
+      createdAt: category.createdAt,
+      updatedAt: category.updatedAt,
+    };
+  }
 }

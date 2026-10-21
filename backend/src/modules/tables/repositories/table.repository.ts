@@ -3,42 +3,42 @@ import type { TableWithAttendance } from "./table-with-attendance.repository.js"
 import type { TableStatusChange } from "../enity/table-status.js";
 
 export interface TableRepository {
-    existsById (id: bigint): Promise<boolean>;
+  existsById(id: bigint): Promise<boolean>;
 
-    create(data: CreateTableData): Promise<TableEntity>;
+  create(data: CreateTableData): Promise<TableEntity>;
 
-    findById(id: bigint): Promise<TableEntity | null>;
+  findById(id: bigint): Promise<TableEntity | null>;
 
-    findAll(): Promise<TableEntity[]>;
+  findAll(): Promise<TableEntity[]>;
 
-    delete(id: bigint): Promise<TableEntity>;
+  delete(id: bigint): Promise<TableEntity>;
 
-    findByToken(token: string): Promise<TableEntity | null>;
+  findByToken(token: string): Promise<TableEntity | null>;
 
-    findByIdWithAttendance(id: bigint): Promise<TableWithAttendance | null>;
+  findByIdWithAttendance(id: bigint): Promise<TableWithAttendance | null>;
 
-    findAllWithAttendance(): Promise<TableWithAttendance[]>;
+  findAllWithAttendance(): Promise<TableWithAttendance[]>;
 
-    updateWithAttendanceCheck(
-        id: bigint,
-        data: UpdateTableData,
-    ): Promise<TableWithAttendance>;
+  updateWithAttendanceCheck(
+    id: bigint,
+    data: UpdateTableData,
+  ): Promise<TableWithAttendance>;
 
-    changeStatusTransaction(
-        id: bigint,
-        change: TableStatusChange
-    ): Promise<TableWithAttendance>;
+  changeStatusTransaction(
+    id: bigint,
+    change: TableStatusChange,
+  ): Promise<TableWithAttendance>;
 }
 
 export interface CreateTableData {
-    number: number;
-    name: string;
-    active: boolean;
-    qrToken: string;
+  number: number;
+  name: string;
+  active: boolean;
+  qrToken: string;
 }
 
 export interface UpdateTableData {
-    number: number;
-    name: string;
-    active: boolean;
+  number: number;
+  name: string;
+  active: boolean;
 }

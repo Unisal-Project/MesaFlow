@@ -1,4 +1,4 @@
-import { prisma } from "../../../database/prisma.js";
+import { PrismaConnector } from "../../../database/prisma.js";
 
 import { OrderEntity } from "../entity/orders.entity.js";
 
@@ -7,72 +7,71 @@ import type { OrderWithItems } from "./order-with-item.repository.js";
 import type { Order, OrderItem } from "../../../generated/prisma/client.js";
 
 type PrismaOrderWithItems = Order & {
-    items: OrderItem[];
+  items: OrderItem[];
 };
 
-export class PrismaOrderRepository implements OrderRepository{
+export class PrismaOrderRepository implements OrderRepository {
+  async create(data: CreateOrderData): Promise<OrderWithItems> {
+    const order = await PrismaConnector.order.create({
+      data: {
+        attendanceId: data.attendanceId,
+        customerName: data.customerName,
+        notes: data.notes,
+        items: {
+          create: data.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            notes: item.notes,
+          })),
+        },
+      },
+      include: { items: true },
+    });
 
-    async create(data: CreateOrderData): Promise<OrderWithItems>{
-        const order = await prisma.order.create({
-            data: {
-                attendanceId: data.attendanceId,
-                notes: data.notes,
-                items: { 
-                    create: data.items.map((item) => ({
-                        productId: item.productId,
-                        quantity: item.quantity,
-                        unitPrice: item.unitPrice,
-                        notes: item.notes,
-                    })) 
-                },
-            },
-            include: { items: true },
-        });
+    return this.toOrderWithItems(order);
+  }
 
-        return this.toOrderWithItems(order);
-    }
+  async findByAttendanceId(attendanceId: bigint): Promise<OrderWithItems[]> {
+    const orders = await PrismaConnector.order.findMany({
+      where: { attendanceId },
+      include: { items: true },
+      orderBy: { createdAt: "asc" },
+    });
 
-    async findByAttendanceId(attendanceId: bigint): Promise<OrderWithItems[]> {
-        const orders = await prisma.order.findMany({
-            where: { attendanceId },
-            include: { items: true },
-            orderBy: { createdAt: "asc" },
-        });
+    return orders.map((order) => this.toOrderWithItems(order));
+  }
 
-        return orders.map((order) =>
-            this.toOrderWithItems(order)
-        );
-    }
+  private toEntity(order: Order): OrderEntity {
+    return new OrderEntity(
+      order.id,
+      order.attendanceId,
+      order.status,
+      order.notes,
+      order.customerName,
+      order.createdById,
+      order.cancelledAt,
+      order.cancelledById,
+      order.cancellationSource,
+      order.cancellationReason,
+      order.restoreStock,
+      order.createdAt,
+      order.updatedAt,
+    );
+  }
 
-    private toEntity(order: Order): OrderEntity{
-        return new OrderEntity(
-            order.id,
-            order.attendanceId,
-            order.status,
-            order.notes,
-            order.createdById,
-            order.cancelledAt,
-            order.cancelledById,
-            order.cancellationSource,
-            order.cancellationReason,
-            order.restoreStock,
-            order.createdAt,
-            order.updatedAt
-        )
-    }
+  private toOrderWithItems(order: PrismaOrderWithItems): OrderWithItems {
+    return {
+      order: this.toEntity(order),
 
-    private toOrderWithItems(order: PrismaOrderWithItems): OrderWithItems {
-        return{
-            order: this.toEntity(order),
-
-            items: order.items.map((item) => ({
-                id: item.id,
-                orderId: item.orderId,
-                productId: item.productId,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice.toString(),
-                notes: item.notes
-            }))
-        }
-    }
+      items: order.items.map((item) => ({
+        id: item.id,
+        orderId: item.orderId,
+        productId: item.productId,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice.toString(),
+        notes: item.notes,
+      })),
+    };
+  }
 }

@@ -26,7 +26,10 @@ export class TableController {
   async getQrCode(request: FastifyRequest, reply: FastifyReply) {
     const params = tableIdSchema.parse(request.params);
     const image = await this.tableService.getQrCode(params);
-    return reply.type("image/png").header("Content-Disposition", `inline; filename="mesa-${params.id}.png"`).send(image);
+    return reply
+      .type("image/png")
+      .header("Content-Disposition", `inline; filename="mesa-${params.id}.png"`)
+      .send(image);
   }
 
   async createTable(request: FastifyRequest, reply: FastifyReply) {
