@@ -1,4 +1,14 @@
-import type { OrderStatus, CancellationSource } from "../../../generated/prisma/enums.js";
+export type OrderStatus =
+    | "PENDING"
+    | "PREPARING"
+    | "READY"
+    | "DELIVERED"
+    | "CANCELLED";
+
+export type CancellationSource =
+    | "CUSTOMER"
+    | "EMPLOYEE"
+    | "ADMIN";
 
 export class OrderEntity {
     constructor(

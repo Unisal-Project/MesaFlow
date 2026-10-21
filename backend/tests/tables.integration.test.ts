@@ -8,7 +8,8 @@ test('tables: persisted lifecycle, database uniqueness and concurrent actions', 
   skip: process.env.RUN_TABLES_DB_TESTS !== '1',
 }, async () => {
   const { prisma } = await import('../src/database/prisma.js');
-  const service = new TableService(prisma, 'http://localhost:5173');
+  const { PrismaTableRepository } = await import('../src/modules/tables/repositories/prisma-table.repository.js');
+  const service = new TableService(new PrismaTableRepository(prisma), 'http://localhost:5173');
   let tableId: bigint | undefined;
   try {
     const table = await prisma.restaurantTable.create({ data: {
@@ -32,7 +33,7 @@ test('tables: persisted lifecycle, database uniqueness and concurrent actions', 
       if (state !== 'occupied') current = await service.changeStatus(params, { status: state, attendanceId });
       assert.equal(current.status, state);
       // Nova instância lê o estado persistido, inclusive após aguardar pagamento.
-      const reloaded = await new TableService(prisma, 'http://localhost:5173').getTableById(params);
+      const reloaded = await new TableService(new PrismaTableRepository(prisma), 'http://localhost:5173').getTableById(params);
       assert.equal(reloaded.status, state);
       assert.equal(reloaded.attendanceId, attendanceId.toString());
       const stored = await prisma.attendance.findUniqueOrThrow({ where: { id: attendanceId } });

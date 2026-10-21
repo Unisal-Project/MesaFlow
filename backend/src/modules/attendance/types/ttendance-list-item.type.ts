@@ -1,6 +1,7 @@
-import type { Attendance } from "../../../generated/prisma/client.js";
+import type { AttendanceData } from "../entity/attendance.entity.js";
 
-export type AttendanceListItem = Attendance & {
+export type AttendanceListItem = AttendanceData & {
+    activeTableId: bigint | null;
     table: {
         id: bigint;
         number: number;

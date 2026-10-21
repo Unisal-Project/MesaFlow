@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { fetchCategories, fetchProducts, type Category, type Product } from "@/services/menu.service";
 import { ClientHeader, CategoryTabs, ProductCard } from "@/components";
-import { useCart } from "@/contexts/CartContext";
+import { useCart } from "@/contexts/useCart";
 import "./styles.css";
 
 function formatPrice(price: string) {

@@ -1,6 +1,5 @@
-import type { AttendanceEntity } from "../entity/attendance.entity.js";
-import type { AttendanceTotal } from "../../../generated/prisma/client.js";
-import type { AttendanceStatus } from "../../../generated/prisma/client.js";
+import type { AttendanceEntity, AttendanceStatus } from "../entity/attendance.entity.js";
+import type { AttendanceTotal } from "../entity/attendance-total.entity.js";
 import type { AttendanceListItem } from "../types/ttendance-list-item.type.js";
 
 export interface AttendanceRepository{

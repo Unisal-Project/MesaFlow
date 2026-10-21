@@ -1,5 +1,4 @@
 import { prisma } from "../../../database/prisma.js";
-import { Prisma } from "../../../generated/prisma/client.js";
 
 import { OrderEntity } from "../entity/orders.entity.js";
 

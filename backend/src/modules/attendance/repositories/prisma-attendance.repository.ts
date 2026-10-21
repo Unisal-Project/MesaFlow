@@ -1,17 +1,18 @@
 import { prisma } from "../../../database/prisma.js";
-import { Attendance, AttendanceTotal } from "../../../generated/prisma/client.js";
+import type { Attendance } from "../../../generated/prisma/client.js";
 
 import { AttendanceEntity } from "../entity/attendance.entity.js";
-import { AttendanceRepository } from "./attendance.repository.js";
+import type { AttendanceRepository } from "./attendance.repository.js";
 
-import { TableRepository } from "../../tables/repository/table.repository.js";
-
-import type { AttendanceStatus } from "../../../generated/prisma/client.js";
+import type { AttendanceStatus } from "../entity/attendance.entity.js";
+import type { AttendanceTotal } from "../entity/attendance-total.entity.js";
 import type { AttendanceListItem } from "../types/ttendance-list-item.type.js";
 
 export class PrismaAttendanceRepository implements AttendanceRepository{
+    constructor(private readonly prismaClient: typeof prisma = prisma) {}
+
     async findById(id: bigint): Promise<AttendanceEntity | null> {
-        const attendance = await prisma.attendance.findUnique({
+        const attendance = await this.prismaClient.attendance.findUnique({
             where:{id},
         });
 
@@ -23,7 +24,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
     }
 
     async findOpenByTableId(tableId: bigint): Promise<AttendanceEntity | null> {
-        const attendance = await prisma.attendance.findFirst({
+        const attendance = await this.prismaClient.attendance.findFirst({
             where: {
                 tableId,
                 status: "OPEN",
@@ -38,7 +39,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
     }
 
     async create(tableId: bigint): Promise<AttendanceEntity> {
-        const attendance = await prisma.attendance.create({
+        const attendance = await this.prismaClient.attendance.create({
             data: {
                 tableId,
             },
@@ -48,16 +49,25 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
     }
 
     async findTotalByAttendanceId(attendanceId: bigint): Promise<AttendanceTotal | null> {
-        const total = await prisma.attendanceTotal.findUnique({
+        const total = await this.prismaClient.attendanceTotal.findUnique({
             where: { attendanceId }
         });
 
-        return total;
+        if (!total) {
+            return null;
+        }
+
+        return {
+            attendanceId: total.attendanceId,
+            tableId: total.tableId,
+            status: total.status,
+            total: total.total.toString(),
+        };
     }
 
     async requestClosing(attendanceId: bigint, requestedAt: Date): Promise<AttendanceEntity> {
 
-        const attendance = await prisma.$transaction(async (tx) => {
+        const attendance = await this.prismaClient.$transaction(async (tx) => {
 
             const updatedAttendance = await tx.attendance.update({
                 where: {
@@ -84,7 +94,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
 
     async requestCancelled(attendanceId: bigint): Promise<AttendanceEntity> {
         
-        const attendance = await prisma.attendance.update({
+        const attendance = await this.prismaClient.attendance.update({
             where: {
                 id: attendanceId,
             },
@@ -98,7 +108,7 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
 
     async findAllByStatus(status: AttendanceStatus): Promise<AttendanceListItem[]> {
 
-        return prisma.attendance.findMany({
+        const attendances = await this.prismaClient.attendance.findMany({
             where: {
                 status
             },
@@ -115,6 +125,22 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
                 closingRequestedAt: "asc"
             }
         });
+
+        return attendances.map((attendance) => this.toListItem(attendance));
+    }
+
+    private toListItem(
+        attendance: Attendance & { table: AttendanceListItem["table"] }
+    ): AttendanceListItem {
+        return {
+            ...this.toEntity(attendance),
+            activeTableId: attendance.activeTableId,
+            table: {
+                id: attendance.table.id,
+                number: attendance.table.number,
+                name: attendance.table.name,
+            },
+        };
     }
 
     private toEntity(attendance: Attendance): AttendanceEntity {
@@ -129,16 +155,5 @@ export class PrismaAttendanceRepository implements AttendanceRepository{
             attendance.createdAt,
             attendance.updatedAt
         );
-    }
-}
-
-export class PrismaTableRepository implements TableRepository{
-    async existsById(id: bigint): Promise<boolean> {
-        const table = await prisma.restaurantTable.findUnique({
-            where: { id },
-            select: { id: true }
-        });
-
-        return table !== null;
     }
 }

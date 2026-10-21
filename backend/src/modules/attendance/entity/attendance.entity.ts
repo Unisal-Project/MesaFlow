@@ -1,6 +1,23 @@
-import type { AttendanceStatus } from "../../../generated/prisma/enums.js";
+export type AttendanceStatus =
+    | "OPEN"
+    | "CLOSING_REQUESTED"
+    | "CLOSED"
+    | "CANCELLED"
+    | "AWAITING_PAYMENT";
 
-export class AttendanceEntity{
+export interface AttendanceData {
+    id: bigint;
+    tableId: bigint;
+    status: AttendanceStatus;
+    openedAt: Date;
+    closingRequestedAt: Date | null;
+    closedAt: Date | null;
+    closedById: bigint | null;
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export class AttendanceEntity implements AttendanceData {
     constructor(
         public readonly id: bigint,
         public readonly tableId: bigint,
