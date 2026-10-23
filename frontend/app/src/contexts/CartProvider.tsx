@@ -3,7 +3,6 @@ import type { Product } from "@/services/menu.service";
 import { CartContext, type CartLine } from "./CartContext";
 
 const CART_STORAGE_KEY = "mesaflow:cart";
-const SERVICE_FEE_RATE = 0.1;
 
 function createLineId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -81,8 +80,7 @@ export function CartProvider({
     (sum, line) => sum + Number(line.product.price) * line.quantity,
     0,
   );
-  const serviceFee = Number((subtotal * SERVICE_FEE_RATE).toFixed(2));
-  const total = subtotal + serviceFee;
+  const total = subtotal;
 
   function splitLine(lineId: string) {
     setItems((current) => {
@@ -111,7 +109,6 @@ export function CartProvider({
         items,
         itemCount,
         subtotal,
-        serviceFee,
         total,
         addItem,
         removeItem,

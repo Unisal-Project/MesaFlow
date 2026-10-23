@@ -1,3 +1,4 @@
+import { calculateBill } from "@/utils/serviceFee";
 import { useEffect, useRef, useState } from "react";
 import { mockTableBill } from "../mocks/tableBill.mocks";
 
@@ -11,7 +12,9 @@ export function useTableBill(
     const [closureRequested, setClosureRequested] = useState(false);
     const feedbackRef = useRef<HTMLDivElement>(null);
     const isClosed = bill.status === "closed";
-    const totalInCents = bill.orders.reduce((total, order) => total + order.amountInCents, bill.serviceInCents);
+    const { serviceInCents, totalInCents } = calculateBill(
+        bill.orders.reduce((total, order) => total + order.amountInCents, 0)
+    );
 
     useEffect(() => {
         if (closureRequested) {
@@ -33,6 +36,7 @@ export function useTableBill(
         closingOption,
         setClosingOption,
         isClosed,
+        serviceInCents,
         totalInCents,
         handleNavigate,
         handleRequestClose,

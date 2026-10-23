@@ -130,3 +130,9 @@ export function sortOrders<T extends DatedOrderSummary & { time: string }>(
     return direction * (dateComparison || timeComparison || a.id - b.id);
   });
 }
+
+// Só agrupa pedidos quando existe um atendimento identificado em comum.
+export function getAccountOrders(orders: Order[], selected: Order): Order[] {
+  return orders.filter((order) => order.status !== "closed" &&
+    (selected.attendanceId ? order.attendanceId === selected.attendanceId : order.id === selected.id));
+}

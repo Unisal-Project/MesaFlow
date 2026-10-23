@@ -2,17 +2,12 @@ import { formatPrice } from "@/utils/formatPrice";
 
 import type { CartSummaryProps } from "../types/cart.types";
 
-export function CartSummary({ subtotal, serviceFee, total, children }: CartSummaryProps) {
+export function CartSummary({ subtotal, total, children }: CartSummaryProps) {
   return (
     <div className="cart-summary">
       <div className="summary-row">
         <span>Subtotal</span>
         <strong>{formatPrice(subtotal)}</strong>
-      </div>
-
-      <div className="summary-row">
-        <span>Taxa de serviço</span>
-        <strong>{formatPrice(serviceFee)}</strong>
       </div>
 
       <div className="summary-row total">

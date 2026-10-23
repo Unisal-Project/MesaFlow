@@ -49,6 +49,7 @@ export default function Orders({
   const {
     openOrder,
     paymentOrder,
+    paymentOrders,
     editingOrder,
     saveOrderChanges,
     reopenOrder,
@@ -388,6 +389,12 @@ export default function Orders({
                             </div>
                           </div>
                           <div className="closed-payment-lines">
+                            <div>
+                              <span>{selectedOrder.payment.serviceFeeWaived
+                                ? "Cliente optou por não pagar a taxa de serviço"
+                                : "Taxa de serviço (10%)"}</span>
+                              <strong>{formatCurrency(selectedOrder.payment.serviceFee ?? 0)}</strong>
+                            </div>
                             {selectedOrder.payment.entries.map(
                               (entry, index) => (
                                 <div key={`${entry.method}-${index}`}>
@@ -486,10 +493,11 @@ export default function Orders({
 
       {paymentOrder && (
         <PaymentModal
+          key={paymentOrder.id}
           orderId={paymentOrder.id}
-          total={getOrderTotal(paymentOrder)}
+          total={paymentOrders.reduce((sum, order) => sum + Math.round(getOrderTotal(order) * 100), 0) / 100}
           onClose={() => setPaymentOrderId(null)}
-          onComplete={(payments) => completeOrder(paymentOrder.id, payments)}
+          onComplete={(payments, waived) => completeOrder(paymentOrder.id, payments, waived)}
         />
       )}
 

@@ -22,6 +22,5 @@ export type CartItemProps = {
 export type CartSummaryProps = {
   children?: ReactNode;
   subtotal: number;
-  serviceFee: number;
   total: number;
 };

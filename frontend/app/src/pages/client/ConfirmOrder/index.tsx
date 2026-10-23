@@ -15,7 +15,7 @@ type ConfirmOrderProps = {
 };
 
 export function ConfirmOrder({ orderId, onBack, onGoToMenu, onNavigate, onSend }: ConfirmOrderProps) {
-  const { items, itemCount, serviceFee, total } = useCart();
+  const { items, itemCount, total } = useCart();
   const { receiveUpdates, setReceiveUpdates, handleSendOrder, submittedId } = useConfirmOrder(orderId, items.length > 0, onSend);
   const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
   const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
@@ -32,7 +32,7 @@ export function ConfirmOrder({ orderId, onBack, onGoToMenu, onNavigate, onSend }
         <Button onClick={() => onNavigate("status")}>Ver status do pedido</Button><Button variant="secondary" onClick={onGoToMenu}>Voltar ao cardápio</Button>
       </section> : items.length ? <>
         <p className="confirm-order-kicker">Revisão</p><h1>Confirme antes de enviar.</h1>
-        <OrderReviewCard orderId={orderId} items={items} serviceFee={serviceFee} total={total} />
+        <OrderReviewCard orderId={orderId} items={items} total={total} />
         <Switch className="confirm-order-updates" label="Receber atualizações nesta tela" checked={receiveUpdates} onChange={(event) => setReceiveUpdates(event.target.checked)} />
         <div className="confirm-order-actions"><Button onClick={handleSendOrder}>Enviar pedido</Button><Button variant="secondary" onClick={onBack}>Editar carrinho</Button></div>
         <p className="confirm-order-demo">Demonstração: a confirmação será feita apenas neste dispositivo, sem envio à cozinha.</p>

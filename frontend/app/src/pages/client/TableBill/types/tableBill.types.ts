@@ -1,7 +1,6 @@
 export type TableBillData = {
   status: "open" | "closed";
   orders: { id: number; amountInCents: number }[];
-  serviceInCents: number;
   cartItemCount: number;
 };
 

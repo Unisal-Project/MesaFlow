@@ -1,3 +1,4 @@
+import { calculateBill } from "@/utils/serviceFee";
 import { useState, useMemo } from "react";
 
 import { statusDetails } from "../constants/order.constants";
@@ -7,6 +8,8 @@ import type { RestaurantTable } from "../../Table/types/table.types";
 import { initialOrders } from "../mocks/order.mocks";
 
 import {
+  getAccountOrders,
+  getOrderTotal,
   toDateKey,
   getNextStatus,
   getPreviousStatus,
@@ -151,15 +154,26 @@ export function useOrder(tables: RestaurantTable[] = []) {
     setActivityMessage(`Pedido #${selectedOrder.id} cancelado.`);
   };
 
-  const completeOrder = (orderId: number, entries: CompletedPayment[]) => {
+  const completeOrder = (orderId: number, entries: CompletedPayment[], serviceFeeWaived = false) => {
+    const selected = orders.find((order) => order.id === orderId);
+    if (!selected) return;
+    const accountOrders = getAccountOrders(orders, selected);
+    const orderIds = accountOrders.map((order) => order.id);
+    const subtotal = accountOrders.reduce((sum, order) => sum + Math.round(getOrderTotal(order) * 100), 0);
+    const { serviceInCents, totalInCents } = calculateBill(subtotal, serviceFeeWaived);
+    if (entries.some((entry) => entry.amount <= 0) ||
+        entries.reduce((sum, entry) => sum + Math.round(entry.amount * 100), 0) !== totalInCents) return;
     const closedAt = new Date().toLocaleTimeString("pt-BR", {
       hour: "2-digit",
       minute: "2-digit",
     });
     setOrders((currentOrders) =>
       currentOrders.map((order) =>
-        order.id === orderId
-          ? { ...order, status: "closed", payment: { entries, closedAt } }
+        orderIds.includes(order.id)
+          ? { ...order, status: "closed", payment: {
+              entries: order.id === orderId ? entries : [], closedAt, serviceFeeWaived,
+              serviceFee: order.id === orderId ? serviceInCents / 100 : 0, orderIds,
+            } }
           : order,
       ),
     );
@@ -169,9 +183,10 @@ export function useOrder(tables: RestaurantTable[] = []) {
   };
 
   const reopenOrder = (orderId: number) => {
+    const orderIds = orders.find((order) => order.id === orderId)?.payment?.orderIds ?? [orderId];
     setOrders((currentOrders) =>
       currentOrders.map((order) =>
-        order.id === orderId
+        orderIds.includes(order.id)
           ? { ...order, status: "delivered", payment: undefined }
           : order,
       ),
@@ -210,6 +225,7 @@ export function useOrder(tables: RestaurantTable[] = []) {
   return {
     openOrder,
     paymentOrder,
+    paymentOrders: paymentOrder ? getAccountOrders(orders, paymentOrder) : [],
     editingOrder,
     saveOrderChanges,
     reopenOrder,

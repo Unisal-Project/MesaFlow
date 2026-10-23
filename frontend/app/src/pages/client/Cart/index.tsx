@@ -16,7 +16,6 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
     items,
     itemCount,
     subtotal,
-    serviceFee,
     total,
     removeItem,
     updateQuantity,
@@ -97,7 +96,6 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
 
                 <CartSummary
                   subtotal={subtotal}
-                  serviceFee={serviceFee}
                   total={total}
                 >
                   {error && <p className="cart-error" role="alert">{error}</p>}

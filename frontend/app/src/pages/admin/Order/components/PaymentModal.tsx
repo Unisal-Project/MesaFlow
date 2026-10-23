@@ -1,3 +1,4 @@
+import { calculateBill } from "@/utils/serviceFee";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote,
@@ -27,7 +28,7 @@ type PaymentModalProps = {
   orderId: number;
   total: number;
   onClose: () => void;
-  onComplete: (payments: CompletedPayment[]) => void;
+  onComplete: (payments: CompletedPayment[], serviceFeeWaived: boolean) => void;
 };
 
 const paymentMethods = [
@@ -63,7 +64,9 @@ export function PaymentModal({
   const modalRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
-  const totalCents = Math.round(total * 100);
+  const [serviceFeeWaived, setServiceFeeWaived] = useState(false);
+  const subtotalCents = Math.round(total * 100);
+  const { serviceInCents, totalInCents: totalCents } = calculateBill(subtotalCents, serviceFeeWaived);
   const [payments, setPayments] = useState<PaymentDraft[]>([
     {
       id: 1,
@@ -198,6 +201,7 @@ export function PaymentModal({
             : {}),
         };
       }),
+      serviceFeeWaived,
     );
   };
 
@@ -217,7 +221,7 @@ export function PaymentModal({
       >
         <header className="payment-modal-header">
           <div>
-            <h2 id="payment-modal-title">Finalizar pedido #{orderId}</h2>
+            <h2 id="payment-modal-title">Fechar conta · pedido #{orderId}</h2>
             <p>Informe como o cliente realizou o pagamento.</p>
           </div>
           <button
@@ -406,11 +410,27 @@ export function PaymentModal({
 
           <aside className="payment-summary">
             <span>RESUMO</span>
-            <h3>Total do pedido</h3>
+            <h3>Total da conta</h3>
             <strong className="payment-summary-total">
-              {formatCurrency(total)}
+              {formatCurrency(totalCents / 100)}
             </strong>
 
+            <div className="payment-summary-breakdown">
+              <div><span>Consumo</span><strong>{formatCurrency(subtotalCents / 100)}</strong></div>
+              <div><span>Taxa de serviço (10%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>
+            </div>
+            <label className="cash-change-toggle">
+              <input type="checkbox" checked={serviceFeeWaived} onChange={(event) => {
+                const waived = event.target.checked;
+                const nextTotal = calculateBill(subtotalCents, waived).totalInCents;
+                setServiceFeeWaived(waived);
+                // Só ajusta automaticamente quando há um pagamento que cobre o total atual.
+                setPayments((current) => current.length === 1 && parseAmount(current[0].amount) === totalCents
+                  ? [{ ...current[0], amount: toInputAmount(nextTotal) }]
+                  : current);
+              }} />
+              <span>Cliente optou por não pagar a taxa de serviço</span>
+            </label>
             <div className="payment-summary-breakdown">
               {payments.map((payment) => (
                 <div key={payment.id}>

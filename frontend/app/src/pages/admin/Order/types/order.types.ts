@@ -31,6 +31,9 @@ export type Order = OrderSummary & {
   payment?: {
     entries: CompletedPayment[];
     closedAt: string;
+    serviceFee?: number;
+    serviceFeeWaived?: boolean;
+    orderIds?: number[];
   };
 };
 

@@ -22,6 +22,7 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
     closingOption,
     setClosingOption,
     isClosed,
+    serviceInCents,
     totalInCents,
     handleNavigate,
     handleRequestClose,
@@ -73,8 +74,8 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
               </div>
             ))}
             <div className="table-bill-row">
-              <dt>Serviço</dt>
-              <dd>{currency.format(bill.serviceInCents / 100)}</dd>
+              <dt>Taxa de serviço</dt>
+              <dd>{currency.format(serviceInCents / 100)}</dd>
             </div>
             <div className="table-bill-row table-bill-total">
               <dt>Total da mesa</dt>
