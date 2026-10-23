@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 import type { ProductDetailProps } from "../types/productDetail.types";
 
@@ -9,14 +9,12 @@ export function useProductDetail(
     onAdded: ProductDetailProps["onAdded"]
 ) {
     const { itemCount, items, addItem } = useCart();
-    const [quantity, setQuantity] = useState(1);
-    const [notes, setNotes] = useState("");
-    
-    useEffect(() => {
-        const existingLine = items.find((line) => line.product.id === product.id);
-        setQuantity(existingLine?.quantity ?? 1);
-        setNotes(existingLine?.notes ?? "");
-    }, [product.id]);
+    const [quantity, setQuantity] = useState(() =>
+        items.find((line) => line.product.id === product.id)?.quantity ?? 1
+    );
+    const [notes, setNotes] = useState(() =>
+        items.find((line) => line.product.id === product.id)?.notes ?? ""
+    );
 
     const quantityReservedElsewhere = items
         .filter((line) => line.product.id === product.id && line.notes !== notes)
