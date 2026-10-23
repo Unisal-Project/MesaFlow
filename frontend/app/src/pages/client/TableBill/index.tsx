@@ -1,82 +1,67 @@
-import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, Clock, Menu, ReceiptText, ShoppingCart } from "lucide-react";
-import { Badge, BottomNavigation, Button, ClientHeader, IconButton, Radio, SystemMessage } from "@/components";
-import { mockTableBill, type TableBillData } from "./data";
-import "./styles.css";
+import { ChevronLeft, ShoppingCart } from "lucide-react";
+import { Button, ClientHeader, Radio, SystemMessage } from "@/components";
 
-export type BillClosingOption = "cashier" | "waiter" | "split";
+import { ClientTabBar } from "@/components/layout/ClientTabBar";
 
-type TableBillProps = {
-  bill?: TableBillData;
-  onBack?: () => void;
-  onNavigate?: (destination: string) => void;
-};
+import { useTableBill } from "./hooks/useTableBill";
 
-const closingOptions: { id: BillClosingOption; label: string }[] = [
-  { id: "cashier", label: "Pagar no caixa" },
-  { id: "waiter", label: "Chamar garçom" },
-  { id: "split", label: "Dividir conta" },
-];
+import { closingOptions } from "./constants/tableBill.constants";
 
-const navigationItems = [
-  { id: "menu", label: "Cardápio", icon: <Menu aria-hidden="true" /> },
-  { id: "order", label: "Pedido", icon: <ShoppingCart aria-hidden="true" /> },
-  { id: "status", label: "Status", icon: <Clock aria-hidden="true" /> },
-  { id: "bill", label: "Conta", icon: <ReceiptText aria-hidden="true" /> },
-];
+import { mockTableBill } from "./mocks/tableBill.mocks";
+
+import type {
+  TableBillProps,
+} from "./types/tableBill.types";
+
+import "./styles.scss";
 
 const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
 export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBillProps) {
-  const [closingOption, setClosingOption] = useState<BillClosingOption>("cashier");
-  const [closureRequested, setClosureRequested] = useState(false);
-  const feedbackRef = useRef<HTMLDivElement>(null);
-  const isClosed = bill.status === "closed";
-  const totalInCents = bill.orders.reduce((total, order) => total + order.amountInCents, bill.serviceInCents);
+  const {
+    closingOption,
+    setClosingOption,
+    isClosed,
+    totalInCents,
+    handleNavigate,
+    handleRequestClose,
+    closureRequested,
+    feedbackRef
+  } = useTableBill(bill, onNavigate);
 
-  useEffect(() => {
-    if (closureRequested) {
-      feedbackRef.current?.scrollIntoView({ block: "nearest" });
-    }
-  }, [closureRequested]);
-
-  function handleNavigate(destination: string) {
-    onNavigate?.(destination);
-  }
-
-  function handleRequestClose() {
-    // Apenas confirmação visual. A integração com o backend será feita aqui depois.
-    setClosureRequested(true);
-  }
+  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
+  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
+  const requestDisabled = isClosed || closureRequested;
 
   return (
     <div className="table-bill-page">
       <ClientHeader
         title="MesaFlow"
-        subtitle="Conta da mesa"
+        subtitle={tableLabel}
         backAction={
-          <IconButton type="button" label="Voltar" onClick={onBack}>
+          <button type="button" className="table-bill-back" aria-label="Voltar" onClick={onBack}>
             <ChevronLeft aria-hidden="true" />
-          </IconButton>
+          </button>
         }
         cartAction={
-          <IconButton
+          <button
+            className="table-bill-cart"
             type="button"
-            label={`Carrinho, ${bill.cartItemCount} ${bill.cartItemCount === 1 ? "item" : "itens"}`}
+            aria-label={`Carrinho, ${bill.cartItemCount} ${bill.cartItemCount === 1 ? "item" : "itens"}`}
             onClick={() => handleNavigate("order")}
           >
             <ShoppingCart aria-hidden="true" />
-            <Badge variant="warning" className="table-bill-cart-count" aria-hidden="true">
+            <span aria-hidden="true">
               {bill.cartItemCount}
-            </Badge>
-          </IconButton>
+            </span>
+          </button>
         }
       />
 
       <main className="table-bill-main" aria-labelledby="table-bill-title">
         <div className="table-bill-heading">
           <h1 id="table-bill-title">Conta da mesa</h1>
-          <Badge variant={bill.status}>{isClosed ? "Fechada" : "Aberta"}</Badge>
+          <span className="table-bill-status">{isClosed ? "Fechada" : closureRequested ? "Conta solicitada" : "Aberta"}</span>
         </div>
 
         <section className="table-bill-summary" aria-label="Resumo da conta">
@@ -98,7 +83,7 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
           </dl>
         </section>
 
-        <fieldset className="table-bill-options" aria-label="Opções para fechamento da conta" disabled={isClosed}>
+        <fieldset className="table-bill-options" aria-label="Opções para fechamento da conta" disabled={requestDisabled}>
           {closingOptions.map((option) => (
             <Radio
               key={option.id}
@@ -107,7 +92,7 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
               value={option.id}
               label={option.label}
               checked={closingOption === option.id}
-              disabled={isClosed}
+              disabled={requestDisabled}
               onChange={() => setClosingOption(option.id)}
             />
           ))}
@@ -117,22 +102,22 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
           type="button"
           variant="primary"
           className="table-bill-close"
-          disabled={isClosed}
+          disabled={requestDisabled}
           onClick={handleRequestClose}
         >
-          Solicitar fechamento
+          {closureRequested ? "Conta solicitada" : "Solicitar fechamento"}
         </Button>
 
         {closureRequested && (
           <div className="table-bill-feedback" ref={feedbackRef}>
             <SystemMessage variant="success">
-              Solicitação enviada ao atendimento.
+              Conta solicitada! Aguarde o atendimento para finalizar.
             </SystemMessage>
           </div>
         )}
       </main>
 
-      <BottomNavigation items={navigationItems} activeId="bill" onChange={handleNavigate} />
+      <ClientTabBar activeId="bill" onMenu={() => handleNavigate("menu")} onOrder={() => handleNavigate("order")} onNavigate={handleNavigate} />
     </div>
   );
 }

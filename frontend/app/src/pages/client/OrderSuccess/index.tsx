@@ -1,18 +1,22 @@
-import { Check, ChevronLeft, Clock, Menu, ReceiptText, ShoppingCart } from "lucide-react";
-import { Badge, BottomNavigation, Button, ClientHeader, IconButton } from "@/components";
-import "./styles.css";
+import { 
+  Check, 
+  ChevronLeft,
+  ShoppingCart 
+} from "lucide-react";
 
-type OrderSuccessProps = {
-  onBack?: () => void;
-  onNavigate?: (destination: string) => void;
-};
+import { 
+  Badge, 
+  BottomNavigation, 
+  Button, 
+  ClientHeader, 
+  IconButton 
+} from "@/components";
 
-const navigationItems = [
-  { id: "menu", label: "Cardápio", icon: <Menu aria-hidden="true" /> },
-  { id: "order", label: "Pedido", icon: <ShoppingCart aria-hidden="true" /> },
-  { id: "status", label: "Status", icon: <Clock aria-hidden="true" /> },
-  { id: "bill", label: "Conta", icon: <ReceiptText aria-hidden="true" /> },
-];
+import { navigationItems } from "./constants/orderSuccess.constants";
+
+import type { OrderSuccessProps } from "./types/orderSuccess.types";
+
+import "./styles.scss";
 
 export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
   function handleNavigate(destination: string) {

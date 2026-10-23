@@ -1,74 +1,45 @@
-import { useState } from "react";
-import { ChevronLeft, ShoppingCart, Menu as MenuIcon, Clock, ReceiptText } from "lucide-react";
-import { useCart } from "@/contexts/useCart";
-import { QuantitySelector, Button } from "@/components";
-import { createOrder, CURRENT_ATTENDANCE_ID } from "@/services/orders.service";
-import "./styles.css";
+import { ClientTabBar } from "@/components/layout/ClientTabBar";
+import { ChevronLeft, ShoppingCart } from "lucide-react";
 
-type CartPageProps = {
-  allowOrdering?: boolean;
-  onBack: () => void;
-  onGoToMenu: () => void;
-  onOrderConfirmed: () => void;
-};
+import { ClientHeader, Button } from "@/components";
+import { CartItem } from "./components/CartItem";
+import { CartSummary } from "./components/CartSummary";
 
-function formatPrice(value: number) {
-  return `R$ ${value.toFixed(2).replace(".", ",")}`;
-}
+import { useCartOrder } from "./hooks/useCartOrder";
 
-export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = true }: CartPageProps) {
- const { items, itemCount, subtotal, serviceFee, total, removeItem, updateQuantity, updateNotes, splitLine, clearCart } = useCart();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [orderPlaced, setOrderPlaced] = useState(false);
+import type { CartPageProps } from "./types/cart.types";
 
-  async function handleConfirm() {
-    if (!allowOrdering) {
-      setError("Pedidos pelo QR Code ainda não estão disponíveis. Solicite ao atendente.");
-      return;
-    }
-    setIsSubmitting(true);
-    setError(null);
+import "./styles.scss";
 
-    try {
-      await createOrder({
-        attendanceId: CURRENT_ATTENDANCE_ID,
-        items: items.map((line) => ({
-          productId: line.product.id,
-          quantity: line.quantity,
-          notes: line.notes || undefined,
-        })),
-      });
+export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = true, onReview, onNavigate }: CartPageProps) {
+  const {
+    items,
+    itemCount,
+    subtotal,
+    serviceFee,
+    total,
+    removeItem,
+    updateQuantity,
+    updateNotes,
+    splitLine,
+    isSubmitting,
+    error,
+    orderPlaced,
+    handleConfirm,
+  } = useCartOrder(allowOrdering);
 
-      clearCart();
-      setOrderPlaced(true);
-    } catch {
-      setError("Não foi possível enviar o pedido. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
+  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
+  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
 
   return (
     <div className="cart-page">
-      <header className="cart-header">
-        <button type="button" className="icon-button" aria-label="Voltar" onClick={onBack}>
-          <ChevronLeft />
-        </button>
-
-        <div>
-          <strong>MesaFlow</strong>
-          <span>Seu pedido</span>
-        </div>
-
-        <button type="button" className="icon-button cart-button" aria-label="Carrinho">
-          <ShoppingCart />
-          <b>{itemCount}</b>
-        </button>
-      </header>
+      <ClientHeader title="MesaFlow" subtitle={tableLabel}
+        backAction={<button type="button" className="cart-back" aria-label="Voltar" onClick={onBack}><ChevronLeft aria-hidden="true" /></button>}
+        cartAction={<button type="button" className="cart-header-count" aria-label={`Pedido com ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+          <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
+        </button>} />
 
       <main className="cart-content">
-        {!allowOrdering && <p role="status">Pedidos pelo QR Code ainda não estão disponíveis. Solicite ao atendente.</p>}
         {orderPlaced ? (
           <div className="empty-cart">
             <ShoppingCart aria-hidden="true" />
@@ -94,97 +65,52 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
               <>
                 <ul className="cart-list">
                   {items.map((line) => {
-                    const unitPrice = Number(line.product.price);
-                    const lineSubtotal = unitPrice * line.quantity;
-
                     const quantityReservedElsewhere = items
-                      .filter((other) => other.id !== line.id && other.product.id === line.product.id)
-                      .reduce((sum, other) => sum + other.quantity, 0);
+                      .filter(
+                        (other) =>
+                          other.id !== line.id &&
+                          other.product.id === line.product.id
+                      )
+                      .reduce(
+                        (sum, other) => sum + other.quantity,
+                        0
+                      );
+
                     const maxQuantity = Math.max(
                       line.quantity,
                       line.product.stockQuantity - quantityReservedElsewhere
                     );
 
                     return (
-                      <li key={line.id} className="cart-line">
-                        {line.product.imageUrl ? (
-                          <img src={line.product.imageUrl} alt={line.product.name} />
-                        ) : (
-                          <div className="thumb" aria-hidden="true" />
-                        )}
-
-                        <div className="cart-line-body">
-                          <div className="cart-line-top">
-                            <strong>{line.product.name}</strong>
-                          </div>
-
-                          <textarea
-                            className="cart-line-notes-input"
-                            placeholder="Sem observações"
-                            value={line.notes}
-                            onChange={(event) => updateNotes(line.id, event.target.value)}
-                            rows={1}
-                          />
-                            {line.quantity > 1 && (
-                                    <button type="button" className="split-line-button" onClick={() => splitLine(line.id)}>
-                                      Usar observação diferente pra cada um
-                                    </button>
-                                  )}
-                                  
-                          <div className="cart-line-row">
-                            <QuantitySelector
-                              value={line.quantity}
-                              onChange={(quantity) => updateQuantity(line.id, quantity)}
-                              min={1}
-                              max={maxQuantity}
-                            />
-                            <button type="button" className="remove-button" onClick={() => removeItem(line.id)}>
-                              Remover
-                            </button>
-                          </div>
-
-                          <div className="cart-line-row">
-                            <span className="unit-price">{formatPrice(unitPrice)} cada</span>
-                            <strong className="line-subtotal">{formatPrice(lineSubtotal)}</strong>
-                          </div>
-                        </div>
-                      </li>
+                      <CartItem
+                        key={line.id}
+                        line={line}
+                        maxQuantity={maxQuantity}
+                        onUpdateQuantity={updateQuantity}
+                        onUpdateNotes={updateNotes}
+                        onSplitLine={splitLine}
+                        onRemove={removeItem}
+                      />
                     );
                   })}
                 </ul>
 
-                <div className="cart-summary">
-                  <div className="summary-row">
-                    <span>Subtotal</span>
-                    <strong>{formatPrice(subtotal)}</strong>
-                  </div>
-                  <div className="summary-row">
-                    <span>Taxa de serviço</span>
-                    <strong>{formatPrice(serviceFee)}</strong>
-                  </div>
-                  <div className="summary-row total">
-                    <span>Total</span>
-                    <strong>{formatPrice(total)}</strong>
-                  </div>
-                </div>
-
-                {error && <p className="cart-error">{error}</p>}
-
-                <Button className="continue-button" onClick={handleConfirm} loading={isSubmitting} disabled={!allowOrdering}>
-                  Continuar
-                </Button>
+                <CartSummary
+                  subtotal={subtotal}
+                  serviceFee={serviceFee}
+                  total={total}
+                >
+                  {error && <p className="cart-error" role="alert">{error}</p>}
+                  <Button className="continue-button" onClick={onReview ?? handleConfirm} loading={isSubmitting} disabled={!allowOrdering && !onReview}>Continuar</Button>
+                  {!allowOrdering && !onReview && <p className="cart-ordering-note" role="status">Pedidos pelo QR Code ainda não estão disponíveis. Solicite ao atendente.</p>}
+                </CartSummary>
               </>
             )}
           </>
         )}
       </main>
 
-      <nav className="bottom-navigation" aria-label="Navegação principal">
-        <button type="button" onClick={onGoToMenu}><MenuIcon /><span>Cardápio</span></button>
-        <button type="button" className="active"><ShoppingCart /><span>Pedido</span></button>
-        <button type="button"><Clock /><span>Status</span></button>
-        <button type="button"><ReceiptText /><span>Conta</span></button>
-      </nav>
+      <ClientTabBar activeId="order" onMenu={onGoToMenu} onOrder={() => window.scrollTo({ top: 0, behavior: "smooth" })} onNavigate={onNavigate} />
     </div>
   );
 }

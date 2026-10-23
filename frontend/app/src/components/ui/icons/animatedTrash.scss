@@ -1,0 +1,21 @@
+/* A tampa e a alça do ícone Trash do Lucide se movem juntas. */
+.animated-trash {
+  overflow: visible;
+
+  path:is([d="M3 6h18"], [d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]) {
+    transform-origin: 19px 6px;
+    transition: transform 220ms cubic-bezier(.2, .8, .2, 1);
+  }
+}
+
+@media (hover: hover) {
+  button:hover .animated-trash path:is([d="M3 6h18"], [d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]) {
+    transform: translateY(-2px) rotate(25deg);
+  }
+}
+button:focus-visible .animated-trash path:is([d="M3 6h18"], [d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"]) {
+  transform: translateY(-2px) rotate(25deg);
+}
+@media (prefers-reduced-motion: reduce) {
+  .animated-trash path { transition: none; }
+}

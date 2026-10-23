@@ -1,0 +1,217 @@
+@use '../styles/abstracts/variables';
+@use '../styles/abstracts/mixins';
+/* Acabamento do administrativo; mantém os tokens e layouts MesaFlow. */
+html.admin-workspace-active {
+  :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .reports-topbar) {
+    border-bottom: 1px solid color-mix(in srgb, var(--primary) 8%, transparent);
+    background: var(--surface);
+  }
+  .admin-sidebar button {
+    border-radius: var(--radius-full);
+    transition: background-color variables.$transition-standard, color variables.$transition-standard;
+  }
+  .admin-sidebar button.active {
+    background: color-mix(in srgb, var(--surface) 14%, var(--primary));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--surface) 10%, transparent);
+  }
+  :is(.stat-card, .orders-indicator, .tables-indicator, .products-indicator, .mf-dashboard-panel, .reports-panel, .reports-summary, .products-list, .order-details-panel, .table-card) {
+    border-radius: 24px;
+    box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 5%, transparent);
+  }
+  .order-card {
+    border-radius: 22px;
+    box-shadow: 0 3px 14px color-mix(in srgb, var(--primary) 4%, transparent);
+  }
+  .order-card.is-selected {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  :is(.orders-toolbar, .tables-toolbar, .products-toolbar) {
+    border-radius: 24px;
+  }
+  :is(.btn, .order-create-button) {
+    border-radius: var(--radius-full);
+    transition: background-color variables.$transition-standard, box-shadow variables.$transition-standard, transform variables.$transition-standard;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn.primary {
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--primary) 12%, transparent);
+  }
+  .btn.secondary {
+    border-color: color-mix(in srgb, var(--primary) 14%, var(--surface));
+  }
+  :is(.btn, .order-create-button):not(:disabled):active {
+    transform: scale(.98);
+  }
+  :is(.mf-dashboard-search, .order-search, .table-search, .product-search, .reports-search) {
+    border-radius: var(--radius-full);
+    background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  }
+  :is(.product-select, .order-sort, .reports-select) {
+    border-radius: 18px;
+  }
+  :is(.order-filter-tabs, .table-status-tabs, .products-tabs) {
+    gap: var(--spacing-1);
+    padding: var(--spacing-1);
+    border-radius: 18px;
+    background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+  }
+  :is(.order-filter-tabs, .table-status-tabs, .products-tabs) button {
+    border: 0;
+    border-radius: 14px;
+    background: transparent;
+    color: var(--text-secondary);
+    transition: background-color variables.$transition-standard, color variables.$transition-standard, box-shadow variables.$transition-standard;
+  }
+  :is(.order-filter-tabs, .table-status-tabs, .products-tabs) button.active {
+    background: var(--surface);
+    color: var(--primary);
+    box-shadow: 0 2px 7px color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  :is(.table-modal, .table-details-modal, .table-delete-dialog, .product-form-modal, .category-modal, .order-edit-modal, .payment-modal, .notifications-panel) {
+    border-radius: 28px;
+    box-shadow: 0 20px 60px color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  :is(.field input, .field textarea, .field select) {
+    border-radius: 16px;
+  }
+  :is(.table-modal-close, .product-modal-close, .category-modal-close, .order-edit-modal-close, .payment-modal-close, .notifications-button) {
+    border-radius: var(--radius-full);
+  }
+  :is(button, input, textarea, select, summary):focus-visible {
+    @include mixins.focus-visible(2px, 3px);
+  }
+}
+@supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+  html.admin-workspace-active :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .reports-topbar, .notifications-panel) {
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+}
+.login-page .login-card {
+  border: 1px solid color-mix(in srgb, var(--primary) 7%, var(--surface));
+  border-radius: 28px;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--primary) 7%, transparent);
+}
+.login-page .login-form .field input {
+  border-radius: 16px;
+}
+.login-page .login-form > .btn {
+  border-radius: var(--radius-full);
+}
+@media (prefers-reduced-motion: reduce) {
+  html.admin-workspace-active :is(.btn, .order-create-button, .admin-sidebar button, .order-filter-tabs button, .table-status-tabs button, .products-tabs button) {
+    transition: none;
+  }
+  html.admin-workspace-active :is(.btn, .order-create-button):not(:disabled):active {
+    transform: none;
+  }
+}
+
+// A mesma navegação lateral se transforma em uma barra ao alcance do polegar.
+@include mixins.down(workspace) {
+  html.admin-workspace-active {
+    :is(.mf-dashboard, .orders-page, .tables-page, .products-page, .reports-page) {
+      grid-template-columns: minmax(0, 1fr);
+      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+
+      > .admin-sidebar {
+        position: fixed;
+        z-index: 60;
+        inset: auto 12px max(12px, env(safe-area-inset-bottom, 0px));
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        align-self: auto;
+        gap: 2px;
+        width: min(calc(100% - 24px), 560px);
+        height: auto;
+        min-height: 68px;
+        max-height: none;
+        margin-inline: auto;
+        padding: 6px;
+        overflow: visible;
+        border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--surface));
+        border-radius: 32px;
+        background: var(--surface);
+        box-shadow: 0 6px 24px color-mix(in srgb, var(--text) 12%, transparent);
+
+        .admin-brand, .admin-navigation-label, .profile-area {
+          display: none;
+        }
+
+        button {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 4px;
+          min-width: 0;
+          min-height: 54px;
+          margin: 0;
+          padding: 4px 0;
+          color: var(--text-secondary);
+          font-size: 10px;
+          line-height: 1.2;
+          white-space: nowrap;
+          background: transparent;
+
+          svg {
+            flex-shrink: 0;
+            width: 20px;
+            height: 20px;
+          }
+
+          &.active, &:hover {
+            background: var(--selected-background);
+            color: var(--primary);
+            box-shadow: none;
+          }
+        }
+      }
+    }
+
+    :is(.mf-dashboard-main, .orders-content, .tables-content, .products-content, .reports-content) {
+      min-width: 0;
+    }
+
+    :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .reports-topbar) {
+      gap: var(--spacing-3);
+      padding-block: var(--spacing-3);
+    }
+  }
+}
+
+@include mixins.down(workspace) {
+  html.admin-workspace-active {
+    :is(.orders-toolbar, .orders-toolbar-filters, .tables-toolbar, .products-toolbar) {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    :is(.order-filter-tabs, .table-status-tabs, .products-tabs) {
+      display: flex;
+      flex-direction: row;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      width: 100%;
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scroll-padding-inline: var(--spacing-2);
+      scroll-snap-type: x proximity;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border-strong) transparent;
+
+      button {
+        flex: 0 0 auto;
+        min-height: 44px;
+        white-space: nowrap;
+        scroll-snap-align: start;
+
+        &:focus-visible { outline-offset: -3px; }
+      }
+    }
+  }
+}

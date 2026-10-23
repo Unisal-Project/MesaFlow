@@ -35,5 +35,8 @@
     "fastify": "^5.12.3",
     "qrcode": "^1.5.4",
     "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "sass-embedded": "^1.106.1"
   }
 }

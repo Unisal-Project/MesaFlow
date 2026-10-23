@@ -1,3 +1,5 @@
+import { API_URL } from "./api";
+
 export type Category = {
   id: string;
   name: string;
@@ -16,8 +18,6 @@ export type Product = {
   available: boolean;
   active: boolean;
 };
-
-import { API_URL } from "./api";
 
 export async function fetchCategories(): Promise<Category[]> {
   const response = await fetch(`${API_URL}/categories`);
