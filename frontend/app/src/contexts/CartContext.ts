@@ -12,7 +12,6 @@ export type CartContextValue = {
   items: CartLine[];
   itemCount: number;
   subtotal: number;
-  serviceFee: number;
   total: number;
   addItem: (product: Product, quantity: number, notes: string) => void;
   removeItem: (lineId: string) => void;

@@ -1,0 +1,52 @@
+/* Quadro 05: campos */
+.field {
+  display: grid;
+  gap: var(--spacing-2);
+  min-width: 0;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  input,
+select,
+textarea {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px var(--spacing-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+  }
+  input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--focus);
+    box-shadow: var(--focus-ring);
+  }
+  textarea {
+    min-height: 104px;
+    resize: vertical;
+  }
+  input::placeholder,
+textarea::placeholder {
+    color: var(--text-placeholder);
+  }
+  &.error input,
+  &.error select,
+&.error textarea {
+    border-color: var(--error);
+  }
+  &.error small {
+    color: var(--error);
+    font-weight: var(--font-weight-semibold);
+  }
+  &.disabled {
+    color: var(--disabled);
+  }
+  &.disabled input,
+  &.disabled select,
+&.disabled textarea {
+    background: var(--disabled-background);
+  }
+}

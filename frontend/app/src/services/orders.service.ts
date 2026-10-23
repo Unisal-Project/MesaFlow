@@ -1,3 +1,5 @@
+import { API_URL } from "./api";
+
 export type CreateOrderInput = {
   attendanceId: string;
   notes?: string;
@@ -23,8 +25,6 @@ export type OrderResponse = {
   notes: string | null;
   items: OrderItemResponse[];
 };
-
-const API_URL = "http://localhost:3333/api/v1";
 
 export const CURRENT_ATTENDANCE_ID = "1";
 

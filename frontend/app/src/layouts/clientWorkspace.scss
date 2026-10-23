@@ -1,0 +1,197 @@
+@use '../styles/abstracts/variables';
+@use '../styles/abstracts/mixins';
+html.client-workspace-active,
+html.client-workspace-active body {
+  overscroll-behavior: none;
+}
+.client-workspace {
+  --client-header-height: calc(72px + env(safe-area-inset-top, 0px));
+  width: min(100%, 520px);
+  min-height: 100dvh;
+  margin-inline: auto;
+  padding-top: var(--client-header-height);
+  background: var(--background);
+}
+.client-workspace > :is(.client-home, .client-menu, .product-detail-page, .cart-page, .confirm-order-page, .order-tracking-page, .table-bill-page) {
+  min-height: calc(100dvh - var(--client-header-height));
+}
+/* O contexto do layout prevalece sobre os cabeçalhos locais das páginas,
+   independentemente da ordem em que o router carregar seus estilos. */
+html.client-workspace-active .client-workspace .client-header {
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 520px);
+  height: var(--client-header-height);
+  min-height: var(--client-header-height);
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  z-index: 20;
+  align-items: center;
+  padding: calc(var(--spacing-3) + env(safe-area-inset-top, 0px)) var(--spacing-4) var(--spacing-3);
+  border-bottom-color: color-mix(in srgb, var(--primary) 9%, transparent);
+  background: var(--surface);
+}
+// Tokens de QR podem ser longos; não devem deslocar os botões do cabeçalho.
+.client-workspace .client-header-heading {
+  min-width: 0;
+  max-width: 100%;
+
+  .client-header-subtitle {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+.client-workspace .client-header > button {
+  width: 44px;
+  height: 44px;
+  border: 1px solid color-mix(in srgb, var(--primary) 10%, var(--surface));
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 4%, transparent);
+}
+.client-workspace :is(.product-card, .cart-line, .cart-summary, .confirm-review-card, .order-steps, .table-bill-summary, .client-home-restaurant) {
+  border: 1px solid color-mix(in srgb, var(--primary) 7%, var(--surface));
+  border-radius: 22px;
+  background: var(--surface);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 5%, transparent);
+}
+.client-workspace :is(.client-menu-photo, .cart-line-photo) {
+  border-radius: 16px;
+}
+.client-workspace .client-menu .product-card {
+  padding: var(--spacing-3);
+}
+.client-workspace .client-home {
+  border-inline: 0;
+}
+.client-workspace .client-home-banner {
+  min-height: clamp(200px, 52vw, 270px);
+  margin: var(--spacing-4) var(--spacing-4) 0;
+  border-radius: 28px;
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--primary) 12%, transparent);
+}
+.client-workspace .client-home-banner > span {
+  border: 1px solid color-mix(in srgb, var(--surface) 40%, transparent);
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+}
+.client-workspace .client-home-content {
+  padding-top: var(--spacing-6);
+}
+.client-workspace .product-detail-content {
+  border-radius: 32px 32px 0 0;
+  padding-top: var(--spacing-5);
+}
+.client-workspace :is(.btn, .cart-remove-button) {
+  border-radius: var(--radius-full);
+  transition: background-color variables.$transition-standard, box-shadow variables.$transition-standard, transform variables.$transition-standard;
+  -webkit-tap-highlight-color: transparent;
+}
+.client-workspace .btn.primary {
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+.client-workspace .btn.secondary {
+  border-color: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  color: var(--primary);
+}
+.client-workspace .client-menu .card-actions .btn {
+  border-radius: var(--radius-full);
+  box-shadow: none;
+  border-color: transparent;
+  background: var(--selected-background);
+}
+.client-workspace :is(.btn, .client-header > button, .cart-remove-button):not(:disabled):active {
+  transform: scale(.97);
+}
+.client-workspace :is(button, input, textarea, summary):focus-visible {
+  @include mixins.focus-visible(2px, 3px);
+}
+.client-workspace .client-menu-search {
+  min-height: 48px;
+  border-color: transparent;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
+  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--primary) 3%, transparent);
+}
+.client-workspace .client-menu .category-tabs {
+  gap: var(--spacing-1);
+  margin-block: var(--spacing-4) var(--spacing-5);
+  padding: var(--spacing-1);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+  scrollbar-width: none;
+}
+.client-workspace .client-menu .category-tabs button {
+  flex: 1 0 auto;
+  min-height: 40px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-semibold);
+  transition: color variables.$transition-standard, background-color variables.$transition-standard, box-shadow variables.$transition-standard;
+}
+.client-workspace .client-menu .category-tabs button.active {
+  background: var(--surface);
+  color: var(--primary);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.client-workspace :is(.field input, .field textarea) {
+  border-color: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  border-radius: 18px;
+  font-size: 16px;
+  transition: border-color variables.$transition-standard, box-shadow variables.$transition-standard;
+}
+.client-workspace .quantity.large {
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  border-radius: var(--radius-full);
+}
+.client-workspace .table-bill-option {
+  border-radius: 18px;
+  transition: background-color variables.$transition-standard, border-color variables.$transition-standard;
+}
+.client-workspace :is(.table-bill-status, .product-detail-category) {
+  border-radius: var(--radius-full);
+}
+.client-workspace .table-bill-feedback .message {
+  border-radius: 18px;
+}
+@supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
+  .client-workspace .client-header {
+    background: color-mix(in srgb, var(--surface) 86%, transparent);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    backdrop-filter: blur(20px) saturate(160%);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .client-workspace main {
+    animation: client-content-enter 300ms cubic-bezier(.22, 1, .36, 1) both;
+  }
+  .client-workspace .table-bill-feedback {
+    animation: client-content-enter 240ms ease both;
+  }
+}
+@keyframes client-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .client-workspace :is(.btn, .cart-remove-button, .category-tabs button, .field input, .field textarea, .table-bill-option) {
+    transition: none;
+  }
+  .client-workspace :is(.btn, .client-header > button, .cart-remove-button):not(:disabled):active {
+    transform: none;
+  }
+}

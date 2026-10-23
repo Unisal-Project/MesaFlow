@@ -1,0 +1,88 @@
+@use 'sass:map';
+@use 'sass:meta';
+@use 'variables';
+
+@mixin focus-visible($width: 3px, $offset: 2px) {
+  outline: $width solid var(--focus);
+  outline-offset: $offset;
+}
+
+// Os limites existentes são preservados para não alterar a responsividade.
+@mixin down($breakpoint) {
+  @if not map.has-key(variables.$breakpoints, $breakpoint) {
+    @error 'Breakpoint desconhecido: #{meta.inspect($breakpoint)}';
+  }
+
+  @media (max-width: map.get(variables.$breakpoints, $breakpoint)) {
+    @content;
+  }
+}
+
+// Padrões locais do cliente: cada página mantém seus seletores e sua ordem.
+@mixin client-page {
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+@mixin client-header {
+  display: grid;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  min-height: 72px;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@mixin client-header-heading {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-1);
+  text-align: center;
+}
+
+@mixin client-header-title {
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-extrabold);
+}
+
+@mixin client-header-subtitle {
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}
+
+@mixin client-header-action {
+  display: grid;
+  place-items: center;
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: var(--spacing-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  background: var(--surface);
+  color: var(--text);
+}
+
+@mixin client-cart-count {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  height: 20px;
+  padding-inline: 4px;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--illustration-mid) 85%, var(--illustration-light));
+  color: var(--text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+}

@@ -20,6 +20,7 @@ export function ClientFlow({ allowOrdering = true }: { allowOrdering?: boolean }
   if (screen === "product" && selectedProduct) {
     return (
       <ProductDetail
+        key={selectedProduct.id}
         product={selectedProduct}
         categoryName={selectedCategoryName}
         onBack={() => setScreen("menu")}
