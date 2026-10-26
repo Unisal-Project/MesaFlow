@@ -83,6 +83,7 @@ services:
     environment:
       # Garante que o Vite perceba alteracoes em bind mounts (Docker Desktop/WSL).
       CHOKIDAR_USEPOLLING: "true"
+      VITE_DEV_PROXY_TARGET: http://backend:3333
     volumes:
       # Mantem o codigo local sincronizado com o servidor de desenvolvimento.
       - ./frontend/app:/app

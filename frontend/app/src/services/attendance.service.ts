@@ -1,4 +1,4 @@
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { API_URL } from "./api";
 
 export type ClosingRequestedAttendance = {
     id: string;
@@ -13,7 +13,7 @@ export type ClosingRequestedAttendance = {
 };
 
 export const findClosingRequestedAttendances= async () => {
-    const response = await fetch(`${BACKEND_URL}/attendances/closing-requested`);
+    const response = await fetch(`${API_URL}/attendances/closing-requested`);
     if (!response.ok) {
         throw new Error("Falha ao buscar as solicitações de atendimento a serem encerradas");
     }
@@ -22,7 +22,7 @@ export const findClosingRequestedAttendances= async () => {
 };
 
 export const setClosingRequestedAttendances = async (attendanceId: string) => {
-    const response = await fetch(`${BACKEND_URL}/attendances/${attendanceId}/request-closing`, {
+    const response = await fetch(`${API_URL}/attendances/${attendanceId}/request-closing`, {
         method: "PATCH",
     });
     if (!response.ok) {
@@ -45,7 +45,7 @@ export type CancelledResquestAttendance = {
 };
 
 export const findCancelledAttendances= async () => {
-    const response = await fetch(`${BACKEND_URL}/attendances/cancelled`);
+    const response = await fetch(`${API_URL}/attendances/cancelled`);
     if (!response.ok) {
         throw new Error("Falha ao buscar as solicitações de atendimento canceladas");
     }
@@ -54,7 +54,7 @@ export const findCancelledAttendances= async () => {
 }
 
 export const setCancelledRequestedAttendances = async (attendanceId: string) => {
-    const response = await fetch(`${BACKEND_URL}/attendances/${attendanceId}/request-cancelled`, {
+    const response = await fetch(`${API_URL}/attendances/${attendanceId}/request-cancelled`, {
         method: "PATCH",
     });
     if (!response.ok) {

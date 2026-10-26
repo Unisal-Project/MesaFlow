@@ -24,7 +24,7 @@ export type OrderResponse = {
   items: OrderItemResponse[];
 };
 
-const API_URL = "http://localhost:3333/api/v1";
+import { API_URL } from "./api";
 
 export const CURRENT_ATTENDANCE_ID = "1";
 

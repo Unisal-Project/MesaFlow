@@ -39,3 +39,11 @@ cp .env.example .env
 | `npm run start`       | Inicia a versão compilada          |
 
 > Para subir o banco e gerar o client do Prisma, use os scripts globais do monorepo na raiz do projeto.
+
+## Autenticação e usuários
+
+- `POST /api/v1/auth/register`: recebe `name`, `email` e `password`; cria uma conta `EMPLOYEE` e retorna `user` e `accessToken`.
+- `POST /api/v1/auth/login`: recebe `email` e `password`; retorna `user` e um JWT válido por 15 minutos.
+- `GET /api/v1/users`, `GET /api/v1/users/:id`, `POST /api/v1/users`, `PATCH /api/v1/users/:id` e `DELETE /api/v1/users/:id`: exigem `Authorization: Bearer <accessToken>` de um `ADMIN`.
+
+O cadastro público não aceita `role` nem `active`. Para criar o primeiro administrador, cadastre uma conta e atribua `ADMIN` ao seu papel diretamente no banco de dados por um operador autorizado. As respostas nunca incluem o hash da senha.

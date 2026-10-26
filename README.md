@@ -5,6 +5,9 @@ Sistema de gerenciamento de pedidos e comandas para estabelecimentos, com atendi
 Os requisitos de sistema, ambiente e validação estão documentados em
 [`REQUIREMENTS.md`](REQUIREMENTS.md).
 
+Para construir a pilha com Nginx e proxy reverso, veja
+[`docs/production.md`](docs/production.md).
+
 Para baixar todas as bibliotecas do backend e frontend e gerar o Prisma Client:
 
 ```bash
