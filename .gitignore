@@ -34,7 +34,7 @@ lerna-debug.log*
 #  Vite / bundler cache
 # ─────────────────────────────────────────
 .vite/
-frontend/app/.vite/
+frontend/.vite/
 
 # ─────────────────────────────────────────
 #  Docker local data

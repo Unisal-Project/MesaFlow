@@ -74,7 +74,7 @@ services:
 
   frontend:
     build:
-      context: ./frontend/app
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: orderflow-frontend
     restart: unless-stopped
@@ -85,7 +85,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     volumes:
       # Mantem o codigo local sincronizado com o servidor de desenvolvimento.
-      - ./frontend/app:/app
+      - ./frontend:/app
       # Evita que o bind mount esconda as dependencias instaladas na imagem.
       - frontend_node_modules:/app/node_modules
     depends_on:

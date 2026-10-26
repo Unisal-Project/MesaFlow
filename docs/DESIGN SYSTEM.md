@@ -123,7 +123,7 @@ Caminhos relativos a `src/`:
 
 ## Validação da migração — 22/10/2026
 
-- TypeScript do frontend: `npm exec --workspace frontend/app -- tsc -b --pretty false`.
+- TypeScript do frontend: `npm exec --workspace frontend -- tsc -b --pretty false`.
 - Lint: `npm run lint`; aprovado com dois avisos anteriores em `useProductDetail.ts`
   (`react/set-state-in-effect` e `react-hooks/exhaustive-deps`).
 - Testes: `npm test`; oito arquivos aprovados pelo runner. Não existe suíte própria

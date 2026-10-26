@@ -30,7 +30,7 @@ import "./styles/main.scss";
 
 ## Onde alterar cada parte
 
-Os caminhos abaixo são relativos a `frontend/app/src`.
+Os caminhos abaixo são relativos a `frontend/src`.
 
 | Alteração desejada | Ponto de partida |
 | --- | --- |
@@ -39,7 +39,7 @@ Os caminhos abaixo são relativos a `frontend/app/src`.
 | Aparência do login e cadastro | `pages/admin/Login/styles.scss` |
 | Rotas administrativas e estados compartilhados | `routers/AdminRoutes.tsx` |
 | Endereços de navegação | `routers/paths.ts` |
-| Contexto CSS de login, administrativo e cliente | `layouts/hooks/useDocumentClass.ts` e estilos de cada tela/layout |
+| Contexto CSS de login, administrativo e cliente | `hooks/useDocumentClass.ts` e estilos de cada tela/layout |
 | Rotas e pedidos demonstrativos do cliente | `routers/ClientRoutes.tsx` |
 | Itens e ações da barra inferior do cliente | `components/layout/ClientTabBar.tsx` |
 | Marcação compartilhada da navegação inferior | `components/layout/BottomNavigation.tsx` |

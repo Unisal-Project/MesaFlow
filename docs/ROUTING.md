@@ -62,8 +62,8 @@ Mantenha as rotas da API separadas desse fallback. Configure a URL pública do f
 
 ## Validação
 
-- `npm --prefix frontend/app test`: renderiza as definições reais de rotas com `MemoryRouter` e verifica os destinos diretos, produto por ID, categorias e preservação do token.
-- `npm --prefix frontend/app run build`: TypeScript e bundle de produção.
-- `npm --prefix frontend/app run lint` e `npm test`: lint do frontend e testes existentes do backend.
+- `npm --prefix frontend test`: renderiza as definições reais de rotas com `MemoryRouter` e verifica os destinos diretos, produto por ID, categorias e preservação do token.
+- `npm --prefix frontend run build`: TypeScript e bundle de produção.
+- `npm --prefix frontend run lint` e `npm test`: lint do frontend e testes existentes do backend.
 
 Os testes de renderização não executam os efeitos nem simulam gestos, foco ou histórico de um navegador real. Validar visualmente o fluxo completo no celular continua necessário.
