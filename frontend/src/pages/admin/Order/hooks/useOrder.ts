@@ -1,7 +1,6 @@
 import { calculateBill } from "@/utils/serviceFee";
 import { useState, useMemo } from "react";
 
-import { statusDetails } from "../constants/order.constants";
 
 import type { RestaurantTable } from "../../Table/types/table.types";
 
@@ -11,8 +10,6 @@ import {
   getAccountOrders,
   getOrderTotal,
   toDateKey,
-  getNextStatus,
-  getPreviousStatus,
   filterOrders,
   sortOrders,
 } from "../utils/order.utils";
@@ -74,35 +71,6 @@ export function useOrder(tables: RestaurantTable[] = []) {
     else setSelectedOrderId(orders[0]?.id ?? null);
   };
 
-  const updateOrderStatus = (
-    orderId: number,
-    direction: "next" | "previous",
-  ) => {
-    const currentOrder = orders.find((order) => order.id === orderId);
-    if (!currentOrder) return;
-    if (
-      direction === "next" &&
-      (currentOrder.status === "delivered" || currentOrder.status === "closed")
-    )
-      return;
-    if (direction === "previous" && currentOrder.status === "waiting") return;
-    if (currentOrder.status === "closed") return;
-
-    const nextStatus =
-      direction === "next"
-        ? getNextStatus(currentOrder.status)
-        : getPreviousStatus(currentOrder.status);
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order.id === orderId ? { ...order, status: nextStatus } : order,
-      ),
-    );
-    setSelectedOrderId(orderId);
-    setActivityMessage(
-      `Pedido #${orderId} atualizado para ${statusDetails[nextStatus].label}.`,
-    );
-  };
-
   const getTableLink = (label: string) => {
     const number = /^Mesa\s+(\d+)$/i.exec(label)?.[1];
     const table = tables.find(
@@ -126,7 +94,7 @@ export function useOrder(tables: RestaurantTable[] = []) {
       date: toDateKey(now),
       ...changes,
       ...getTableLink(changes.table),
-      status: "waiting",
+      status: "open",
       unread: false,
     };
 
@@ -136,7 +104,7 @@ export function useOrder(tables: RestaurantTable[] = []) {
     setSortOrder("newest");
     setSearchQuery("");
     setIsCreatingOrder(false);
-    setActivityMessage(`Pedido #${nextId} criado e enviado para a cozinha.`);
+    setActivityMessage(`Pedido #${nextId} criado com sucesso.`);
   };
 
   const cancelOrder = () => {
@@ -156,7 +124,7 @@ export function useOrder(tables: RestaurantTable[] = []) {
 
   const completeOrder = (orderId: number, entries: CompletedPayment[], serviceFeeWaived = false) => {
     const selected = orders.find((order) => order.id === orderId);
-    if (!selected) return;
+    if (!selected || selected.status === "closed") return;
     const accountOrders = getAccountOrders(orders, selected);
     const orderIds = accountOrders.map((order) => order.id);
     const subtotal = accountOrders.reduce((sum, order) => sum + Math.round(getOrderTotal(order) * 100), 0);
@@ -187,13 +155,13 @@ export function useOrder(tables: RestaurantTable[] = []) {
     setOrders((currentOrders) =>
       currentOrders.map((order) =>
         orderIds.includes(order.id)
-          ? { ...order, status: "delivered", payment: undefined }
+          ? { ...order, status: "open", payment: undefined }
           : order,
       ),
     );
     setSelectedOrderId(orderId);
     setEditingOrderId(null);
-    setActivityMessage(`Pedido #${orderId} reaberto e marcado como entregue.`);
+    setActivityMessage(`Pedido #${orderId} reaberto.`);
   };
 
   const saveOrderChanges = (
@@ -232,7 +200,6 @@ export function useOrder(tables: RestaurantTable[] = []) {
     completeOrder,
     cancelOrder,
     createOrder,
-    updateOrderStatus,
     selectOrder,
     filteredOrders,
     isCreatingOrder,

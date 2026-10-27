@@ -15,10 +15,8 @@ import { Menu } from "@/pages/client/Menu";
 import { Cart } from "@/pages/client/Cart";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
-import { OrderTracking } from "@/pages/client/OrderTracking";
 import { TableBill } from "@/pages/client/TableBill";
 import { demoCatalog } from "@/data/catalog.mock";
-import type { OrderTrackingData } from "@/pages/client/OrderTracking/types/orderTracking.types";
 
 import { clientPaths, clientTarget } from "./paths";
 
@@ -56,10 +54,9 @@ function ProductRoute({
 function ClientPages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { clearCart, itemCount } = useCart();
+  const { clearCart } = useCart();
   const [guestName, setGuestName] = useState("");
   const [nextOrderId, setNextOrderId] = useState(1842);
-  const [lastOrder, setLastOrder] = useState<OrderTrackingData | null>(null);
   const goTo = (destination: string) => {
     if (destination === "order") {
       openCart();
@@ -72,11 +69,9 @@ function ClientPages() {
     navigate(clientTarget("/carrinho", location.search), {
       state: { returnPath: location.pathname },
     });
-  const sendDemoOrder = (receiveUpdates: boolean) => {
-    setLastOrder({ id: nextOrderId, status: "waiting", cartItemCount: 0 });
+  const sendDemoOrder = () => {
     setNextOrderId((current) => current + 1);
     clearCart();
-    if (receiveUpdates) goTo("status");
   };
 
   return (
@@ -151,20 +146,6 @@ function ClientPages() {
               onGoToMenu={() => goTo("menu")}
               onNavigate={goTo}
               onSend={sendDemoOrder}
-            />
-          }
-        />
-        <Route
-          path="acompanhar"
-          element={
-            <OrderTracking
-              order={
-                lastOrder
-                  ? { ...lastOrder, cartItemCount: itemCount }
-                  : undefined
-              }
-              onBack={() => goTo("menu")}
-              onNavigate={goTo}
             />
           }
         />

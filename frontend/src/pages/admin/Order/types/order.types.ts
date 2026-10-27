@@ -49,7 +49,7 @@ export type OrdersProps = {
 };
 
 export type OrderStatus =
-  "waiting" | "preparing" | "ready" | "delivered" | "closed";
+  "open" | "closed";
 
 export type OrderFilter = "all" | OrderStatus;
 

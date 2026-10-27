@@ -94,7 +94,7 @@ export function useDashboard() {
     {
       label: "Pedidos ativos",
       value: "3",
-      detail: "3 em preparo agora",
+      detail: "Pedidos registrados",
     },
     {
       label: "Mesas ocupadas",

@@ -1,5 +1,5 @@
 import { Eye, List } from "lucide-react";
-import { Badge, Button } from "@/components";
+import { Button } from "@/components";
 
 import { orders } from "../mocks/dashboard.mock";
 
@@ -17,7 +17,7 @@ export function KitchenQueue({ onViewOrders, onViewOrder }: KitchenQueueProps) {
       <div className="mf-dashboard-panel-heading">
         <div>
           <h2 id="kitchen-title">Fila de pedidos</h2>
-          <p>Acompanhe os próximos pedidos da cozinha.</p>
+          <p>Consulte os pedidos registrados.</p>
         </div>
 
         <Button type="button" variant="ghost" size="small" className="mf-dashboard-view-action" onClick={onViewOrders}>
@@ -38,11 +38,6 @@ export function KitchenQueue({ onViewOrders, onViewOrder }: KitchenQueueProps) {
               <p>{order.description}</p>
             </div>
 
-            <Badge
-              variant={order.tone === "blue" ? "prep" : "wait"}
-            >
-              {order.status}
-            </Badge>
             <Button type="button" variant="secondary" size="small" className="mf-dashboard-order-view" aria-label={`Visualizar pedido #${order.id}`} onClick={() => onViewOrder?.(order.id)}>
               <Eye aria-hidden="true" />
               <span>Ver pedido</span>

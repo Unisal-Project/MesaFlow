@@ -19,8 +19,6 @@ import { OrderEditPanel } from "./components/OrderEditPanel.js";
 import { Notifications } from "@/components";
 
 import {
-  orderFilters,
-  statusDetails,
   paymentMethodLabels,
   emptyOrderItems,
 } from "./constants/order.constants.js";
@@ -45,7 +43,7 @@ export default function Orders({
   ref,
   state,
 }: OrdersProps) {
-  const { contentRef, transitionContent } = useContentTransition();
+  const { contentRef } = useContentTransition();
   const {
     openOrder,
     paymentOrder,
@@ -56,7 +54,6 @@ export default function Orders({
     completeOrder,
     cancelOrder,
     createOrder,
-    updateOrderStatus,
     selectOrder,
     filteredOrders,
     isCreatingOrder,
@@ -65,8 +62,6 @@ export default function Orders({
     setSearchQuery,
     orders,
     todayOrders,
-    activeFilter,
-    setActiveFilter,
     sortOrder,
     setSortOrder,
     setIsCreatingOrder,
@@ -146,76 +141,40 @@ export default function Orders({
         <div className="orders-body">
           <header className="orders-heading">
             <h1>Pedidos</h1>
-            <p>Gerencie a fila, acompanhe o preparo e atualize os pedidos.</p>
+            <p>Crie, edite e finalize os pedidos.</p>
           </header>
 
           <OrdersSummary orders={orders} todayTotal={todayOrders.length} />
 
-          <section className="orders-toolbar" aria-label="Filtros dos pedidos">
-            <div className="orders-toolbar-filters">
-              <div className="order-filter-tabs" role="group">
-                {orderFilters.map((filter) => {
-                  const count =
-                    filter.value === "all"
-                      ? orders.length
-                      : orders.filter((order) => order.status === filter.value)
-                          .length;
-                  return (
-                    <button
-                      type="button"
-                      aria-pressed={activeFilter === filter.value}
-                      className={activeFilter === filter.value ? "active" : ""}
-                      key={filter.value}
-                      onClick={() =>
-                        transitionContent(() => setActiveFilter(filter.value))
-                      }
-                    >
-                      {filter.label}
-                      <span>{count}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <label className="order-sort">
+          <div className="orders-list-heading">
+            <div>
+              <h2 id="orders-list-title">Pedidos registrados</h2>
+              <p>{filteredOrders.length} {filteredOrders.length === 1 ? "pedido encontrado" : "pedidos encontrados"}</p>
+            </div>
+            <div className="orders-list-controls">
+              <label className="orders-sort-control">
+                <span>Ordenar por</span>
                 <select
-                  aria-label="Ordenar pedidos"
                   value={sortOrder}
-                  onChange={(event) =>
-                    setSortOrder(event.target.value as OrderSort)
-                  }
+                  onChange={(event) => setSortOrder(event.target.value as OrderSort)}
                 >
                   <option value="newest">Mais recentes</option>
                   <option value="oldest">Mais antigos</option>
                 </select>
               </label>
-            </div>
-
-            <Button
-              className="order-create-button"
-              aria-label="Criar pedido"
-              title="Criar pedido"
-              onClick={() => setIsCreatingOrder(true)}
-            >
-              <Plus aria-hidden="true" />
-              Novo pedido
-            </Button>
-          </section>
-
-          <p
-            className="order-activity-message"
-            role="status"
-            aria-live="polite"
-          >
-            {activityMessage}
-          </p>
-
-          <div className="orders-list-heading">
-            <div>
-              <h2 id="orders-list-title">Fila de pedidos</h2>
-              <p>{filteredOrders.length} pedidos nesta visualização</p>
+              <Button
+                className="order-create-button"
+                onClick={() => setIsCreatingOrder(true)}
+              >
+                <Plus aria-hidden="true" />
+                Novo pedido
+              </Button>
             </div>
           </div>
+
+          <p className="order-activity-message" role="status" aria-live="polite">
+            {activityMessage}
+          </p>
 
           <div className="orders-workspace">
             <section
@@ -228,7 +187,6 @@ export default function Orders({
                   return (
                     <article
                       className={`order-card ${isSelected ? "is-selected" : ""}`}
-                      data-status={order.status}
                       key={order.id}
                       aria-current={isSelected ? "true" : undefined}
                       role="button"
@@ -254,12 +212,7 @@ export default function Orders({
                             <span>{getItemCount(order)} itens</span>
                           </p>
                         </div>
-                        <span
-                          className="order-status-badge"
-                          data-status={order.status}
-                        >
-                          {statusDetails[order.status].label}
-                        </span>
+
                       </div>
                       <p className="order-card-description">
                         {order.items
@@ -276,7 +229,7 @@ export default function Orders({
                 {filteredOrders.length === 0 && (
                   <div className="orders-empty-state">
                     <h3>Nenhum pedido encontrado</h3>
-                    <p>Ajuste a busca ou selecione outro status.</p>
+                    <p>Ajuste a busca para encontrar o pedido.</p>
                   </div>
                 )}
               </div>
@@ -301,12 +254,7 @@ export default function Orders({
                         {selectedOrder.table} · Enviado às {selectedOrder.time}
                       </p>
                     </div>
-                    <span
-                      className="order-status-badge"
-                      data-status={selectedOrder.status}
-                    >
-                      {statusDetails[selectedOrder.status].label}
-                    </span>
+
                   </div>
 
                   <div className="order-details-tabs" role="group">
@@ -434,37 +382,9 @@ export default function Orders({
                           Reabrir pedido
                         </Button>
                       ) : (
-                        <>
-                          <Button
-                            variant="secondary"
-                            disabled={selectedOrder.status === "waiting"}
-                            onClick={() =>
-                              updateOrderStatus(selectedOrder.id, "previous")
-                            }
-                          >
-                            Regredir status
-                          </Button>
-                          {selectedOrder.status === "delivered" ? (
-                            <Button
-                              onClick={() =>
-                                setPaymentOrderId(selectedOrder.id)
-                              }
-                            >
-                              Finalizar pedido
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() =>
-                                updateOrderStatus(selectedOrder.id, "next")
-                              }
-                            >
-                              {selectedOrder.status === "ready"
-                                ? "Marcar entregue"
-                                : statusDetails[selectedOrder.status]
-                                    .nextAction}
-                            </Button>
-                          )}
-                        </>
+                        <Button onClick={() => setPaymentOrderId(selectedOrder.id)}>
+                          Finalizar pedido
+                        </Button>
                       )}
                       <Button variant="secondary" onClick={cancelOrder}>
                         Cancelar

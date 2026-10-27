@@ -29,12 +29,12 @@ test("retira a taxa sem alterar o consumo", () => {
 });
 test("fecha apenas os pedidos abertos do mesmo atendimento", () => {
   const orders = [
-    { id: 1, attendanceId: "a", status: "delivered" },
-    { id: 2, attendanceId: "a", status: "ready" },
-    { id: 3, attendanceId: "b", status: "delivered" },
+    { id: 1, attendanceId: "a", status: "open" },
+    { id: 2, attendanceId: "a", status: "open" },
+    { id: 3, attendanceId: "b", status: "open" },
     { id: 4, attendanceId: "a", status: "closed" },
   ];
   assert.deepEqual(getAccountOrders(orders, orders[0]).map(o => o.id), [1, 2]);
-  const unlinked = { id: 5, status: "delivered" };
+  const unlinked = { id: 5, status: "open" };
   assert.deepEqual(getAccountOrders([...orders, unlinked], unlinked), [unlinked]);
 });

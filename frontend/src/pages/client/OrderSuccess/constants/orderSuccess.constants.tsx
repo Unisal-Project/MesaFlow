@@ -1,5 +1,4 @@
 import {
-  Clock,
   Menu,
   ReceiptText,
   ShoppingCart,
@@ -15,11 +14,6 @@ export const navigationItems = [
     id: "order",
     label: "Pedido",
     icon: <ShoppingCart aria-hidden="true" />,
-  },
-  {
-    id: "status",
-    label: "Status",
-    icon: <Clock aria-hidden="true" />,
   },
   {
     id: "bill",

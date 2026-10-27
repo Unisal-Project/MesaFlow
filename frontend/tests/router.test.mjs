@@ -41,7 +41,7 @@ after(async () => {
 // Renderiza as definições reais de rota, sem depender de um servidor de API.
 const cases = [
   ["/admin/dashboard", "Bom dia, equipe!"],
-  ["/admin/pedidos", "Fila de pedidos"],
+  ["/admin/pedidos", "Pedidos registrados"],
   ["/admin/mesas", "Mapa de mesas"],
   ["/admin/cardapio", "Produtos cadastrados"],
   ["/admin/cardapio/produtos", "Todos os produtos"],
@@ -52,7 +52,6 @@ const cases = [
   ["/produto/demo-risoto?mesa=12", "Risoto de cogumelos"],
   ["/carrinho?mesa=12", "carrinho"],
   ["/conta?mesa=12", "conta"],
-  ["/acompanhar?mesa=12", "pedido"],
   ["/confirmar-pedido?mesa=12", "pedido"],
 ];
 
@@ -77,6 +76,15 @@ for (const [url, expected] of cases) {
     );
     const html = renderToString(tree);
     assert.ok(html.toLocaleLowerCase().includes(expected.toLocaleLowerCase()));
+    if (url === "/admin/pedidos") {
+      assert.ok(html.includes("Finalizar pedido"));
+      assert.ok(!html.includes("Regredir status"));
+      assert.ok(!html.includes("Iniciar preparo"));
+    }
+    if (!url.startsWith("/admin")) {
+      assert.ok(!html.includes('href="/acompanhar'));
+      assert.ok(!html.includes('>Status<'));
+    }
   });
 }
 

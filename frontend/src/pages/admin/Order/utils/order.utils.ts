@@ -1,6 +1,5 @@
 import type {
   Order,
-  OrderStatus,
   OrderSummary,
   OrderFilter,
   OrderPeriod,
@@ -8,7 +7,6 @@ import type {
   DatedOrderSummary,
 } from "../types/order.types";
 
-import { orderStatuses } from "../constants/order.constants";
 
 export const toDateKey = (date: Date) =>
   [
@@ -52,22 +50,6 @@ const normalizeSearchText = (value: string) =>
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLocaleLowerCase("pt-BR");
-
-export function getNextStatus(status: OrderStatus): OrderStatus {
-  const currentIndex = orderStatuses.indexOf(status);
-
-  return orderStatuses[
-    Math.min(currentIndex + 1, orderStatuses.length - 1)
-  ];
-}
-
-export function getPreviousStatus(status: OrderStatus): OrderStatus {
-  const currentIndex = orderStatuses.indexOf(status);
-
-  return orderStatuses[
-    Math.max(currentIndex - 1, 0)
-  ];
-}
 
 export function filterOrders<T extends OrderSummary>(
   orders: T[],

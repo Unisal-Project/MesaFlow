@@ -1,6 +1,5 @@
 import { 
-    Clock,
-    Menu,
+      Menu,
     ShoppingCart,
     ReceiptText
 } from "lucide-react";
@@ -16,6 +15,5 @@ export const closingOptions: { id: BillClosingOption; label: string }[] = [
 export const navigationItems = [
   { id: "menu", label: "Cardápio", icon: <Menu aria-hidden="true" /> },
   { id: "order", label: "Pedido", icon: <ShoppingCart aria-hidden="true" /> },
-  { id: "status", label: "Status", icon: <Clock aria-hidden="true" /> },
   { id: "bill", label: "Conta", icon: <ReceiptText aria-hidden="true" /> },
 ];

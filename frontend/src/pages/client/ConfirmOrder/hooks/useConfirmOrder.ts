@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 
-export function useConfirmOrder(orderId: number, canSend: boolean, onSend: (receiveUpdates: boolean) => void) {
-  const [receiveUpdates, setReceiveUpdates] = useState(true);
+export function useConfirmOrder(orderId: number, canSend: boolean, onSend: () => void) {
   const [submittedId, setSubmittedId] = useState<number | null>(null);
   const sent = useRef(false);
 
@@ -9,8 +8,8 @@ export function useConfirmOrder(orderId: number, canSend: boolean, onSend: (rece
     if (sent.current || !canSend) return;
     sent.current = true;
     setSubmittedId(orderId);
-    onSend(receiveUpdates);
+    onSend();
   }
 
-  return { receiveUpdates, setReceiveUpdates, handleSendOrder, submittedId };
+  return { handleSendOrder, submittedId };
 }

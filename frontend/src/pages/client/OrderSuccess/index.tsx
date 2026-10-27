@@ -55,11 +55,11 @@ export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
           <p className="order-success-eyebrow">PEDIDO ENVIADO</p>
           <h1 id="order-success-title">Recebemos seu pedido.</h1>
           <p className="order-success-description">
-            A cozinha já foi notificada. Você pode acompanhar o preparo em tempo real.
+            Seu pedido foi registrado.
           </p>
           <div className="order-success-actions">
-            <Button type="button" variant="primary" onClick={() => handleNavigate("status")}>
-              Acompanhar preparo
+            <Button type="button" variant="primary" onClick={() => handleNavigate("bill")}>
+              Ver conta
             </Button>
             <Button type="button" variant="ghost" onClick={() => handleNavigate("menu")}>
               Pedir mais itens

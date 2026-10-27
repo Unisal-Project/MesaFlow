@@ -1,9 +1,9 @@
-import { Clock, List, ReceiptText, ShoppingCart } from "lucide-react";
+import { List, ReceiptText, ShoppingCart } from "lucide-react";
 import { BottomNavigation } from "./BottomNavigation";
 import "./clientTabBar.scss";
 
 type ClientTabBarProps = {
-  activeId?: "menu" | "order" | "status" | "bill";
+  activeId?: "menu" | "order" | "bill";
   onMenu: () => void;
   onOrder: () => void;
   onNavigate?: (destination: string) => void;
@@ -20,7 +20,6 @@ export function ClientTabBar({
     { id: "order", label: "Pedido", icon: <ShoppingCart aria-hidden="true" /> },
     ...(onNavigate
       ? [
-          { id: "status", label: "Status", icon: <Clock aria-hidden="true" /> },
           {
             id: "bill",
             label: "Conta",
