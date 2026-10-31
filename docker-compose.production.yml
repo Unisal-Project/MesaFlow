@@ -1,4 +1,13 @@
 services:
+  valkey:
+    image: valkey/valkey:8.1-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
   database:
     image: mariadb:11.4
     restart: unless-stopped

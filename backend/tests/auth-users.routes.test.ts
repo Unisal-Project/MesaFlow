@@ -43,11 +43,6 @@ function makeRepository(): UserRepository {
       Object.assign(user, data);
       return user;
     },
-    async delete(id) {
-      const index = users.findIndex((user) => user.id === id);
-      if (index < 0) throw new Error("missing user");
-      users.splice(index, 1);
-    },
   };
 }
 
@@ -80,12 +75,20 @@ test("registration and login issue employee JWT without exposing password hash",
     app.jwt.verify<{ role: string }>(created.json().accessToken).role,
     "EMPLOYEE",
   );
+  const registeredToken = app.jwt.verify<{ iat: number; exp: number }>(
+    created.json().accessToken,
+  );
+  assert.equal(registeredToken.exp - registeredToken.iat, 8 * 60 * 60);
   const login = await app.inject({
     method: "POST",
     url: "/auth/login",
     payload: { email: "ana@example.com", password: "secret123" },
   });
   assert.equal(login.statusCode, 200);
+  const loginToken = app.jwt.verify<{ iat: number; exp: number }>(
+    login.json().accessToken,
+  );
+  assert.equal(loginToken.exp - loginToken.iat, 8 * 60 * 60);
   assert.equal(
     (
       await app.inject({
@@ -110,11 +113,18 @@ test("registration and login issue employee JWT without exposing password hash",
   await app.close();
 });
 
-test("user CRUD requires admin token and returns public users", async () => {
+test("users can only be created through auth registration; user management requires admin", async () => {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   await app.register(fastifyJwt, { secret: "test-secret" });
   const repository = makeRepository();
+  await repository.create({
+    name: "Admin",
+    email: "admin@example.com",
+    passwordHash: "unused",
+    role: "ADMIN",
+  });
+  await app.register(registerAuthRoutes, { repository });
   await app.register(registerUserRoutes, { repository });
   assert.equal(
     (await app.inject({ method: "GET", url: "/users" })).statusCode,
@@ -146,32 +156,39 @@ test("user CRUD requires admin token and returns public users", async () => {
     403,
   );
   const admin = app.jwt.sign({
-    id: "2",
+    id: "1",
     email: "admin@example.com",
     role: "ADMIN",
   });
   const headers = { authorization: `Bearer ${admin}` };
-  const created = await app.inject({
+  const blocked = await app.inject({
     method: "POST",
     url: "/users",
     headers,
     payload: { name: "Bob", email: "bob@example.com", password: "secret123" },
   });
+  assert.equal(blocked.statusCode, 404);
+  assert.equal(await repository.findByEmail("bob@example.com"), null);
+  const created = await app.inject({
+    method: "POST",
+    url: "/auth/register",
+    payload: { name: "Bob", email: "bob@example.com", password: "secret123" },
+  });
   assert.equal(created.statusCode, 201);
-  assert.equal(created.json().passwordHash, undefined);
+  assert.equal(created.json().user.passwordHash, undefined);
   assert.equal(
     (await app.inject({ method: "GET", url: "/users", headers })).json().length,
-    1,
+    2,
   );
   assert.equal(
-    (await app.inject({ method: "GET", url: "/users/1", headers })).json().name,
+    (await app.inject({ method: "GET", url: "/users/2", headers })).json().name,
     "Bob",
   );
   assert.equal(
     (
       await app.inject({
         method: "PATCH",
-        url: "/users/1",
+        url: "/users/2",
         headers,
         payload: { name: "Bobby" },
       })
@@ -179,9 +196,47 @@ test("user CRUD requires admin token and returns public users", async () => {
     "Bobby",
   );
   assert.equal(
-    (await app.inject({ method: "DELETE", url: "/users/1", headers }))
+    (await app.inject({ method: "DELETE", url: "/users/2", headers }))
       .statusCode,
     204,
   );
+  assert.equal((await repository.findById(2n))?.active, false);
+  assert.equal(
+    (
+      await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: { email: "bob@example.com", password: "secret123" },
+      })
+    ).statusCode,
+    401,
+  );
+  await repository.update(1n, { role: "EMPLOYEE" });
+  assert.equal(
+    (await app.inject({ method: "GET", url: "/users", headers })).statusCode,
+    403,
+  );
+  await repository.update(1n, { role: "ADMIN", active: false });
+  assert.equal(
+    (await app.inject({ method: "GET", url: "/users", headers })).statusCode,
+    403,
+  );
+  await app.close();
+});
+
+test("login and registration reject excessive requests from one client", async () => {
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(fastifyJwt, { secret: "test-secret" });
+  await app.register(registerAuthRoutes, { repository: makeRepository() });
+
+  for (const url of ["/auth/login", "/auth/register"]) {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const response = await app.inject({ method: "POST", url, payload: {} });
+      assert.equal(response.statusCode, 400);
+    }
+    const limited = await app.inject({ method: "POST", url, payload: {} });
+    assert.equal(limited.statusCode, 429);
+  }
   await app.close();
 });

@@ -1,18 +1,11 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { createUserSchema } from "./dto/create-user.dto.js";
 import { updateUserSchema } from "./dto/update-user.dto.js";
 import { userIdSchema } from "./dto/user-id.dto.js";
-import type { PublicUser, UserService } from "./user.service.js";
+import type { UserService } from "./user.service.js";
+import type { PublicUser } from "./entity/user.entity.js";
 
 export class UserController {
   constructor(private readonly userService: UserService) {}
-
-  async create(request: FastifyRequest, reply: FastifyReply) {
-    const user = await this.userService.createUser(
-      createUserSchema.parse(request.body),
-    );
-    return reply.status(201).send(this.toResponse(user));
-  }
 
   async getAll(_request: FastifyRequest, reply: FastifyReply) {
     const users = await this.userService.getAllUsers();

@@ -1,7 +1,11 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 import { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
-import type { CreateUserData, UpdateUserData , UserEntity } from "../entity/user.entity.js";
+import type {
+  CreateUserData,
+  UpdateUserData,
+  UserEntity,
+} from "../entity/user.entity.js";
 import type { UserRepository } from "./user.repository.js";
 
 export class PrismaUserRepository implements UserRepository {
@@ -32,14 +36,6 @@ export class PrismaUserRepository implements UserRepository {
   async update(id: bigint, data: UpdateUserData): Promise<UserEntity> {
     try {
       return await this.prisma.user.update({ where: { id }, data });
-    } catch (error) {
-      this.handlePrismaError(error);
-    }
-  }
-
-  async delete(id: bigint): Promise<void> {
-    try {
-      await this.prisma.user.delete({ where: { id } });
     } catch (error) {
       this.handlePrismaError(error);
     }

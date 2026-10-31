@@ -1,34 +1,19 @@
-import { compare } from "bcrypt";
-import type { UserRole } from "../users/entity/user.entity.js";
 import { AppError } from "../../shared/errors/app-errors.js";
 import type { UserService } from "../users/user.service.js";
 import type { UserRepository } from "../users/repository/user.repository.js";
-import type { PublicUser, RegisterUserInput } from "../users/user.service.js";
-
-export type AuthTokenPayload = {
-  id: string;
-  email: string;
-  role: UserRole;
-};
-
-export type AuthTokenSigner = (
-  payload: AuthTokenPayload,
-  options: { expiresIn: "15m" },
-) => string;
-
-export type AuthResult = {
-  user: PublicUser;
-  accessToken: string;
-};
-
+import type { PasswordHasher } from "../../config/hash/password-hasher.js";
+import type { AuthTokenSigner, AuthResult } from "./entity/auth.entity.js";
+import type { RegisterDTO } from "./dto/auth.dto.js";
+import type { PublicUser } from "../users/entity/user.entity.js";
 export class AuthService {
   constructor(
+    private readonly passwordHasher: PasswordHasher,
     private readonly userRepository: UserRepository,
     private readonly userService: UserService,
     private readonly signToken: AuthTokenSigner,
   ) {}
 
-  async register(data: RegisterUserInput): Promise<AuthResult> {
+  async register(data: RegisterDTO): Promise<AuthResult> {
     const user = await this.userService.registerUser(data);
     return this.createAuthResult(user);
   }
@@ -41,7 +26,7 @@ export class AuthService {
     if (
       !user ||
       !user.active ||
-      !(await compare(password, user.passwordHash))
+      !(await this.passwordHasher.compareHasher(password, user.passwordHash))
     ) {
       throw new AppError("E-mail ou senha inválidos", 401);
     }
@@ -59,7 +44,7 @@ export class AuthService {
           email: user.email,
           role: user.role,
         },
-        { expiresIn: "15m" },
+        { expiresIn: "8h" },
       ),
     };
   }

@@ -1,29 +1,19 @@
-import { hash } from "bcrypt";
-import type { UserRole } from "./entity/user.entity.js";
 import { AppError } from "../../shared/errors/app-errors.js";
-import type { CreateUserDTO } from "./dto/create-user.dto.js";
+import type { PasswordHasher } from "../../config/hash/password-hasher.js";
 import type { UpdateUserDTO } from "./dto/update-user.dto.js";
-import type { UserEntity } from "./entity/user.entity.js";
+import type {
+  UserEntity,
+  RegisterUserInput,
+  PublicUser,
+  CreateUserInput,
+} from "./entity/user.entity.js";
 import type { UserRepository } from "./repository/user.repository.js";
 
-export type PublicUser = Omit<UserEntity, "passwordHash">;
-export type RegisterUserInput = Pick<UserEntity, "name" | "email"> & {
-  password: string;
-};
-
-type CreateUserInput = RegisterUserInput & {
-  role?: UserRole;
-  active?: boolean;
-};
-
-const PASSWORD_HASH_ROUNDS = 12;
-
 export class UserService {
-  constructor(private readonly userRepository: UserRepository) {}
-
-  async createUser(data: CreateUserDTO): Promise<PublicUser> {
-    return this.create(data);
-  }
+  constructor(
+    private readonly userRepository: UserRepository,
+    private readonly passwordHasher: PasswordHasher,
+  ) {}
 
   async registerUser(data: RegisterUserInput): Promise<PublicUser> {
     return this.create({
@@ -54,7 +44,7 @@ export class UserService {
       ...(email === undefined ? {} : { email: this.normalizeEmail(email) }),
       ...(password === undefined
         ? {}
-        : { passwordHash: await hash(password, PASSWORD_HASH_ROUNDS) }),
+        : { passwordHash: await this.passwordHasher.createHasher(password) }),
     };
 
     const user = await this.userRepository.update(id, updateData);
@@ -62,7 +52,7 @@ export class UserService {
   }
 
   async deleteUser(id: bigint): Promise<void> {
-    await this.userRepository.delete(id);
+    await this.userRepository.update(id, { active: false });
   }
 
   private async create(data: CreateUserInput): Promise<PublicUser> {
@@ -70,7 +60,7 @@ export class UserService {
     const user = await this.userRepository.create({
       ...rest,
       email: this.normalizeEmail(email),
-      passwordHash: await hash(password, PASSWORD_HASH_ROUNDS),
+      passwordHash: await this.passwordHasher.createHasher(password),
     });
 
     return this.toPublicUser(user);
