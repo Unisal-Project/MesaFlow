@@ -1,0 +1,138 @@
+/* Quadros 07 e 08: cartões e status */
+.product-card,
+.order-card,
+.table-card,
+.stat-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.product-card {
+  overflow: hidden;
+  &.indisponivel {
+    opacity: 0.6;
+  }
+  &.indisponivel.food-photo,
+  &.indisponivel.thumb {
+    filter: grayscale(1);
+  }
+}
+.food-photo,
+.thumb {
+  background: radial-gradient(circle at 34% 34%, var(--illustration-light) 0 12%, transparent 13%),
+    radial-gradient(circle at 62% 46%, var(--illustration-dark) 0 8%, transparent 9%),
+    radial-gradient(circle at 48% 61%, var(--illustration-leaf) 0 7%, transparent 8%),
+    linear-gradient(135deg, var(--illustration-light), var(--illustration-mid) 45%, var(--illustration-dark));
+}
+.food-photo {
+  min-height: 160px;
+}
+.card-body,
+.order-card,
+.table-card,
+.stat-card {
+  padding: var(--spacing-4);
+}
+.card-body p,
+.order-card p,
+.table-card p,
+.stat-card p {
+  margin: 6px 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.card-actions,
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-top: 14px;
+}
+.card-actions strong,
+.order-card > strong,
+.table-card > strong,
+.stat-card > strong {
+  color: var(--primary-dark);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-extrabold);
+}
+.table-card {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 14px;
+  align-items: center;
+  > strong {
+    grid-column: 1 / -1;
+  }
+}
+.table-number,
+.stat-icon {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--primary-dark);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-extrabold);
+}
+.stat-card {
+  display: grid;
+  gap: var(--spacing-2);
+  span {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+  }
+  p {
+    color: var(--success);
+    font-weight: var(--font-weight-bold);
+  }
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: var(--radius-medium);
+  font-size: 13px;
+  font-weight: var(--font-weight-extrabold);
+  &::before {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    content: "";
+  }
+  &.wait,
+  &.open,
+&.payment,
+&.warning {
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    color: var(--warning-text);
+  }
+  &.prep,
+  &.occupied,
+&.info {
+    background: color-mix(in srgb, var(--info) 14%, transparent);
+    color: var(--info);
+  }
+  &.ready,
+  &.paid,
+&.free,
+&.delivered,
+&.closed,
+&.success {
+    background: color-mix(in srgb, var(--success) 14%, transparent);
+    color: var(--success-text);
+  }
+  &.canceled,
+  &.error {
+    background: color-mix(in srgb, var(--error) 14%, transparent);
+    color: var(--error-text);
+  }
+}

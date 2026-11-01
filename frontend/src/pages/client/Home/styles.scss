@@ -1,0 +1,174 @@
+@use '../../../styles/abstracts/mixins';
+.client-home {
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 520px);
+  min-height: 100dvh;
+  margin-inline: auto;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+  .client-header {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    min-height: 72px;
+    padding: var(--spacing-3) var(--spacing-4);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .client-header-heading {
+    display: grid;
+    gap: var(--spacing-1);
+    justify-items: center;
+    min-width: 0;
+    text-align: center;
+  }
+  .client-header-heading > strong {
+    @include mixins.client-header-title;
+  }
+  .client-header-subtitle {
+    color: var(--accent);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+  }
+}
+.client-home-cart {
+  @include mixins.client-header-action;
+  svg {
+    width: 24px;
+    height: 24px;
+  }
+  > span {
+    @include mixins.client-cart-count;
+  }
+}
+.client-home-banner {
+  display: flex;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-height: clamp(220px, 56vw, 292px);
+  padding: 18px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 70%, var(--surface)) 0%, var(--primary) 50%, var(--primary-dark) 100%);
+  > span {
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-medium);
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    color: var(--primary);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-extrabold);
+  }
+}
+.client-home-content {
+  padding: var(--spacing-4) var(--spacing-5) 0;
+}
+.client-home-eyebrow {
+  color: var(--accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+}
+.client-home h1 {
+  margin: var(--spacing-3) 0 var(--spacing-4);
+  color: var(--primary);
+  font-family: var(--font-display);
+  font-size: clamp(30px, 8.5vw, 42px);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.22;
+  letter-spacing: -.02em;
+}
+.client-home-description {
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  line-height: 1.5;
+}
+.client-home-form {
+  display: grid;
+  gap: var(--spacing-6);
+  margin-top: var(--spacing-7);
+  .field {
+    gap: var(--spacing-1);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+  }
+  .field input {
+    min-height: 45px;
+    padding-inline: var(--spacing-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-large);
+    background: var(--surface);
+    font-family: var(--font-body);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-regular);
+  }
+  .field input:focus {
+    border-color: var(--focus);
+  }
+}
+.client-home-restaurant {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-height: 76px;
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: var(--radius-large);
+  background: var(--surface);
+}
+.client-home-restaurant-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-full);
+  background: var(--selected-background);
+  color: var(--primary);
+  svg {
+    width: 26px;
+    height: 26px;
+  }
+}
+.client-home-restaurant strong {
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+.client-home-restaurant p {
+  margin-top: var(--spacing-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.client-home-form > .btn {
+  width: 100%;
+  min-height: 54px;
+  border-radius: var(--radius-large);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+.client-home-footer {
+  margin-top: auto;
+  padding: var(--spacing-16) var(--spacing-5) var(--spacing-6);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+@media (min-width: 521px) {
+  .client-home {
+    border-inline: 1px solid var(--border);
+  }
+}
+@include mixins.down(compact-phone) {
+  .client-home-content {
+    padding-inline: var(--spacing-4);
+  }
+  .client-home-restaurant {
+    padding-inline: var(--spacing-3);
+    strong {
+      font-size: var(--font-size-sm);
+    }
+  }
+}

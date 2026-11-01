@@ -1,0 +1,190 @@
+/* Quadros 10 e 11: restaurante e retorno */
+.cart-item,
+.order-steps,
+.table-status-grid,
+.modal,
+.loader-card,
+.skeleton-card,
+.empty-state {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+}
+.cart-item {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: var(--spacing-3);
+  align-items: center;
+  padding: var(--spacing-4);
+  h3 {
+    font-size: 17px;
+  }
+}
+.cart-item p,
+.empty-state p {
+  margin: 6px 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.thumb {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-card);
+}
+.order-steps {
+  display: grid;
+  gap: 10px;
+  padding: var(--spacing-4);
+  list-style: none;
+}
+.step {
+  position: relative;
+  padding: 10px var(--spacing-3) 10px 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  color: var(--text-secondary);
+  font-weight: var(--font-weight-bold);
+  &::before {
+    position: absolute;
+    top: 15px;
+    left: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--border);
+    content: "";
+  }
+  &.done {
+    color: var(--success);
+  }
+  &.done::before {
+    background: var(--success);
+  }
+  &.current {
+    border-color: color-mix(in srgb, var(--info) 35%, transparent);
+    background: color-mix(in srgb, var(--info) 10%, transparent);
+    color: var(--info);
+  }
+  &.current::before {
+    background: var(--info);
+  }
+  &.canceled {
+    color: var(--error);
+  }
+  &.canceled::before {
+    background: var(--error);
+  }
+}
+.table-status-grid {
+  display: grid;
+  gap: 10px;
+  padding: var(--spacing-4);
+}
+.table-chip {
+  padding: 14px;
+  border-radius: var(--radius-card);
+  font-weight: var(--font-weight-extrabold);
+  &.free {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success-text);
+  }
+  &.occupied {
+    background: color-mix(in srgb, var(--info) 12%, transparent);
+    color: var(--info);
+  }
+  &.payment {
+    background: color-mix(in srgb, var(--warning) 14%, transparent);
+    color: var(--warning-text);
+  }
+}
+.modal {
+  display: grid;
+  box-shadow: var(--shadow-large);
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+}
+.modal p,
+.loader-card p {
+  margin: 0;
+  color: var(--text-secondary);
+}
+.modal div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+}
+.danger-modal {
+  border-color: color-mix(in srgb, var(--error) 24%, transparent);
+}
+.toast,
+.alert,
+.message {
+  padding: 14px var(--spacing-4);
+  border-radius: var(--radius-card);
+  font-weight: var(--font-weight-extrabold);
+}
+.toast.success,
+.message.success,
+.alert.success {
+  background: color-mix(in srgb, var(--success) 13%, transparent);
+  color: var(--success-text);
+}
+.toast.error,
+.message.error,
+.alert.error {
+  background: color-mix(in srgb, var(--error) 13%, transparent);
+  color: var(--error-text);
+}
+.toast.info,
+.message.info,
+.alert.info {
+  background: color-mix(in srgb, var(--info) 13%, transparent);
+  color: var(--info);
+}
+.toast.warning,
+.message.warning,
+.alert.warning {
+  background: color-mix(in srgb, var(--warning) 14%, transparent);
+  color: var(--warning-text);
+}
+.loader-card {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: var(--spacing-4);
+  text-align: center;
+}
+.skeleton-card {
+  display: grid;
+  gap: var(--spacing-3);
+  padding: var(--spacing-4);
+  span {
+    height: 16px;
+    border-radius: var(--radius-medium);
+    background: linear-gradient(90deg, var(--skeleton-base), var(--skeleton-highlight), var(--skeleton-base));
+    background-size: 220% 100%;
+    animation: mesaflow-shimmer 1.4s ease-in-out infinite;
+  }
+  span:first-child {
+    height: 88px;
+  }
+  span:last-child {
+    width: 62%;
+  }
+}
+.empty-state {
+  padding: var(--spacing-4);
+  text-align: center;
+  svg {
+    width: 40px;
+    height: 40px;
+    margin: auto;
+    color: var(--text-secondary);
+  }
+}
+@keyframes mesaflow-shimmer {
+  to {
+    background-position: -220% 0;
+  }
+}

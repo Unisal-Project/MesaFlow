@@ -1,0 +1,160 @@
+@use '../../../styles/abstracts/mixins';
+.confirm-order-page {
+  @include mixins.client-page;
+  .client-header {
+    @include mixins.client-header;
+  }
+  .client-header-heading {
+    @include mixins.client-header-heading;
+  }
+  .client-header-heading > strong {
+    @include mixins.client-header-title;
+  }
+  .client-header-subtitle {
+    @include mixins.client-header-subtitle;
+  }
+}
+.confirm-order-back, .confirm-order-cart {
+  @include mixins.client-header-action;
+}
+.confirm-order-back svg, .confirm-order-cart svg {
+  width: 24px;
+  height: 24px;
+}
+.confirm-order-cart > span {
+  @include mixins.client-cart-count;
+}
+.confirm-order-content {
+  padding: var(--spacing-6) var(--spacing-4) calc(108px + env(safe-area-inset-bottom));
+}
+.confirm-order-kicker {
+  margin-bottom: var(--spacing-5);
+  color: var(--primary);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+}
+.confirm-order-content h1 {
+  margin: 0 0 var(--spacing-5);
+  font-family: var(--font-display);
+  font-size: clamp(24px, 6vw, 30px);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.2;
+}
+.confirm-review-card {
+  padding: var(--spacing-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  h2 {
+    margin: 0 0 var(--spacing-3);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-extrabold);
+  }
+  > p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+  ul {
+    display: grid;
+    gap: var(--spacing-3);
+    margin: var(--spacing-4) 0 0;
+    padding: var(--spacing-3) 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+  }
+  li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    font-size: var(--font-size-sm);
+  }
+  li > div {
+    min-width: 0;
+  }
+  li > strong {
+    flex-shrink: 0;
+  }
+  li span {
+    display: block;
+    margin-top: var(--spacing-1);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    overflow-wrap: anywhere;
+  }
+}
+.confirm-review-fee, .confirm-review-total {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-3);
+  font-size: var(--font-size-sm);
+}
+.confirm-review-fee {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.confirm-review-total {
+  color: var(--primary);
+  font-weight: var(--font-weight-bold);
+}
+.confirm-order-updates {
+  margin-block: var(--spacing-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  input:checked + span {
+    background: var(--primary);
+  }
+  input:focus-visible + span {
+    @include mixins.focus-visible(2px, 3px);
+  }
+}
+.confirm-order-actions {
+  display: grid;
+  gap: var(--spacing-4);
+  .btn {
+    width: 100%;
+    min-height: 46px;
+    border-radius: var(--radius-medium);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+  }
+  .btn.secondary {
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+}
+.confirm-order-demo {
+  margin-top: var(--spacing-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+}
+.confirm-order-feedback {
+  display: grid;
+  gap: var(--spacing-4);
+  padding-block: var(--spacing-6);
+  color: var(--text-secondary);
+  h1 {
+    margin-bottom: 0;
+    color: var(--text);
+  }
+  > svg {
+    width: 40px;
+    height: 40px;
+    color: var(--primary);
+  }
+}
+@include mixins.down(compact-phone) {
+  .confirm-order-content {
+    padding-inline: var(--spacing-3);
+  }
+  .confirm-review-card {
+    padding: var(--spacing-3);
+  }
+}

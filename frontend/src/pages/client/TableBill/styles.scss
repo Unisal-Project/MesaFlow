@@ -1,0 +1,160 @@
+@use '../../../styles/abstracts/mixins';
+.table-bill-page {
+  @include mixins.client-page;
+  .client-header {
+    @include mixins.client-header;
+  }
+  .client-header-heading {
+    @include mixins.client-header-heading;
+  }
+  .client-header-heading > strong {
+    @include mixins.client-header-title;
+  }
+  .client-header-subtitle {
+    @include mixins.client-header-subtitle;
+  }
+}
+.table-bill-back, .table-bill-cart {
+  @include mixins.client-header-action;
+}
+.table-bill-back svg, .table-bill-cart svg {
+  width: 24px;
+  height: 24px;
+}
+.table-bill-cart > span {
+  @include mixins.client-cart-count;
+}
+.table-bill-main {
+  padding: var(--spacing-5) var(--spacing-4) calc(108px + env(safe-area-inset-bottom));
+}
+.table-bill-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-5);
+  h1 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(24px, 6vw, 30px);
+    font-weight: var(--font-weight-bold);
+  }
+}
+.table-bill-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2) var(--spacing-3);
+  border-radius: var(--radius-small);
+  background: color-mix(in srgb, var(--primary) 15%, var(--background));
+  color: var(--primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  &::before {
+    width: 7px;
+    height: 7px;
+    border-radius: var(--radius-full);
+    background: currentColor;
+    content: "";
+  }
+}
+.table-bill-summary {
+  padding: var(--spacing-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  background: var(--surface);
+  box-shadow: var(--shadow-soft);
+  dl {
+    display: grid;
+    gap: var(--spacing-4);
+    margin: 0;
+  }
+}
+.table-bill-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-2);
+  dt {
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+  }
+  dd {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+  }
+}
+.table-bill-total {
+  padding-top: var(--spacing-4);
+  border-top: 1px solid var(--border);
+  dd {
+    color: var(--primary);
+    font-size: var(--font-size-2xl);
+  }
+}
+.table-bill-options {
+  display: grid;
+  gap: var(--spacing-3);
+  min-width: 0;
+  margin: var(--spacing-5) 0;
+  padding: 0;
+  border: 0;
+}
+.table-bill-page .table-bill-option {
+  position: relative;
+  min-height: 46px;
+  padding: var(--spacing-3);
+  border: 1px solid transparent;
+  border-radius: var(--radius-medium);
+  background: var(--surface);
+  color: var(--text);
+  font: var(--font-weight-bold) var(--font-size-md) / 1.4 var(--font-heading);
+  cursor: pointer;
+}
+.table-bill-option input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.table-bill-option > span {
+  display: none;
+}
+.table-bill-option:has(input:checked) {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 15%, var(--background));
+  color: var(--accent);
+}
+.table-bill-option:has(input:focus-visible) {
+  @include mixins.focus-visible(2px, 3px);
+}
+.table-bill-option:has(input:disabled) {
+  cursor: default;
+}
+.table-bill-page .table-bill-close {
+  width: 100%;
+  min-height: 46px;
+  border-radius: var(--radius-medium);
+  font: var(--font-weight-bold) var(--font-size-sm) var(--font-heading);
+  white-space: normal;
+}
+.table-bill-feedback {
+  margin-top: var(--spacing-4);
+  .message {
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+  }
+}
+@include mixins.down(compact-phone) {
+  .table-bill-main {
+    padding-inline: var(--spacing-3);
+  }
+}

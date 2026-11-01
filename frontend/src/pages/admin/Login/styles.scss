@@ -1,0 +1,274 @@
+@use '../../../styles/abstracts/mixins';
+
+// Evita revelar o fundo ao puxar a página além dos limites da rolagem.
+html.login-active,
+html.login-active body {
+  overscroll-behavior: none;
+}
+
+.login-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+.login-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--spacing-10);
+  padding: clamp(32px, 5vw, 72px);
+  background: var(--primary);
+  color: var(--on-primary);
+}
+.login-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  img {
+    display: block;
+    flex: 0 0 64px;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-large);
+    object-fit: contain;
+  }
+  strong {
+    display: block;
+    font-family: var(--font-heading);
+    font-size: 28px;
+    font-weight: var(--font-weight-extrabold);
+    line-height: 1.1;
+  }
+  span {
+    display: block;
+    margin-top: var(--spacing-1);
+    color: color-mix(in srgb, var(--on-primary) 75%, transparent);
+    font-size: 9px;
+  }
+}
+.login-intro-content {
+  max-width: 500px;
+  padding-block: var(--spacing-6);
+}
+.login-eyebrow {
+  color: color-mix(in srgb, var(--on-primary) 68%, transparent);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  letter-spacing: .1em;
+}
+.login-intro h1 {
+  margin-top: var(--spacing-5);
+  color: var(--on-primary);
+  font-family: var(--font-display);
+  font-size: clamp(36px, 4.2vw, 64px);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.12;
+}
+.login-intro-content > p {
+  max-width: 420px;
+  margin-top: var(--spacing-6);
+  color: color-mix(in srgb, var(--on-primary) 75%, transparent);
+  font-size: var(--font-size-md);
+  line-height: 1.7;
+}
+.login-features {
+  display: grid;
+  gap: var(--spacing-4);
+  margin-top: var(--spacing-9);
+  padding: 0;
+  list-style: none;
+  li {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-sm);
+  }
+  svg {
+    width: 36px;
+    height: 36px;
+    padding: var(--spacing-2);
+    border-radius: var(--radius-small);
+    background: color-mix(in srgb, var(--surface) 10%, transparent);
+  }
+}
+.login-intro-footer {
+  padding-top: var(--spacing-5);
+  border-top: 1px solid color-mix(in srgb, var(--on-primary) 16%, transparent);
+  color: color-mix(in srgb, var(--on-primary) 65%, transparent);
+  font-size: var(--font-size-xs);
+}
+.login-access {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-8);
+  padding: clamp(24px, 4vw, 64px);
+}
+.login-card {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--spacing-9);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+.login-access-label {
+  color: var(--accent);
+  font-family: var(--font-heading);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: .08em;
+}
+.login-card h2 {
+  margin-top: var(--spacing-3);
+  font-family: var(--font-display);
+  font-size: clamp(26px, 2.5vw, 34px);
+  line-height: 1.2;
+}
+.login-description {
+  margin-top: var(--spacing-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+.login-form {
+  display: grid;
+  gap: var(--spacing-5);
+  margin-top: var(--spacing-8);
+  .field {
+    gap: var(--spacing-2);
+    font-family: var(--font-heading);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+  }
+  .field input {
+    min-height: 48px;
+    border: 1px solid transparent;
+    background: var(--background);
+    font-family: var(--font-body);
+    font-weight: var(--font-weight-regular);
+  }
+}
+.login-password {
+  position: relative;
+  input {
+    padding-right: 48px;
+  }
+}
+.login-password-toggle {
+  display: grid;
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--primary);
+  &:hover {
+    background: var(--selected-background);
+  }
+}
+.login-form > .btn {
+  justify-content: space-between;
+  min-height: 48px;
+  margin-top: var(--spacing-2);
+  padding-inline: var(--spacing-5);
+  border-radius: var(--radius-medium);
+  font-family: var(--font-heading);
+  font-weight: var(--font-weight-semibold);
+}
+.login-demo {
+  margin-top: var(--spacing-6);
+  padding-top: var(--spacing-5);
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
+  strong {
+    display: block;
+    margin-bottom: var(--spacing-1);
+    color: var(--primary);
+    font-weight: var(--font-weight-semibold);
+  }
+}
+.login-footer {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-align: center;
+}
+@media (max-width: 960px) {
+  .login-intro {
+    padding: var(--spacing-8);
+  }
+  .login-access {
+    padding: var(--spacing-6);
+  }
+  .login-card {
+    padding: var(--spacing-6);
+  }
+}
+@include mixins.down(tablet) {
+  .login-page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .login-intro {
+    gap: var(--spacing-4);
+    padding: var(--spacing-6);
+  }
+  .login-intro-content {
+    max-width: none;
+    padding-block: var(--spacing-2);
+  }
+  .login-intro h1 {
+    margin-top: var(--spacing-3);
+    font-size: 32px;
+  }
+  .login-intro-content > p {
+    margin-top: var(--spacing-3);
+    font-size: var(--font-size-sm);
+  }
+  .login-eyebrow, .login-features, .login-intro-footer {
+    display: none;
+  }
+  .login-access {
+    gap: var(--spacing-5);
+    padding: var(--spacing-6) var(--spacing-4);
+  }
+  .login-card {
+    max-width: 480px;
+  }
+}
+
+.login-switch {
+  margin-top: var(--spacing-6);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+
+  button {
+    min-height: 44px;
+    padding: var(--spacing-2);
+    border: 0;
+    border-radius: var(--radius-small);
+    background: transparent;
+    color: var(--primary);
+    font: inherit;
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--selected-background);
+    }
+
+    &:focus-visible {
+      @include mixins.focus-visible;
+    }
+  }
+}

@@ -1,0 +1,15 @@
+@media (max-width: 620px) {
+  .card-actions {
+    align-items: stretch;
+    flex-direction: column;
+    .btn {
+      width: 100%;
+    }
+  }
+  .cart-item {
+    grid-template-columns: 64px minmax(0, 1fr);
+    > :last-child {
+      grid-column: 2;
+    }
+  }
+}

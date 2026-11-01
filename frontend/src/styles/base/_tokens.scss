@@ -1,0 +1,36 @@
+@use '../abstracts/variables';
+@use '../abstracts/functions';
+
+:root {
+  @for $step from 0 through 16 {
+    --spacing-#{$step}: #{functions.spacing($step)};
+  }
+
+  // Compatibilidade: --space-5 e --space-6 já significavam 24px e 32px.
+  --space-1: var(--spacing-1);
+  --space-2: var(--spacing-2);
+  --space-3: var(--spacing-3);
+  --space-4: var(--spacing-4);
+  --space-5: var(--spacing-6);
+  --space-6: var(--spacing-8);
+
+  @each $name, $radius in variables.$radii {
+    --radius-#{$name}: #{$radius};
+  }
+  --radius-card: var(--radius-medium);
+  --radius-control: var(--radius-medium);
+
+  @each $name, $size in variables.$font-sizes {
+    --font-size-#{$name}: #{$size};
+  }
+  --font-display: 'Bricolage Grotesque Variable', system-ui, sans-serif;
+  --font-heading: 'Manrope Variable', system-ui, sans-serif;
+  --font-body: 'DM Sans Variable', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+  --line-height-heading: 1.2;
+  --line-height-body: 1.5;
+}

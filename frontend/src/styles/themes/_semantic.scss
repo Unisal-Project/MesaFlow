@@ -1,0 +1,78 @@
+:root,
+[data-theme] {
+  --background: var(--brand-background);
+  --surface: var(--brand-surface);
+  --text-primary: var(--brand-text);
+  --text-inverse: #fffefb;
+  --text-secondary: color-mix(in srgb, var(--text-primary) 72%, var(--surface));
+  --text-placeholder: var(--text-secondary);
+  --text: var(--text-primary);
+  --border: color-mix(in srgb, var(--text-primary) 18%, var(--surface));
+  --border-strong: color-mix(in srgb, var(--text-primary) 32%, var(--surface));
+  --border-hover: color-mix(in srgb, var(--action-primary) 45%, var(--border));
+
+  --action-primary: var(--brand-primary);
+  --action-primary-hover: color-mix(in srgb, var(--action-primary) 88%, black);
+  --action-primary-active: color-mix(in srgb, var(--action-primary) 76%, black);
+  --on-primary: var(--text-inverse);
+  --action-secondary: var(--surface);
+  --action-secondary-text: var(--action-primary);
+  --action-secondary-hover: color-mix(in srgb, var(--action-primary) 8%, var(--surface));
+  --accent: var(--brand-accent);
+  --on-accent: #171a18;
+  --primary: var(--action-primary);
+  --primary-hover: var(--action-primary-hover);
+  --primary-dark: var(--action-primary-active);
+  --hover: var(--action-secondary-hover);
+  --surface-hover: var(--hover);
+  --surface-muted: color-mix(in srgb, var(--text-primary) 4%, var(--surface));
+  --selected-background: color-mix(in srgb, var(--action-primary) 10%, var(--surface));
+  --selected-border: var(--action-primary);
+  --focus: var(--action-primary);
+  --focus-ring: 0 0 0 3px color-mix(in srgb, var(--focus) 24%, transparent);
+  --disabled: color-mix(in srgb, var(--text-primary) 48%, var(--surface));
+  --disabled-background: var(--surface-muted);
+  --disabled-opacity: 0.45;
+  --control-track: var(--border-strong);
+
+  --success: #287a49;
+  --success-text: #205e38;
+  --success-secondary: var(--success-text);
+  --success-subtle: color-mix(in srgb, var(--success) 10%, var(--surface));
+  --success-border: color-mix(in srgb, var(--success) 26%, var(--surface));
+  --warning: #946200;
+  --warning-text: #725000;
+  --warning-secondary: var(--warning-text);
+  --warning-subtle: color-mix(in srgb, var(--warning) 10%, var(--surface));
+  --warning-border: color-mix(in srgb, var(--warning) 26%, var(--surface));
+  --error: #b5362d;
+  --on-error: var(--text-inverse);
+  --error-text: #922b24;
+  --error-hover: #982b24;
+  --error-subtle: color-mix(in srgb, var(--error) 8%, var(--surface));
+  --error-border: color-mix(in srgb, var(--error) 28%, var(--surface));
+  --info: #296d96;
+  --info-text: #235a7b;
+  --info-subtle: color-mix(in srgb, var(--info) 10%, var(--surface));
+  --status-neutral-background: var(--surface-muted);
+  --status-closing: #8051a5;
+  --status-closing-text: #684087;
+
+  --sidebar-background: color-mix(in srgb, var(--action-primary) 62%, var(--text-primary));
+  --sidebar-text: var(--text-inverse);
+  --overlay: color-mix(in srgb, var(--text-primary) 58%, transparent);
+  --skeleton-base: var(--border);
+  --skeleton-highlight: var(--surface-muted);
+  --shadow-color: var(--text-primary);
+  --elevation-1: 0 2px 10px color-mix(in srgb, var(--shadow-color) 6%, transparent);
+  --elevation-2: 0 8px 24px color-mix(in srgb, var(--shadow-color) 8%, transparent);
+  --elevation-3: 0 16px 40px color-mix(in srgb, var(--shadow-color) 12%, transparent);
+  --shadow-soft: var(--elevation-1);
+  --shadow: var(--elevation-2);
+  --shadow-large: var(--elevation-3);
+
+  --illustration-light: #f8d8a5;
+  --illustration-mid: #d78f50;
+  --illustration-dark: #5d342b;
+  --illustration-leaf: #3f8f5b;
+}
