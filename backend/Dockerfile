@@ -8,7 +8,7 @@ ENV DATABASE_URL=$DATABASE_URL
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY backend ./backend
 
 # O client usa um diretório customizado (src/generated/prisma) e precisa
 # existir antes de o TypeScript/tsx carregar a aplicação.
@@ -16,4 +16,4 @@ RUN npm run prisma:generate
 
 EXPOSE 3333
 
-CMD ["npm", "run", "dev"]
+CMD ["npm", "run", "dev:backend"]
