@@ -1,5 +1,5 @@
 import { PrismaConnector } from "../../../database/prisma.js";
-import { Prisma } from "../../../generated/prisma/client.js";
+import { Prisma, type Product } from "../../../generated/prisma/client.js";
 import type ProductsRepository from "./products.repository.js";
 import {
   ProductInput,
@@ -15,18 +15,20 @@ export class PrismaProductRepository implements ProductsRepository {
 
   async createProduct(productInput: ProductInput): Promise<ProductOutput> {
     try {
-      return await this.prismaClient.product.create({
-        data: {
-          name: productInput.name,
-          description: productInput.description,
-          imageUrl: productInput.imageUrl,
-          price: productInput.price,
-          categoryId: productInput.categoryId,
-          stockQuantity: productInput.stockQuantity,
-          available: productInput.available,
-          active: productInput.active,
-        },
-      });
+      return this.toProduct(
+        await this.prismaClient.product.create({
+          data: {
+            name: productInput.name,
+            description: productInput.description,
+            imageUrl: productInput.imageUrl,
+            price: productInput.price,
+            categoryId: productInput.categoryId,
+            stockQuantity: productInput.stockQuantity,
+            available: productInput.available,
+            active: productInput.active,
+          },
+        }),
+      );
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -36,12 +38,12 @@ export class PrismaProductRepository implements ProductsRepository {
     const product = await this.prismaClient.product.findUnique({
       where: { id },
     });
-    return product;
+    return product ? this.toProduct(product) : null;
   }
 
   async getAllProducts(): Promise<ProductOutput[]> {
     const products = await this.prismaClient.product.findMany();
-    return products;
+    return products.map((product) => this.toProduct(product));
   }
 
   async updateProduct(
@@ -83,10 +85,12 @@ export class PrismaProductRepository implements ProductsRepository {
     }
 
     try {
-      return await this.prismaClient.product.update({
-        where: { id },
-        data,
-      });
+      return this.toProduct(
+        await this.prismaClient.product.update({
+          where: { id },
+          data,
+        }),
+      );
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -108,10 +112,12 @@ export class PrismaProductRepository implements ProductsRepository {
     newCategoryId: bigint,
   ): Promise<ProductOutput> {
     try {
-      return await this.prismaClient.product.update({
-        where: { id },
-        data: { categoryId: newCategoryId },
-      });
+      return this.toProduct(
+        await this.prismaClient.product.update({
+          where: { id },
+          data: { categoryId: newCategoryId },
+        }),
+      );
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -132,6 +138,10 @@ export class PrismaProductRepository implements ProductsRepository {
       id: product.id,
       price: product.price.toString(),
     }));
+  }
+
+  private toProduct(product: Product): ProductOutput {
+    return { ...product, price: product.price.toString() };
   }
 
   private handlePrismaError(error: unknown): never {

@@ -7,9 +7,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 # Copia o restante do código
-COPY . .
+COPY frontend ./frontend
 
 EXPOSE 5173
 
 # O volume de node_modules persiste entre builds; sincroniza com o lockfile ao iniciar.
-CMD ["sh", "-c", "npm ci && exec npm run dev"]
+CMD ["sh", "-c", "npm ci && exec npm run dev:frontend"]

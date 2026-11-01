@@ -63,7 +63,3 @@ jobs:
 
       - name: Auditar dependências da raiz
         run: npm audit --audit-level=moderate
-
-      - name: Auditar dependências do backend
-        working-directory: ./backend
-        run: npm audit --workspaces=false --audit-level=moderate

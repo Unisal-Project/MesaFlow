@@ -14,8 +14,11 @@ import { mkdir } from "node:fs/promises";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
 import { tableRoutes } from "./modules/tables/table.routers.js";
 import { paymentRoutes } from "./modules/payments/payment.routes.js";
+import { registerAuthRoutes } from "./modules/auth/auth.router.js";
+import { registerUserRoutes } from "./modules/users/user.router.js";
+import { requireApiAuthentication } from "./shared/api-access.js";
 
-export const app = fastify({ logger: true });
+export const app = fastify({ logger: true, trustProxy: true });
 
 await mkdir(uploadsRootDirectory, { recursive: true });
 
@@ -46,9 +49,12 @@ app.register(fastifyStatic, {
 //routers
 app.register(
   async (instance) => {
+    instance.addHook("onRequest", requireApiAuthentication);
     instance.get("/health", async () => ({ status: "ok" }));
     await instance.register(registerCategoryRoutes);
     await instance.register(registerProductRoutes);
+    await instance.register(registerAuthRoutes);
+    await instance.register(registerUserRoutes);
     await instance.register(orderRoutes);
     await instance.register(attendanceRoutes);
     await instance.register(tableRoutes);

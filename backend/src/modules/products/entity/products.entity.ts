@@ -1,5 +1,3 @@
-import type { Prisma } from "../../../generated/prisma/client.js";
-
 export type ProductInput = {
   categoryId: bigint;
   name: string;
@@ -28,7 +26,7 @@ export type ProductOutput = {
   name: string;
   description: string | null;
   imageUrl: string | null;
-  price: Prisma.Decimal;
+  price: string;
   stockQuantity: number;
   available: boolean;
   active: boolean;

@@ -5,11 +5,24 @@ Sistema de gerenciamento de pedidos e comandas para estabelecimentos, com atendi
 Os requisitos de sistema, ambiente e validação estão documentados em
 [`REQUIREMENTS.md`](REQUIREMENTS.md).
 
-Para baixar todas as bibliotecas do backend e frontend e gerar o Prisma Client:
+Para construir a pilha com Nginx e proxy reverso, veja
+[`docs/production.md`](docs/production.md).
+
+As dependências do backend e frontend ficam no único `package.json` da raiz,
+com um único `package-lock.json`. Execute os comandos npm na raiz.
+
+Para instalar todas as dependências e gerar o Prisma Client:
 
 ```bash
 npm run setup
 ```
+
+Comandos de desenvolvimento:
+
+- `npm run dev`: inicia backend e frontend.
+- `npm run build`: compila os dois projetos.
+- `npm test`: executa os testes dos dois projetos.
+- `npm run lint` e `npm run lint:backend`: verificam frontend e backend.
 
 Visão Geral
 
