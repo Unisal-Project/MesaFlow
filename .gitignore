@@ -35,7 +35,7 @@ production.env
 #  Vite / bundler cache
 # ─────────────────────────────────────────
 .vite/
-frontend/app/.vite/
+frontend/.vite/
 
 # ─────────────────────────────────────────
 #  Docker local data
