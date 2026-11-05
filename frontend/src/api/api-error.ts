@@ -8,8 +8,11 @@ export class ApiError extends Error {
     data?: unknown
   ) {
     super(message);
-    this.name = "ApiError";
     this.status = status;
     this.data = data;
+
+    this.name = "ApiError";
+
+    Object.setPrototypeOf(this, ApiError.prototype);
   }
 }

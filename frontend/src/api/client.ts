@@ -1,5 +1,9 @@
 import { ApiError } from "./api-error";
 
+import type { ApiErrorResponse } from "./types";
+
+export { ApiError } from "./api-error";
+
 const DEFAULT_API_PORT = "3333";
 const API_PREFIX = "/api/v1";
 
@@ -40,16 +44,22 @@ async function parseResponse<T>(response: Response): Promise<T> {
 }
 
 function getErrorMessage(data: unknown): string {
-  if (
-    data &&
-    typeof data === "object" &&
-    "message" in data &&
-    typeof data.message === "string"
-  ) {
+  if (isApiErrorResponse(data)) {
     return data.message;
   }
 
   return "Não foi possível acessar o servidor";
+}
+
+function isApiErrorResponse(
+  data: unknown,
+): data is ApiErrorResponse {
+  return (
+    typeof data === "object" &&
+    data !== null &&
+    "message" in data &&
+    typeof data.message === "string"
+  );
 }
 
 export async function apiRequest<T>(
@@ -96,3 +106,37 @@ export async function apiRequest<T>(
 
   return data as T;
 }
+
+export async function apiRequestBlob(
+  path: string,
+  options: RequestInit = {},
+): Promise<Blob> {
+  const url = buildApiUrl(path);
+
+  let response: Response;
+
+  try {
+    response = await fetch(url, options);
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw error;
+    }
+
+    throw new Error(
+      "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.",
+    );
+  }
+
+  if (!response.ok) {
+    const data = await parseResponse<unknown>(response);
+
+    throw new ApiError(
+      getErrorMessage(data),
+      response.status,
+      data,
+    );
+  }
+
+  return response.blob();
+}
+
