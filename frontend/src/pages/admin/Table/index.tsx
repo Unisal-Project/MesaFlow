@@ -67,8 +67,6 @@ export default function Tables({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
       <main className="tables-content">
         <div className="tables-topbar">

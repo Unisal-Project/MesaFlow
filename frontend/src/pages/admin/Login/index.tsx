@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Button, TextField } from "@/components";
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
+import { login, register } from "@/services/auth.service";
 import "./styles.scss";
 
 type LoginProps = { onEnter: () => void };
@@ -22,8 +23,11 @@ export default function Login({ onEnter }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isRegistering && password !== confirmPassword) {
       const confirmation = event.currentTarget.elements.namedItem(
@@ -33,7 +37,17 @@ export default function Login({ onEnter }: LoginProps) {
       confirmation.reportValidity();
       return;
     }
-    onEnter();
+    setError("");
+    setLoading(true);
+    try {
+      if (isRegistering) await register(name, email, password);
+      else await login(email, password);
+      onEnter();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Não foi possível entrar");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +71,7 @@ export default function Login({ onEnter }: LoginProps) {
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
+    setError("");
   };
 
   return (
@@ -114,24 +129,17 @@ export default function Login({ onEnter }: LoginProps) {
             onSubmit={handleSubmit}
           >
             {isRegistering && (
-              <>
-                <TextField
-                  id="register-name"
-                  name="name"
-                  label="Seu nome"
-                  autoComplete="name"
-                  placeholder="Como podemos chamar você?"
-                  required
-                />
-                <TextField
-                  id="register-restaurant"
-                  name="restaurant"
-                  label="Nome do estabelecimento"
-                  autoComplete="organization"
-                  placeholder="Nome do seu restaurante"
-                  required
-                />
-              </>
+              <TextField
+                id="register-name"
+                name="name"
+                label="Seu nome"
+                autoComplete="name"
+                placeholder="Como podemos chamar você?"
+                maxLength={120}
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
             )}
             <TextField
               id="login-email"
@@ -188,7 +196,12 @@ export default function Login({ onEnter }: LoginProps) {
                 onChange={handleConfirmPasswordChange}
               />
             )}
-            <Button type="submit">
+            {error && (
+              <p className="login-error" role="alert">
+                {error}
+              </p>
+            )}
+            <Button type="submit" loading={loading}>
               {isRegistering ? "Experimentar o MesaFlow" : "Entrar no painel"}
               <ArrowRight aria-hidden="true" />
             </Button>
@@ -198,16 +211,6 @@ export default function Login({ onEnter }: LoginProps) {
             <button type="button" onClick={switchMode}>
               {isRegistering ? "Entrar" : "Criar conta"}
             </button>
-          </p>
-          <p className="login-demo" role="note">
-            <strong>
-              {isRegistering
-                ? "Cadastro demonstrativo"
-                : "Acesso demonstrativo"}
-            </strong>
-            {isRegistering
-              ? "Este formulário permite explorar o painel. Nenhuma conta é criada e os dados não são enviados nem armazenados."
-              : "Preencha os campos para explorar o painel. As credenciais não são verificadas nem armazenadas."}
           </p>
         </div>
         <footer className="login-footer">

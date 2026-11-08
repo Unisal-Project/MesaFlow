@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { classNames } from "@/utils/classNames";
+import { getSession } from "@/services/auth.service";
 import {
   LayoutDashboard,
   ChartColumnBig,
@@ -47,8 +48,8 @@ type AdminSidebarProps = {
   items?: SidebarItem[];
   activeId: string;
   onChange: (id: string) => void;
-  userName: string;
-  userRole: string;
+  userName?: string;
+  userRole?: string;
 };
 export function AdminSidebar({
   brand = "MesaFlow",
@@ -62,6 +63,9 @@ export function AdminSidebar({
   userName,
   userRole,
 }: AdminSidebarProps) {
+  const user = getSession()?.user;
+  userName ??= user?.name ?? "Usuário";
+  userRole ??= user?.role === "ADMIN" ? "Administrador" : "Funcionário";
   return (
     <aside className="admin-sidebar">
       <div className="admin-brand">

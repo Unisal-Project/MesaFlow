@@ -111,8 +111,6 @@ export default function Orders({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={(id) => onNavigate?.(id)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
 
       <main className="orders-content">

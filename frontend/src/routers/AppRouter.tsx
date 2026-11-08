@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import {
   BrowserRouter,
   Navigate,
@@ -8,12 +8,17 @@ import {
   useNavigate,
 } from "react-router";
 import Login from "@/pages/admin/Login";
+import { getSession } from "@/services/auth.service";
 import { AdminRoutes } from "./AdminRoutes";
 import { ClientRoutes } from "./ClientRoutes";
 
 function LoginRoute() {
   const navigate = useNavigate();
   return <Login onEnter={() => navigate("/admin/dashboard")} />;
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  return getSession() ? children : <Navigate to="/login" replace />;
 }
 
 function EntryRoute() {
@@ -47,7 +52,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<EntryRoute />} />
         <Route path="/login" element={<LoginRoute />} />
-        <Route path="/admin/*" element={<AdminRoutes />} />
+        <Route path="/admin/*" element={<RequireAuth><AdminRoutes /></RequireAuth>} />
         <Route path="/*" element={<ClientRoutes />} />
       </Routes>
     </BrowserRouter>

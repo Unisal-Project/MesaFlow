@@ -184,19 +184,9 @@ html.login-active body {
   font-family: var(--font-heading);
   font-weight: var(--font-weight-semibold);
 }
-.login-demo {
-  margin-top: var(--spacing-6);
-  padding-top: var(--spacing-5);
-  border-top: 1px solid var(--border);
-  color: var(--text-secondary);
-  font-size: var(--font-size-xs);
-  line-height: 1.6;
-  strong {
-    display: block;
-    margin-bottom: var(--spacing-1);
-    color: var(--primary);
-    font-weight: var(--font-weight-semibold);
-  }
+.login-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
 }
 .login-footer {
   color: var(--text-secondary);

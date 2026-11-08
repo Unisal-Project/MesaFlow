@@ -40,8 +40,6 @@ export default function Dashboard({ onNavigate, onViewOrders, onViewReports, onV
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={(id) => onNavigate?.(id)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
 
       <main className="mf-dashboard-main">

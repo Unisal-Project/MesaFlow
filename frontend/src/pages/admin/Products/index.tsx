@@ -82,8 +82,6 @@ export default function Products({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
       <main className="products-content">
         <div className="products-topbar">

@@ -22,7 +22,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
   return (
     <div className="reports-page">
       <AdminSidebar activeId="reports" brandSubtitle="GESTÃO DO RESTAURANTE" navigationLabel="MENU PRINCIPAL" showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} userName="Nome do usuário" userRole="Administrador" />
+        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} />
       <main className="reports-content">
         <header className="reports-topbar">
           <div className="reports-breadcrumb" aria-label="Página atual"><span>Visão geral</span><strong>/ &nbsp;Relatórios</strong></div>

@@ -1,3 +1,5 @@
+import { getToken, logout } from "@/services/auth.service";
+
 // VITE_API_URL inclui o prefixo /api/v1. O padrão atende ao ambiente local.
 export const API_URL = (
   import.meta.env.VITE_API_URL ||
@@ -9,7 +11,17 @@ export async function apiRequest<T>(path: string, options: RequestInit = {}): Pr
   if (typeof options.body === "string" && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
+  const token = getToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
+  // Token expirado ou inválido: encerra a sessão e volta para o login.
+  // Em /auth/* o 401 significa credencial errada e deve chegar ao formulário.
+  if (response.status === 401 && token && !path.startsWith("/auth/")) {
+    logout();
+    window.location.assign("/login");
+  }
   if (!response.ok) {
     const body: unknown = await response.json().catch(() => null);
     const message = body && typeof body === "object" && "message" in body
