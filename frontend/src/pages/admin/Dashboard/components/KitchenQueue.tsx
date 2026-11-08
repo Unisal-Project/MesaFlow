@@ -1,14 +1,18 @@
 import { Eye, List } from "lucide-react";
 import { Button } from "@/components";
 
-import { orders } from "../mocks/dashboard.mock";
+import type { Order } from "../../Order/types/order.types";
+
+const describe = (order: Order) =>
+  `${order.table} · ${order.items.map((item) => `${item.quantity}x ${item.name}`).join(", ")}`;
 
 type KitchenQueueProps = {
+  orders: Order[];
   onViewOrder?: (orderId: number) => void;
   onViewOrders?: () => void;
 };
 
-export function KitchenQueue({ onViewOrders, onViewOrder }: KitchenQueueProps) {
+export function KitchenQueue({ orders, onViewOrders, onViewOrder }: KitchenQueueProps) {
   return (
     <section
       className="mf-dashboard-panel"
@@ -35,7 +39,7 @@ export function KitchenQueue({ onViewOrders, onViewOrder }: KitchenQueueProps) {
             <span className="mf-dashboard-order-icon"><List aria-hidden="true" size={24} /></span>
             <div className="mf-dashboard-order-description">
               <h3>Pedido #{order.id}</h3>
-              <p>{order.description}</p>
+              <p>{describe(order)}</p>
             </div>
 
             <Button type="button" variant="secondary" size="small" className="mf-dashboard-order-view" aria-label={`Visualizar pedido #${order.id}`} onClick={() => onViewOrder?.(order.id)}>
@@ -44,6 +48,7 @@ export function KitchenQueue({ onViewOrders, onViewOrder }: KitchenQueueProps) {
             </Button>
           </article>
         ))}
+        {orders.length === 0 && <p>Nenhum pedido em aberto agora.</p>}
       </div>
     </section>
   );

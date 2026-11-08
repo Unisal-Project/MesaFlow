@@ -1539,3 +1539,9 @@
 
   .orders-empty-state { grid-column: 1 / -1; }
 }
+
+.order-edit-error {
+  margin: 0 var(--spacing-5);
+  color: var(--error);
+  font-size: var(--font-size-sm);
+}

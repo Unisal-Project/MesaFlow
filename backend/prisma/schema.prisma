@@ -53,6 +53,13 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  CASH
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
 enum PrintJobType {
   ORDER
   BILL
@@ -138,6 +145,7 @@ model Attendance {
   closingRequestedAt DateTime?        @map("closing_requested_at") @db.DateTime(0)
   closedAt           DateTime?        @map("closed_at") @db.DateTime(0)
   closedById         BigInt?          @map("closed_by") @db.UnsignedBigInt
+  serviceFee         Decimal          @default(0.00) @map("service_fee") @db.Decimal(10, 2)
   createdAt          DateTime         @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
   // Coluna STORED calculada pelo MariaDB; a expressão permanece no SQL-fonte.
@@ -223,15 +231,19 @@ model StockMovement {
 }
 
 model Payment {
-  id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
-  attendanceId BigInt        @map("attendance_id") @db.UnsignedBigInt
-  amount       Decimal       @db.Decimal(10, 2)
-  status       PaymentStatus @default(PENDING)
-  paidAt       DateTime?     @map("paid_at") @db.DateTime(0)
-  createdById  BigInt?       @map("created_by") @db.UnsignedBigInt
-  createdAt    DateTime      @default(now()) @map("created_at") @db.DateTime(0)
-  attendance   Attendance    @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_payments_attendance")
-  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_payments_created_by")
+  id             BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  attendanceId   BigInt         @map("attendance_id") @db.UnsignedBigInt
+  amount         Decimal        @db.Decimal(10, 2)
+  method         PaymentMethod?
+  receivedAmount Decimal?       @map("received_amount") @db.Decimal(10, 2)
+  changeAmount   Decimal?       @map("change_amount") @db.Decimal(10, 2)
+  processingFee  Decimal?       @map("processing_fee") @db.Decimal(10, 2)
+  status         PaymentStatus  @default(PENDING)
+  paidAt         DateTime?      @map("paid_at") @db.DateTime(0)
+  createdById    BigInt?        @map("created_by") @db.UnsignedBigInt
+  createdAt      DateTime       @default(now()) @map("created_at") @db.DateTime(0)
+  attendance     Attendance     @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_payments_attendance")
+  createdBy      User?          @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_payments_created_by")
 
   @@index([attendanceId], map: "idx_payments_attendance_id")
   @@index([status], map: "idx_payments_status")

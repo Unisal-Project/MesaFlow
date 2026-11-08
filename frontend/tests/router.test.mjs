@@ -77,7 +77,8 @@ for (const [url, expected] of cases) {
     const html = renderToString(tree);
     assert.ok(html.toLocaleLowerCase().includes(expected.toLocaleLowerCase()));
     if (url === "/admin/pedidos") {
-      assert.ok(html.includes("Finalizar pedido"));
+      // Os pedidos vêm da API; a primeira renderização mostra o carregamento.
+      assert.ok(html.includes("Carregando pedidos"));
       assert.ok(!html.includes("Regredir status"));
       assert.ok(!html.includes("Iniciar preparo"));
     }

@@ -27,6 +27,17 @@ test("first QR order opens the table attendance and stores the customer name", a
     },
     product: {
       findMany: async () => [{ id: 4n, price: { toString: () => "18.50" } }],
+      updateMany: async ({ where, data }: any) => {
+        calls.push(
+          `stock ${data.stockQuantity.increment} if >= ${where.stockQuantity.gte}`,
+        );
+        return { count: 1 };
+      },
+    },
+    stockMovement: {
+      create: async ({ data }: any) => {
+        calls.push(`${data.type} ${data.quantity}`);
+      },
     },
     order: {
       create: async ({ data }: any) => {
@@ -60,7 +71,35 @@ test("first QR order opens the table attendance and stores the customer name", a
   assert.equal(result.attendanceId, "12");
   assert.equal(result.order.customerName, "Ana");
   assert.equal(result.order.items[0].unitPrice, "18.50");
-  assert.deepEqual(calls, ["lock", "order"]);
+  assert.deepEqual(calls, ["lock", "order", "stock -2 if >= 2", "SALE -2"]);
+});
+
+test("QR order without enough stock is rejected", async () => {
+  const client: any = {
+    $transaction: async (callback: (tx: any) => unknown) => callback(client),
+    $queryRaw: async () => undefined,
+    restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
+    attendance: { findFirst: async () => ({ id: 12n, status: "OPEN" }) },
+    product: {
+      findMany: async () => [{ id: 4n, price: { toString: () => "18.50" } }],
+      updateMany: async () => ({ count: 0 }),
+      findUnique: async () => ({ name: "Suco", stockQuantity: 1 }),
+    },
+    order: {
+      create: async () => ({
+        id: 21n,
+        attendanceId: 12n,
+        items: [{ id: 31n, productId: 4n, quantity: 2 }],
+      }),
+    },
+  };
+  await assert.rejects(
+    new QrOrderService(client).submit("table-token", {
+      customerName: "Ana",
+      items: [{ productId: "4", quantity: 2 }],
+    }),
+    /Estoque insuficiente para Suco \(disponível: 1\)/,
+  );
 });
 
 test("QR account request closes ordering and creates one bill print job", async () => {

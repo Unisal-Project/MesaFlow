@@ -20,6 +20,9 @@ test("confirming a requested account records its full total and closes the atten
       amount: "180.00",
       paidAt: new Date("2026-10-20T20:00:00Z"),
     }),
+    closeWithPayments: async () => {
+      throw new Error("not used");
+    },
   };
 
   const result = await new PaymentService(repository).confirmAttendancePayment(

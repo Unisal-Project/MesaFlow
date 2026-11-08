@@ -25,11 +25,8 @@ import "./styles.scss";
 
 const indicatorIcons = [ChartNoAxesCombined, ClipboardList, UtensilsCrossed, ArrowUpRight];
 
-export default function Dashboard({ onNavigate, onViewOrders, onViewReports, onViewOrder }: DashboardProps) {
-  const {
-    today,
-    indicators,
-  } = useDashboard();
+export default function Dashboard({ orders, tables, onNavigate, onViewOrders, onViewReports, onViewOrder }: DashboardProps) {
+  const { today, indicators, queue } = useDashboard(orders, tables);
 
   return (
     <div className="mf-dashboard">
@@ -84,9 +81,10 @@ export default function Dashboard({ onNavigate, onViewOrders, onViewReports, onV
           </section>
 
           <div className="mf-dashboard-content">
-            <KitchenQueue onViewOrders={onViewOrders} onViewOrder={onViewOrder} />
+            <KitchenQueue orders={queue} onViewOrders={onViewOrders} onViewOrder={onViewOrder} />
 
             <TableOverview
+              tables={tables}
               onViewTables={() => onNavigate?.("tables")}
             />
           </div>

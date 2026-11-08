@@ -1,15 +1,21 @@
 import { Button } from "@/components";
 
-import {
-  tables,
-  tableLabels,
-} from "../mocks/dashboard.mock";
+import type { RestaurantTable } from "../../Table/types/table.types";
+
+// As classes de cor do mapa agrupam os quatro status da mesa em três.
+const view = (table: RestaurantTable) =>
+  table.status === "available"
+    ? { tone: "available", label: "Disponível", short: "Livre" }
+    : table.status === "occupied"
+      ? { tone: "occupied", label: "Ocupada", short: "Ocupada" }
+      : { tone: "payment", label: "Aguardando pagamento", short: "Conta" };
 
 type TableOverviewProps = {
+  tables: RestaurantTable[];
   onViewTables: () => void;
 };
 
-export function TableOverview({ onViewTables }: TableOverviewProps) {
+export function TableOverview({ tables, onViewTables }: TableOverviewProps) {
   return (
     <section
       className="mf-dashboard-panel"
@@ -36,17 +42,23 @@ export function TableOverview({ onViewTables }: TableOverviewProps) {
         className="mf-dashboard-table-grid"
         aria-label="Situação das mesas"
       >
-        {tables.map((status, index) => (
-          <div
-            key={index + 1}
-            className={`mf-dashboard-table ${status}`}
-            title={`Mesa ${index + 1}: ${tableLabels[status]}`}
-            aria-label={`Mesa ${index + 1}: ${tableLabels[status]}`}
-          >
-            <strong>{String(index + 1).padStart(2, "0")}</strong>
-            <span>{status === "available" ? "Livre" : status === "payment" ? "Conta" : tableLabels[status]}</span>
-          </div>
-        ))}
+        {tables
+          .filter((table) => table.active)
+          .map((table) => {
+            const { tone, label, short } = view(table);
+            return (
+              <div
+                key={table.id}
+                className={`mf-dashboard-table ${tone}`}
+                title={`${table.name}: ${label}`}
+                aria-label={`${table.name}: ${label}`}
+              >
+                <strong>{String(table.number).padStart(2, "0")}</strong>
+                <span>{short}</span>
+              </div>
+            );
+          })}
+        {tables.length === 0 && <p>Nenhuma mesa cadastrada.</p>}
       </div>
     </section>
   );

@@ -38,7 +38,9 @@ function OrderRoute({
     if (orderId !== undefined && state.selectedOrderId === Number(orderId)) return;
     state.openOrder(orderId === undefined ? undefined : Number(orderId));
   }, [orderId, state]);
+  // Durante o carregamento a lista ainda está vazia; não redireciona.
   if (
+    !state.loading &&
     orderId !== undefined &&
     !state.orders.some((order) => String(order.id) === orderId)
   ) {
@@ -60,9 +62,13 @@ export function AdminRoutes() {
   const location = useLocation();
   // Estado do atendimento sobrevive à troca de rotas dentro do administrativo.
   const tableState = useTables();
-  const orderState = useOrder(tableState.tables);
   const categoryState = useCategories();
   const productState = useProducts(categoryState.categories);
+  // Pedidos mexem no estoque e no atendimento: recarrega mesas e produtos.
+  const orderState = useOrder(tableState.tables, productState.products, () => {
+    void tableState.reload();
+    void productState.reload();
+  });
   const isCategories = location.pathname.includes("/categorias");
   const goTo = (id: string) => {
     if (adminPaths[id]) navigate(adminPaths[id]);
@@ -81,6 +87,8 @@ export function AdminRoutes() {
             path="dashboard"
             element={
               <Dashboard
+                orders={orderState.orders}
+                tables={tableState.tables}
                 onNavigate={goTo}
                 onViewOrders={() => showOrder()}
                 onViewOrder={showOrder}

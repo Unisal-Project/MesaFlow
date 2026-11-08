@@ -1,6 +1,7 @@
 import { AppError } from "../../shared/errors/app-errors.js";
 import { PrismaConnector } from "../../database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
+import { moveStock } from "../orders/stock.js";
 
 export interface QrOrderInput {
   customerName: string;
@@ -116,6 +117,16 @@ export class QrOrderService {
           },
           include: { items: true },
         });
+
+        // Regra 9: o pedido do QR também debita estoque na mesma transação.
+        for (const item of order.items) {
+          await moveStock(tx, item.productId, -item.quantity, {
+            type: "SALE",
+            orderId: order.id,
+            orderItemId: item.id,
+            userId: null,
+          });
+        }
 
         return {
           attendanceId: attendance.id.toString(),

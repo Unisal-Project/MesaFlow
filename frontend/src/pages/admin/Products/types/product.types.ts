@@ -5,6 +5,7 @@ export type AdminProduct = {
   /** Nome da categoria, derivado de categoryId. */
   category: string;
   price: string;
+  priceValue: number;
   quantity: number;
   available: boolean;
   observation?: string;

@@ -7,7 +7,6 @@ import {
   List,
   Pencil,
   Plus,
-  RotateCcw,
   Search,
 } from "lucide-react";
 
@@ -18,16 +17,12 @@ import { PaymentModal } from "./components/PaymentModal.js";
 import { OrderEditPanel } from "./components/OrderEditPanel.js";
 import { Notifications } from "@/components";
 
-import {
-  paymentMethodLabels,
-  emptyOrderItems,
-} from "./constants/order.constants.js";
+import { paymentMethodLabels } from "./constants/order.constants.js";
 
 import {
   formatCurrency,
   getItemCount,
   getOrderTotal,
-  getCurrentTime,
 } from "./utils/order.utils";
 
 import type { OrdersProps, OrderSort } from "./types/order.types.js";
@@ -50,7 +45,6 @@ export default function Orders({
     paymentOrders,
     editingOrder,
     saveOrderChanges,
-    reopenOrder,
     completeOrder,
     cancelOrder,
     createOrder,
@@ -147,14 +141,21 @@ export default function Orders({
           <div className="orders-list-heading">
             <div>
               <h2 id="orders-list-title">Pedidos registrados</h2>
-              <p>{filteredOrders.length} {filteredOrders.length === 1 ? "pedido encontrado" : "pedidos encontrados"}</p>
+              <p>
+                {filteredOrders.length}{" "}
+                {filteredOrders.length === 1
+                  ? "pedido encontrado"
+                  : "pedidos encontrados"}
+              </p>
             </div>
             <div className="orders-list-controls">
               <label className="orders-sort-control">
                 <span>Ordenar por</span>
                 <select
                   value={sortOrder}
-                  onChange={(event) => setSortOrder(event.target.value as OrderSort)}
+                  onChange={(event) =>
+                    setSortOrder(event.target.value as OrderSort)
+                  }
                 >
                   <option value="newest">Mais recentes</option>
                   <option value="oldest">Mais antigos</option>
@@ -170,8 +171,20 @@ export default function Orders({
             </div>
           </div>
 
-          <p className="order-activity-message" role="status" aria-live="polite">
+          <p
+            className="order-activity-message"
+            role="status"
+            aria-live="polite"
+          >
             {activityMessage}
+          </p>
+          {state.error && !editingOrder && !state.isCreatingOrder && (
+            <p className="order-edit-error" role="alert">
+              {state.error}
+            </p>
+          )}
+          <p role="status" hidden={!state.loading}>
+            Carregando pedidos...
           </p>
 
           <div className="orders-workspace">
@@ -210,7 +223,6 @@ export default function Orders({
                             <span>{getItemCount(order)} itens</span>
                           </p>
                         </div>
-
                       </div>
                       <p className="order-card-description">
                         {order.items
@@ -252,7 +264,6 @@ export default function Orders({
                         {selectedOrder.table} · Enviado às {selectedOrder.time}
                       </p>
                     </div>
-
                   </div>
 
                   <div className="order-details-tabs" role="group">
@@ -336,10 +347,16 @@ export default function Orders({
                           </div>
                           <div className="closed-payment-lines">
                             <div>
-                              <span>{selectedOrder.payment.serviceFeeWaived
-                                ? "Cliente optou por não pagar a taxa de serviço"
-                                : "Taxa de serviço (10%)"}</span>
-                              <strong>{formatCurrency(selectedOrder.payment.serviceFee ?? 0)}</strong>
+                              <span>
+                                {selectedOrder.payment.serviceFeeWaived
+                                  ? "Cliente optou por não pagar a taxa de serviço"
+                                  : "Taxa de serviço (10%)"}
+                              </span>
+                              <strong>
+                                {formatCurrency(
+                                  selectedOrder.payment.serviceFee ?? 0,
+                                )}
+                              </strong>
                             </div>
                             {selectedOrder.payment.entries.map(
                               (entry, index) => (
@@ -370,23 +387,23 @@ export default function Orders({
                       )}
 
                     <div className="order-details-actions">
-                      {selectedOrder.status === "closed" ? (
+                      {/* Conta paga é histórico: não reabre nem cancela. */}
+                      {selectedOrder.status !== "closed" && (
                         <Button
-                          className="order-details-reopen"
-                          variant="secondary"
-                          onClick={() => reopenOrder(selectedOrder.id)}
+                          onClick={() => setPaymentOrderId(selectedOrder.id)}
                         >
-                          <RotateCcw aria-hidden="true" />
-                          Reabrir pedido
-                        </Button>
-                      ) : (
-                        <Button onClick={() => setPaymentOrderId(selectedOrder.id)}>
                           Finalizar pedido
                         </Button>
                       )}
-                      <Button variant="secondary" onClick={cancelOrder}>
-                        Cancelar
-                      </Button>
+                      {selectedOrder.status !== "closed" && (
+                        <Button
+                          variant="secondary"
+                          disabled={state.busy}
+                          onClick={cancelOrder}
+                        >
+                          Cancelar
+                        </Button>
+                      )}
                     </div>
                   </>
                 </>
@@ -413,9 +430,16 @@ export default function Orders({
         <PaymentModal
           key={paymentOrder.id}
           orderId={paymentOrder.id}
-          total={paymentOrders.reduce((sum, order) => sum + Math.round(getOrderTotal(order) * 100), 0) / 100}
+          total={
+            paymentOrders.reduce(
+              (sum, order) => sum + Math.round(getOrderTotal(order) * 100),
+              0,
+            ) / 100
+          }
           onClose={() => setPaymentOrderId(null)}
-          onComplete={(payments, waived) => completeOrder(paymentOrder.id, payments, waived)}
+          onComplete={(payments, waived) =>
+            completeOrder(paymentOrder.id, payments, waived)
+          }
         />
       )}
 
@@ -423,11 +447,17 @@ export default function Orders({
         <OrderEditPanel
           key={editingOrder.id}
           orderId={editingOrder.id}
-          table={editingOrder.table}
-          time={editingOrder.time}
+          tableId={editingOrder.tableId ?? ""}
           items={editingOrder.items}
           observation={editingOrder.observation}
-          onCancel={() => setEditingOrderId(null)}
+          catalog={state.catalog}
+          tableOptions={state.tableOptions}
+          busy={state.busy}
+          error={state.error}
+          onCancel={() => {
+            state.setError("");
+            setEditingOrderId(null);
+          }}
           onSave={(changes) => saveOrderChanges(editingOrder.id, changes)}
         />
       )}
@@ -435,10 +465,16 @@ export default function Orders({
       {isCreatingOrder && (
         <OrderEditPanel
           mode="create"
-          table=""
-          time={getCurrentTime()}
-          items={emptyOrderItems}
-          onCancel={() => setIsCreatingOrder(false)}
+          tableId=""
+          items={[]}
+          catalog={state.catalog}
+          tableOptions={state.tableOptions}
+          busy={state.busy}
+          error={state.error}
+          onCancel={() => {
+            state.setError("");
+            setIsCreatingOrder(false);
+          }}
           onSave={createOrder}
         />
       )}

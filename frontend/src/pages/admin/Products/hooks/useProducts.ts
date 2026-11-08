@@ -85,6 +85,7 @@ export function useProducts(categories: CategoryRef[] = []) {
       name: record.name,
       category: names.get(record.categoryId) ?? "Sem categoria",
       price: formatPrice(record.price),
+      priceValue: Number(record.price),
       quantity: record.stockQuantity,
       available: record.available,
       observation: record.description ?? undefined,
