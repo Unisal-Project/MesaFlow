@@ -5,14 +5,14 @@ import { CategoryRow } from "./components/CategoryRow";
 import { CategoryFormModal } from "./components/CategoryFormModal";
 import { DeleteCategoryModal } from "./components/DeleteCategoryModal";
 import type { useCategories } from "./hooks/useCategories";
-import type { MockProduct } from "../Products/types/product.types";
+import type { AdminProduct } from "../Products/types/product.types";
 import "./styles.scss";
 
 type CategoriesProps = {
   showAll: boolean;
   onShowAll: () => void;
   state: ReturnType<typeof useCategories>;
-  products: MockProduct[];
+  products: AdminProduct[];
   onShowProducts: () => void;
 };
 
@@ -21,7 +21,7 @@ export default function Categories({ state, products, onShowProducts, showAll, o
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
   const categories = state.filteredCategories
-    .map((category) => ({ ...category, productCount: products.filter((product) => product.category === category.name).length }))
+    .map((category) => ({ ...category, productCount: products.filter((product) => product.categoryId === category.id).length }))
     .filter((category) => (categoryFilter === "all" || String(category.id) === categoryFilter) &&
       (availabilityFilter === "all" || category.active === (availabilityFilter === "available")))
     .sort((a, b) => sortOrder === "name" ? a.name.localeCompare(b.name, "pt-BR") : sortOrder === "products" ? b.productCount - a.productCount : 0);

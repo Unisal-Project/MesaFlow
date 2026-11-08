@@ -3,14 +3,14 @@ import { Button, Switch, TextField } from "@/components";
 
 import { Pencil } from "lucide-react";
 
-import type { MockProduct } from "../types/product.types";
+import type { AdminProduct } from "../types/product.types";
 
 type ProductRowProps = {
-  product: MockProduct;
-  onUpdateQuantity: (productId: number, quantity: number) => void;
-  onUpdateAvailability: (productId: number, available: boolean) => void;
-  onEdit: (product: MockProduct) => void;
-  onDelete: (product: MockProduct) => void;
+  product: AdminProduct;
+  onUpdateQuantity: (productId: string, quantity: number) => void;
+  onUpdateAvailability: (productId: string, available: boolean) => void;
+  onEdit: (product: AdminProduct) => void;
+  onDelete: (product: AdminProduct) => void;
 };
 
 export function ProductRow({

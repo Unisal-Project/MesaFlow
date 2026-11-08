@@ -1,6 +1,8 @@
-export type MockProduct = {
-  id: number;
+export type AdminProduct = {
+  id: string;
+  categoryId: string;
   name: string;
+  /** Nome da categoria, derivado de categoryId. */
   category: string;
   price: string;
   quantity: number;
@@ -14,6 +16,7 @@ export type NewProductForm = {
   quantity: string;
   price: string;
   observation: string;
+  /** Guarda o id da categoria selecionada. */
   category: string;
   imageUrl: string;
   available: boolean;

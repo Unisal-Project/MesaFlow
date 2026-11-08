@@ -794,3 +794,8 @@
     .product-price { grid-column: 1; padding-top: 0; }
   }
 }
+
+.product-form-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
+}

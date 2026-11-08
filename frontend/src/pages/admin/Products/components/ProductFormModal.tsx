@@ -8,20 +8,22 @@ import { useEffect, useRef } from "react";
 import type { ChangeEvent, Dispatch, FormEvent, SetStateAction } from "react";
 
 import type {
-  MockProduct,
+  AdminProduct,
   NewProductForm,
 } from "../types/product.types";
 
 type ProductFormModalProps = {
-  categories: string[];
-  editingProductId: number | null;
+  categories: { id: string; name: string }[];
+  editingProductId: string | null;
+  error?: string;
+  busy?: boolean;
   newProduct: NewProductForm;
   setNewProduct: Dispatch<SetStateAction<NewProductForm>>;
-  products: MockProduct[];
+  products: AdminProduct[];
   onClose: () => void;
   onSave: (event: FormEvent<HTMLFormElement>) => void;
   onPhotoChange: (event: ChangeEvent<HTMLInputElement>) => void;
-  onDelete: (product: MockProduct) => void;
+  onDelete: (product: AdminProduct) => void;
 };
 
 export function ProductFormModal({
@@ -34,6 +36,8 @@ export function ProductFormModal({
   onSave,
   onPhotoChange,
   onDelete,
+  error,
+  busy,
 }: ProductFormModalProps) {
   const modalRef = useRef<HTMLElement>(null);
   const closeRef = useRef(onClose);
@@ -134,7 +138,7 @@ export function ProductFormModal({
             <SelectField label="Categoria" id="product-category" required value={newProduct.category}
               onChange={(event) => setNewProduct((current) => ({ ...current, category: event.target.value }))}>
               <option value="" disabled>Selecione uma categoria</option>
-              {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
             </SelectField>
             <ChevronDown aria-hidden="true" />
           </div>
@@ -176,6 +180,8 @@ export function ProductFormModal({
             </label>
           </div>
 
+          {error && <p className="product-form-error" role="alert">{error}</p>}
+
           <footer className="product-modal-actions">
             {editingProductId !== null && (
               <Button
@@ -205,7 +211,7 @@ export function ProductFormModal({
                 Cancelar
               </Button>
 
-              <Button type="submit">
+              <Button type="submit" loading={busy}>
                 {editingProductId === null
                   ? "Criar produto"
                   : "Salvar alterações"}

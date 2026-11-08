@@ -2,18 +2,22 @@ import { Button } from "@/components";
 
 import { Trash } from "lucide-react";
 
-import type { MockProduct } from "../types/product.types";
+import type { AdminProduct } from "../types/product.types";
 
 type DeleteProductModalProps = {
-  product: MockProduct;
+  product: AdminProduct;
   onClose: () => void;
   onConfirm: () => void;
+  error?: string;
+  busy?: boolean;
 };
 
 export function DeleteProductModal({
   product,
   onClose,
   onConfirm,
+  error,
+  busy,
 }: DeleteProductModalProps) {
   return (
     <div
@@ -46,6 +50,8 @@ export function DeleteProductModal({
           poderá ser desfeita.
         </p>
 
+        {error && <p role="alert">{error}</p>}
+
         <footer>
           <Button
             type="button"
@@ -58,6 +64,7 @@ export function DeleteProductModal({
           <Button
             type="button"
             variant="danger"
+            loading={busy}
             onClick={onConfirm}
           >
             Excluir

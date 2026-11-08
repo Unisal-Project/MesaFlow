@@ -1,194 +1,283 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 
 import {
-  emptyProductForm,
-  initialProducts,
-} from "../mocks/products.mock";
+  fetchProducts,
+  removeProduct,
+  saveProduct,
+  uploadProductImage,
+  type Product,
+} from "@/services/menu.service";
 
-import type {
-  MockProduct,
-  NewProductForm,
-} from "../types/product.types";
+import type { AdminProduct, NewProductForm } from "../types/product.types";
 
-export function useProducts() {
-  const [products, setProducts] = useState(initialProducts);
+export const emptyProductForm: NewProductForm = {
+  name: "",
+  quantity: "0",
+  price: "",
+  observation: "",
+  category: "",
+  imageUrl: "",
+  available: true,
+};
 
+type CategoryRef = { id: string; name: string };
+
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Não foi possível acessar o servidor";
+
+const formatPrice = (value: string) =>
+  Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+// Tempo de espera antes de gravar o estoque digitado.
+const STOCK_SAVE_DELAY = 600;
+
+export function useProducts(categories: CategoryRef[] = []) {
+  const [records, setRecords] = useState<Product[]>([]);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
-
-  const [editingProductId, setEditingProductId] = useState<number | null>(null);
-
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [newProduct, setNewProduct] =
     useState<NewProductForm>(emptyProductForm);
-
+  const [photo, setPhoto] = useState<File | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [categoryFilter, setCategoryFilter] = useState("all");
-
-  const [productToDelete, setProductToDelete] = useState<MockProduct | null>(
+  const [productToDelete, setProductToDelete] = useState<AdminProduct | null>(
     null,
   );
-
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const stockTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  // Filtros
+  const reload = useCallback(
+    () =>
+      fetchProducts()
+        .then((list) => {
+          setRecords(list);
+          setError("");
+        })
+        .catch((err: unknown) => setError(message(err)))
+        .finally(() => setLoading(false)),
+    [],
+  );
+
+  useEffect(() => {
+    void reload();
+    const timers = stockTimers.current;
+    return () => timers.forEach(clearTimeout);
+  }, [reload]);
+
+  // O nome da categoria vem da lista de categorias; renomear reflete na hora.
+  const products = useMemo<AdminProduct[]>(() => {
+    const names = new Map(categories.map((c) => [c.id, c.name]));
+    return records.map((record) => ({
+      id: record.id,
+      categoryId: record.categoryId,
+      name: record.name,
+      category: names.get(record.categoryId) ?? "Sem categoria",
+      price: formatPrice(record.price),
+      quantity: record.stockQuantity,
+      available: record.available,
+      observation: record.description ?? undefined,
+      imageUrl: record.imageUrl ?? undefined,
+    }));
+  }, [records, categories]);
+
+  const replaceRecord = (product: Product) =>
+    setRecords((current) =>
+      current.map((entry) => (entry.id === product.id ? product : entry)),
+    );
+
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase("pt-BR");
+  const filteredProducts = products
+    .filter((product) => {
+      const matchesSearch = `${product.name} ${product.category}`
+        .toLocaleLowerCase("pt-BR")
+        .includes(normalizedSearch);
+      const matchesCategory =
+        categoryFilter === "all" || product.category === categoryFilter;
+      return (
+        matchesSearch &&
+        matchesCategory &&
+        (availabilityFilter === "all" ||
+          product.available === (availabilityFilter === "available"))
+      );
+    })
+    .sort((a, b) =>
+      sortOrder === "name"
+        ? a.name.localeCompare(b.name, "pt-BR")
+        : sortOrder === "stock"
+          ? a.quantity - b.quantity
+          : 0,
+    );
 
-  const filteredProducts = products.filter((product) => {
-    const matchesSearch = `${product.name} ${product.category}`
-      .toLocaleLowerCase("pt-BR")
-      .includes(normalizedSearch);
+  // Mudanças rápidas da lista: atualiza na hora e desfaz se o backend recusar.
+  const patchProduct = async (
+    productId: string,
+    data: Partial<Pick<Product, "available" | "stockQuantity">>,
+  ) => {
+    const previous = records.find((entry) => entry.id === productId);
+    if (!previous) return;
+    try {
+      replaceRecord(await saveProduct(data, productId));
+      setError("");
+    } catch (err) {
+      replaceRecord(previous);
+      setError(message(err));
+    }
+  };
 
-    const matchesCategory =
-      categoryFilter === "all" || product.category === categoryFilter;
-
-    return matchesSearch && matchesCategory &&
-      (availabilityFilter === "all" || product.available === (availabilityFilter === "available"));
-  }).sort((a, b) => sortOrder === "name" ? a.name.localeCompare(b.name, "pt-BR") : sortOrder === "stock" ? a.quantity - b.quantity : 0);
-
-  // Atualizar disponibilidade
-  const updateAvailability = (productId: number, available: boolean) => {
-    setProducts((currentProducts) =>
-      currentProducts.map((product) =>
-        product.id === productId ? { ...product, available } : product,
+  const updateAvailability = (productId: string, available: boolean) => {
+    setRecords((current) =>
+      current.map((entry) =>
+        entry.id === productId ? { ...entry, available } : entry,
       ),
+    );
+    void patchProduct(productId, { available });
+  };
+
+  const updateQuantity = (productId: string, quantity: number) => {
+    if (!Number.isInteger(quantity) || quantity < 0) return;
+    setRecords((current) =>
+      current.map((entry) =>
+        entry.id === productId ? { ...entry, stockQuantity: quantity } : entry,
+      ),
+    );
+    const timers = stockTimers.current;
+    clearTimeout(timers.get(productId));
+    timers.set(
+      productId,
+      setTimeout(() => {
+        timers.delete(productId);
+        void saveProduct({ stockQuantity: quantity }, productId)
+          .then((saved) => {
+            replaceRecord(saved);
+            setError("");
+          })
+          .catch((err: unknown) => {
+            setError(message(err));
+            void reload();
+          });
+      }, STOCK_SAVE_DELAY),
     );
   };
 
-  // Atualizar quantidade
-  const updateQuantity = (productId: number, quantity: number) => {
-    setProducts((currentProducts) =>
-      currentProducts.map((product) =>
-        product.id === productId ? { ...product, quantity } : product,
-      ),
-    );
-  };
-
-  // Fechar modal
   const closeProductModal = () => {
     setIsProductModalOpen(false);
     setEditingProductId(null);
     setNewProduct(emptyProductForm);
+    setPhoto(null);
+    setError("");
   };
 
-  // Abrir cadastro
   const openNewProduct = () => {
     setEditingProductId(null);
     setNewProduct(emptyProductForm);
+    setPhoto(null);
+    setError("");
     setIsProductModalOpen(true);
   };
 
-  // Abrir edição
-  const openEditProduct = (product: MockProduct) => {
+  const openEditProduct = (product: AdminProduct) => {
+    const record = records.find((entry) => entry.id === product.id);
     setEditingProductId(product.id);
-
     setNewProduct({
       name: product.name,
       quantity: String(product.quantity),
-      price: product.price
-        .replaceAll(".", "")
-        .replace(",", ".")
-        .replace(/[^\d.]/g, ""),
+      price: record?.price ?? "",
       observation: product.observation ?? "",
-      category: product.category,
+      category: product.categoryId,
       imageUrl: product.imageUrl ?? "",
       available: product.available,
     });
-
+    setPhoto(null);
+    setError("");
     setIsProductModalOpen(true);
   };
 
-  // Upload da imagem
+  // A imagem só é enviada ao salvar; até lá fica apenas a prévia local.
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      setNewProduct((current) => ({ ...current, imageUrl: "" }));
-      return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-      setNewProduct((current) => ({
-        ...current,
-        imageUrl: typeof reader.result === "string" ? reader.result : "",
-      }));
-    };
-
-    reader.readAsDataURL(file);
+    const file = event.target.files?.[0] ?? null;
+    setPhoto(file);
+    setNewProduct((current) => ({
+      ...current,
+      imageUrl: file ? URL.createObjectURL(file) : "",
+    }));
   };
 
-  // Salvar produto
-  const handleSaveProduct = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const quantity = Math.max(0, Number(newProduct.quantity));
-    const price = Math.max(0, Number(newProduct.price));
-
-    const formattedPrice = price.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-    });
-
-    const productData = {
-        name: newProduct.name.trim(),
-        category: newProduct.category,
-        price: formattedPrice,
-        quantity,
-        available: newProduct.available,
-        observation: newProduct.observation.trim() || undefined,
-        imageUrl: newProduct.imageUrl || undefined,
-    };
-
-    setProducts((currentProducts) => {
-        if (editingProductId !== null) {
-        return currentProducts.map((product) =>
-            product.id === editingProductId
-            ? { ...product, ...productData }
-            : product,
-        );
-        }
-
-        const nextId =
-        Math.max(0, ...currentProducts.map((product) => product.id)) + 1;
-
-        return [
-        ...currentProducts,
+    const price = Number(newProduct.price);
+    const stockQuantity = Number(newProduct.quantity);
+    if (!(price > 0)) {
+      setError("Informe um preço maior que zero.");
+      return;
+    }
+    if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
+      setError("Informe um estoque válido.");
+      return;
+    }
+    setBusy(true);
+    try {
+      let saved = await saveProduct(
         {
-            id: nextId,
-            ...productData,
+          name: newProduct.name.trim(),
+          description: newProduct.observation.trim() || null,
+          price: Math.round(price * 100) / 100,
+          stockQuantity,
+          available: newProduct.available,
+          categoryId: newProduct.category,
         },
-        ];
-    });
+        editingProductId ?? undefined,
+      );
+      if (photo) saved = await uploadProductImage(saved.id, photo);
+      setRecords((current) =>
+        editingProductId
+          ? current.map((entry) => (entry.id === saved.id ? saved : entry))
+          : [...current, saved],
+      );
+      closeProductModal();
+    } catch (err) {
+      setError(message(err));
+      // O produto pode ter sido salvo antes de a imagem falhar.
+      void reload();
+    } finally {
+      setBusy(false);
+    }
+  };
 
-    closeProductModal();
-    };
-
-  // Solicitar exclusão
-  const requestProductDeletion = (product: MockProduct) => {
+  const requestProductDeletion = (product: AdminProduct) => {
     closeProductModal();
     setProductToDelete(product);
   };
 
-  // Confirmar exclusão
-  const confirmProductDeletion = () => {
+  const confirmProductDeletion = async () => {
     if (!productToDelete) return;
-
-    setProducts((currentProducts) =>
-      currentProducts.filter((product) => product.id !== productToDelete.id),
-    );
-
-    setProductToDelete(null);
-  };
-
-  const renameProductCategory = (previousName: string, nextName: string) => {
-    setProducts((current) => current.map((product) => product.category === previousName ? { ...product, category: nextName } : product));
-    setCategoryFilter((current) => current === previousName ? nextName : current);
+    setBusy(true);
+    try {
+      await removeProduct(productToDelete.id);
+      setRecords((current) =>
+        current.filter((product) => product.id !== productToDelete.id),
+      );
+      setProductToDelete(null);
+      setError("");
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return {
-    renameProductCategory,
     products,
     isProductModalOpen,
     editingProductId,
@@ -203,7 +292,10 @@ export function useProducts() {
     categoryFilter,
     setCategoryFilter,
     productToDelete,
-    setProductToDelete,
+    setProductToDelete: (product: AdminProduct | null) => {
+      setError("");
+      setProductToDelete(product);
+    },
     normalizedSearch,
     filteredProducts,
     updateAvailability,
@@ -215,5 +307,9 @@ export function useProducts() {
     handleSaveProduct,
     requestProductDeletion,
     confirmProductDeletion,
+    error,
+    busy,
+    loading,
+    reload,
   };
 }

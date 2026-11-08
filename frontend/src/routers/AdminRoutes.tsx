@@ -61,8 +61,8 @@ export function AdminRoutes() {
   // Estado do atendimento sobrevive à troca de rotas dentro do administrativo.
   const tableState = useTables();
   const orderState = useOrder(tableState.tables);
-  const productState = useProducts();
-  const categoryState = useCategories(productState.renameProductCategory);
+  const categoryState = useCategories();
+  const productState = useProducts(categoryState.categories);
   const isCategories = location.pathname.includes("/categorias");
   const goTo = (id: string) => {
     if (adminPaths[id]) navigate(adminPaths[id]);

@@ -1,4 +1,4 @@
-import { apiRequest } from "@/api/client";
+import { apiRequest, assetUrl } from "@/api/client";
 
 export type Category = {
   id: string;
@@ -34,4 +34,36 @@ export const saveCategory = (data: CategoryInput, id?: string) =>
   });
 export const removeCategory = (id: string) =>
   apiRequest<void>(`/categories/${id}`, { method: "DELETE" });
-export const fetchProducts = (signal?: AbortSignal) => apiRequest<Product[]>("/products", { signal });
+const withImage = (product: Product): Product => ({
+  ...product,
+  imageUrl: assetUrl(product.imageUrl),
+});
+
+export const fetchProducts = (signal?: AbortSignal) =>
+  apiRequest<Product[]>("/products", { signal }).then((products) =>
+    products.map(withImage),
+  );
+
+export type ProductInput = {
+  name: string;
+  description: string | null;
+  price: number;
+  stockQuantity: number;
+  available: boolean;
+  categoryId: string;
+};
+export const saveProduct = (data: Partial<ProductInput>, id?: string) =>
+  apiRequest<Product>(id ? `/products/${id}` : "/products", {
+    method: id ? "PATCH" : "POST",
+    body: JSON.stringify(data),
+  }).then(withImage);
+export const uploadProductImage = (id: string, file: File) => {
+  const body = new FormData();
+  body.append("image", file);
+  return apiRequest<Product>(`/products/${id}/image`, {
+    method: "POST",
+    body,
+  }).then(withImage);
+};
+export const removeProduct = (id: string) =>
+  apiRequest<void>(`/products/${id}`, { method: "DELETE" });

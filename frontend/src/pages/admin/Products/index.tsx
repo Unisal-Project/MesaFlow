@@ -57,6 +57,9 @@ export default function Products({
     filteredProducts,
     updateAvailability,
     updateQuantity,
+    error: productError,
+    busy: productBusy,
+    loading: productLoading,
     closeProductModal,
     openNewProduct,
     openEditProduct,
@@ -66,7 +69,7 @@ export default function Products({
     confirmProductDeletion,
   } = productState;
   const productCategories = categoryState.categories.map(
-    (category) => category.name,
+    (category) => ({ id: category.id, name: category.name }),
   );
   const isCategories = activeTab === "categories";
   const switchTab = (tab: "products" | "categories") => {
@@ -215,8 +218,8 @@ export default function Products({
                   >
                     <option value="all">Todas as categorias</option>
                     {productCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
+                      <option key={category.id} value={category.name}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
@@ -288,6 +291,10 @@ export default function Products({
                     </Button>
                   )}
                 </div>
+                {productError && !isProductModalOpen && !productToDelete && (
+                  <p className="product-form-error" role="alert">{productError}</p>
+                )}
+                {productLoading && <p role="status">Carregando produtos...</p>}
                 <div className="products-list-body">
                   {(showAllProducts
                     ? filteredProducts
@@ -325,6 +332,8 @@ export default function Products({
           onSave={handleSaveProduct}
           onPhotoChange={handlePhotoChange}
           onDelete={requestProductDeletion}
+          error={productError}
+          busy={productBusy}
         />
       )}
 
@@ -333,6 +342,8 @@ export default function Products({
           product={productToDelete}
           onClose={() => setProductToDelete(null)}
           onConfirm={confirmProductDeletion}
+          error={productError}
+          busy={productBusy}
         />
       )}
     </div>
