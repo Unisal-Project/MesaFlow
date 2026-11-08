@@ -1,11 +1,13 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { initialCategories } from "../mocks/categories.mock";
+import {
+  fetchCategories,
+  removeCategory,
+  saveCategory,
+  type Category as ApiCategory,
+} from "@/services/menu.service";
 
-import type {
-  Category,
-  CategoryForm,
-} from "../types/category.types";
+import type { Category, CategoryForm } from "../types/category.types";
 
 const emptyCategoryForm: CategoryForm = {
   name: "",
@@ -13,156 +15,182 @@ const emptyCategoryForm: CategoryForm = {
   active: true,
 };
 
-export function useCategories(onRename?: (previousName: string, nextName: string) => void) {
-  // Estados
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Não foi possível acessar o servidor";
 
+// productCount é calculado pela tela a partir da lista de produtos.
+const toCategory = (record: ApiCategory): Category => ({
+  id: record.id,
+  name: record.name,
+  description: record.description ?? "",
+  active: record.active,
+  productCount: 0,
+});
+
+export function useCategories(
+  onRename?: (previousName: string, nextName: string) => void,
+) {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
-
   const [categoryForm, setCategoryForm] =
     useState<CategoryForm>(emptyCategoryForm);
-
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null,
   );
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Pesquisa
+  const reload = useCallback(
+    () =>
+      fetchCategories()
+        .then((records) => {
+          setCategories(records.map(toCategory));
+          setError("");
+        })
+        .catch((err: unknown) => setError(message(err)))
+        .finally(() => setLoading(false)),
+    [],
+  );
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const replaceCategory = (category: Category) =>
+    setCategories((current) =>
+      current.map((entry) => (entry.id === category.id ? category : entry)),
+    );
+
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase("pt-BR");
-
   const filteredCategories = categories.filter((category) =>
     `${category.name} ${category.description}`
       .toLocaleLowerCase("pt-BR")
       .includes(normalizedSearch),
   );
 
-  // Fechar formulário
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCategoryId(null);
     setCategoryForm(emptyCategoryForm);
+    setError("");
   };
 
-  // Abrir formulário para cadastro
   const openNewCategory = () => {
     setEditingCategoryId(null);
     setCategoryForm(emptyCategoryForm);
+    setError("");
     setIsModalOpen(true);
   };
 
-  // Abrir formulário para edição
   const openEditCategory = (category: Category) => {
     setEditingCategoryId(category.id);
-
     setCategoryForm({
       name: category.name,
       description: category.description,
       active: category.active,
     });
-
+    setError("");
     setIsModalOpen(true);
   };
 
-  // Cadastrar ou editar categoria
-  const handleSaveCategory = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveCategory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const previousCategory = categories.find((category) => category.id === editingCategoryId);
-    if (previousCategory && previousCategory.name !== categoryForm.name.trim()) {
-      onRename?.(previousCategory.name, categoryForm.name.trim());
-    }
-    setCategories((currentCategories) => {
-      if (editingCategoryId !== null) {
-        return currentCategories.map((category) =>
-          category.id === editingCategoryId
-            ? {
-                ...category,
-                name: categoryForm.name.trim(),
-                description: categoryForm.description.trim(),
-                active: categoryForm.active,
-              }
-            : category,
-        );
-      }
-
-      const nextId =
-        Math.max(0, ...currentCategories.map((category) => category.id)) + 1;
-
-      return [
-        ...currentCategories,
-        {
-          id: nextId,
-          name: categoryForm.name.trim(),
-          description: categoryForm.description.trim(),
-          productCount: 0,
-          active: categoryForm.active,
-        },
-      ];
-    });
-
-    closeModal();
-  };
-
-  // Alterar status
-  const updateCategoryStatus = (categoryId: number, active: boolean) => {
-    setCategories((currentCategories) =>
-      currentCategories.map((category) =>
-        category.id === categoryId ? { ...category, active } : category,
-      ),
+    const previous = categories.find(
+      (category) => category.id === editingCategoryId,
     );
+    const description = categoryForm.description.trim();
+    setBusy(true);
+    try {
+      const saved = toCategory(
+        await saveCategory(
+          {
+            name: categoryForm.name.trim(),
+            description: description || null,
+            active: categoryForm.active,
+          },
+          previous?.id,
+        ),
+      );
+      if (previous && previous.name !== saved.name) {
+        onRename?.(previous.name, saved.name);
+      }
+      if (previous) replaceCategory(saved);
+      else setCategories((current) => [...current, saved]);
+      closeModal();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // Solicitar exclusão
+  const updateCategoryStatus = async (categoryId: string, active: boolean) => {
+    const category = categories.find((entry) => entry.id === categoryId);
+    if (!category) return;
+    // Atualiza na hora e desfaz se o backend recusar.
+    replaceCategory({ ...category, active });
+    try {
+      await saveCategory(
+        {
+          name: category.name,
+          description: category.description || null,
+          active,
+        },
+        category.id,
+      );
+      setError("");
+    } catch (err) {
+      replaceCategory(category);
+      setError(message(err));
+    }
+  };
+
   const requestCategoryDeletion = (category: Category) => {
+    setError("");
     setCategoryToDelete(category);
   };
 
-  // Solicitar exclusão a partir do formulário de edição
   const requestEditingCategoryDeletion = () => {
-    const category = categories.find(
-      (item) => item.id === editingCategoryId,
-    );
-
+    const category = categories.find((item) => item.id === editingCategoryId);
     if (category) {
       closeModal();
       setCategoryToDelete(category);
     }
   };
 
-  // Cancelar exclusão
   const cancelCategoryDeletion = () => {
     setCategoryToDelete(null);
+    setError("");
   };
 
-  // Confirmar exclusão
-  const confirmCategoryDeletion = () => {
+  const confirmCategoryDeletion = async () => {
     if (!categoryToDelete) return;
-
-    setCategories((currentCategories) =>
-      currentCategories.filter(
-        (category) => category.id !== categoryToDelete.id,
-      ),
-    );
-
-    setCategoryToDelete(null);
+    setBusy(true);
+    try {
+      await removeCategory(categoryToDelete.id);
+      setCategories((current) =>
+        current.filter((category) => category.id !== categoryToDelete.id),
+      );
+      setCategoryToDelete(null);
+      setError("");
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return {
-    // Dados
     categories,
     filteredCategories,
     normalizedSearch,
-
-    // Pesquisa
     searchQuery,
     setSearchQuery,
-
-    // Formulário
     isModalOpen,
     editingCategoryId,
     categoryForm,
@@ -171,15 +199,15 @@ export function useCategories(onRename?: (previousName: string, nextName: string
     openNewCategory,
     openEditCategory,
     handleSaveCategory,
-
-    // Status
     updateCategoryStatus,
-
-    // Exclusão
     categoryToDelete,
     requestCategoryDeletion,
     requestEditingCategoryDeletion,
     cancelCategoryDeletion,
     confirmCategoryDeletion,
+    error,
+    busy,
+    loading,
+    reload,
   };
 }

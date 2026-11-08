@@ -7,12 +7,16 @@ type DeleteCategoryModalProps = {
   category: Category | null;
   onClose: () => void;
   onConfirm: () => void;
+  error?: string;
+  busy?: boolean;
 };
 
 export function DeleteCategoryModal({
   category,
   onClose,
   onConfirm,
+  error,
+  busy,
 }: DeleteCategoryModalProps) {
   if (!category) return null;
 
@@ -40,9 +44,11 @@ export function DeleteCategoryModal({
         </h2>
 
         <p id="delete-category-description">
-          “{category.name}” será removida da lista. Os produtos
-          vinculados não serão excluídos.
+          “{category.name}” será excluída. Categorias com produtos
+          vinculados não podem ser excluídas; desative-a ou mova os produtos.
         </p>
+
+        {error && <p role="alert">{error}</p>}
 
         <footer>
           <Button
@@ -56,6 +62,7 @@ export function DeleteCategoryModal({
           <Button
             type="button"
             variant="danger"
+            loading={busy}
             onClick={onConfirm}
           >
             Excluir

@@ -7,7 +7,7 @@ import type { Category } from "../types/category.types";
 
 type CategoryRowProps = {
   category: Category;
-  onStatusChange: (categoryId: number, active: boolean) => void;
+  onStatusChange: (categoryId: string, active: boolean) => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
 };

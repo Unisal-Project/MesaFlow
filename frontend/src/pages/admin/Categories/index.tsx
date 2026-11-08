@@ -72,6 +72,10 @@ export default function Categories({ state, products, onShowProducts, showAll, o
           </div>
           {!showAll && <Button size="small" onClick={openAll}><Eye aria-hidden="true" />Ver todos</Button>}
         </div>
+        {state.error && !state.isModalOpen && !state.categoryToDelete && (
+          <p className="category-form-error" role="alert">{state.error}</p>
+        )}
+        {state.loading && <p role="status">Carregando categorias...</p>}
         <div className="categories-list-body">
           {(showAll ? categories : categories.slice(0, 4)).map((category) => (
             <CategoryRow key={category.id} category={category} onStatusChange={state.updateCategoryStatus}
@@ -81,9 +85,11 @@ export default function Categories({ state, products, onShowProducts, showAll, o
         </div>
       </section>
       {state.isModalOpen && <CategoryFormModal isOpen editingCategoryId={state.editingCategoryId} form={state.categoryForm}
+        error={state.error} busy={state.busy}
         onFormChange={state.setCategoryForm} onClose={state.closeModal} onSubmit={state.handleSaveCategory}
         onDelete={state.requestEditingCategoryDeletion} />}
-      <DeleteCategoryModal category={state.categoryToDelete} onClose={state.cancelCategoryDeletion} onConfirm={state.confirmCategoryDeletion} />
+      <DeleteCategoryModal category={state.categoryToDelete} onClose={state.cancelCategoryDeletion} onConfirm={state.confirmCategoryDeletion}
+        error={state.error} busy={state.busy} />
     </div>
   );
 }

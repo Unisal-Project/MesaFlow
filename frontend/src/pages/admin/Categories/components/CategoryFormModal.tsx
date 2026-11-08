@@ -6,8 +6,10 @@ import type { CategoryForm } from "../types/category.types";
 
 type CategoryFormModalProps = {
   isOpen: boolean;
-  editingCategoryId: number | null;
+  editingCategoryId: string | null;
   form: CategoryForm;
+  error?: string;
+  busy?: boolean;
   onFormChange: (form: CategoryForm) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
@@ -18,6 +20,8 @@ export function CategoryFormModal({
   isOpen,
   editingCategoryId,
   form,
+  error,
+  busy,
   onFormChange,
   onClose,
   onSubmit,
@@ -133,13 +137,15 @@ export function CategoryFormModal({
             }
           />
 
+          {error && <p className="category-form-error" role="alert">{error}</p>}
+
           <footer className="category-modal-actions">
             <div className="category-modal-save-actions">
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancelar
               </Button>
 
-              <Button type="submit">
+              <Button type="submit" loading={busy}>
                 {isEditing
                   ? "Salvar alterações"
                   : "Cadastrar categoria"}
