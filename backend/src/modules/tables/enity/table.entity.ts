@@ -7,6 +7,7 @@ export class TableEntity {
     public readonly qrToken: string,
     public readonly createdAt: Date,
     public updatedAt: Date,
+    public seats = 4,
   ) {}
 
   isActive(): boolean {

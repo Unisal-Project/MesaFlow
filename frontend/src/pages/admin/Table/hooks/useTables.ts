@@ -1,11 +1,30 @@
-import { useState, type FormEvent } from "react";
-import type { TableStatus } from "@/services/tables.service";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  changeTableStatus,
+  fetchTables,
+  removeTable,
+  saveTable as persistTable,
+  type TableRecord,
+  type TableStatus,
+} from "@/services/tables.service";
 import { emptyTableForm, nextStatus } from "../constants/table.constants";
-import { createMockTables } from "../mocks/tables.mock";
 import type { RestaurantTable, TableForm } from "../types/table.types";
 
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Não foi possível acessar o servidor";
+
+// A API usa null para campos ausentes; a tela trabalha com opcionais.
+const toTable = (record: TableRecord): RestaurantTable => ({
+  ...record,
+  name: record.name ?? `Mesa ${String(record.number).padStart(2, "0")}`,
+  openedAt: record.openedAt ?? undefined,
+  closingRequestedAt: record.closingRequestedAt ?? undefined,
+});
+
+const byNumber = (a: RestaurantTable, b: RestaurantTable) => a.number - b.number;
+
 export function useTables() {
-  const [tables, setTables] = useState<RestaurantTable[]>(createMockTables);
+  const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TableStatus>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -19,8 +38,29 @@ export function useTables() {
     null,
   );
   const [error, setError] = useState("");
-  const busy = false;
-  const loading = false;
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(
+    () =>
+      fetchTables()
+        .then((records) => {
+          setTables(records.map(toTable).sort(byNumber));
+          setError("");
+        })
+        .catch((err: unknown) => setError(message(err)))
+        .finally(() => setLoading(false)),
+    [],
+  );
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const replaceTable = (table: RestaurantTable) =>
+    setTables((entries) =>
+      entries.map((entry) => (entry.id === table.id ? table : entry)),
+    );
 
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase("pt-BR");
   const filteredTables = tables.filter(
@@ -55,12 +95,12 @@ export function useTables() {
     setTableForm({
       name: table.name,
       number: String(table.number),
-      seats: String(table.seats ?? 4),
+      seats: String(table.seats),
       active: table.active,
     });
     setIsFormOpen(true);
   };
-  const saveTable = (event: FormEvent<HTMLFormElement>) => {
+  const saveTable = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const number = Number(tableForm.number);
     const identification = tableForm.name.trim();
@@ -72,10 +112,11 @@ export function useTables() {
       setError("Informe um nome e um número de mesa válido.");
       return;
     }
-    if (!Number.isInteger(seats) || seats < 1) {
-      setError("Informe uma capacidade válida, com pelo menos 1 lugar.");
+    if (!Number.isInteger(seats) || seats < 1 || seats > 99) {
+      setError("Informe uma capacidade entre 1 e 99 lugares.");
       return;
     }
+    // As regras abaixo também são garantidas pelo backend; aqui só antecipam o aviso.
     if (
       tables.some(
         (table) => table.number === number && table.id !== editingTableId,
@@ -89,30 +130,26 @@ export function useTables() {
       setError("Finalize o atendimento antes de desativar a mesa.");
       return;
     }
-    if (current) {
-      setTables((entries) =>
-        entries.map((table) =>
-          table.id === current.id
-            ? { ...table, name, number, seats, active: tableForm.active }
-            : table,
+    setBusy(true);
+    try {
+      const saved = toTable(
+        await persistTable(
+          { name, number, seats, active: tableForm.active },
+          current?.id,
         ),
       );
-    } else {
-      const table: RestaurantTable = {
-        id: `mock-table-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`,
-        name,
-        number,
-        active: tableForm.active,
-        status: "available",
-        attendanceId: null,
-        menuUrl: "",
-        seats,
-      };
       setTables((entries) =>
-        [...entries, table].sort((a, b) => a.number - b.number),
+        (current
+          ? entries.map((table) => (table.id === saved.id ? saved : table))
+          : [...entries, saved]
+        ).sort(byNumber),
       );
+      closeForm();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
     }
-    closeForm();
   };
   const deleteTable = async () => {
     if (!tableToDelete) return;
@@ -120,12 +157,20 @@ export function useTables() {
       setError("Finalize o atendimento antes de excluir a mesa.");
       return;
     }
-    setTables((entries) =>
-      entries.filter((table) => table.id !== tableToDelete.id),
-    );
-    setTableToDelete(null);
-    setSelectedTable(null);
-    setError("");
+    setBusy(true);
+    try {
+      await removeTable(tableToDelete.id);
+      setTables((entries) =>
+        entries.filter((table) => table.id !== tableToDelete.id),
+      );
+      setTableToDelete(null);
+      setSelectedTable(null);
+      setError("");
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
   const advanceStatus = async () => {
     if (!selectedTable) return;
@@ -133,32 +178,24 @@ export function useTables() {
       setError("Ative a mesa antes de iniciar um atendimento.");
       return;
     }
-    const status = nextStatus[selectedTable.status].status;
-    const table: RestaurantTable = {
-      ...selectedTable,
-      status,
-      attendanceId:
-        status === "available"
-          ? null
-          : (selectedTable.attendanceId ??
-            `mock-attendance-${crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}`),
-      openedAt:
-        status === "available"
-          ? undefined
-          : (selectedTable.openedAt ?? new Date().toISOString()),
-      people: status === "available" ? undefined : (selectedTable.people ?? 2),
-      closingRequestedAt:
-        status === "closing_requested" || status === "awaiting_payment"
-          ? (selectedTable.closingRequestedAt ?? new Date().toISOString())
-          : undefined,
-      order: status === "available" ? undefined : selectedTable.order,
-      orderValue: status === "available" ? undefined : selectedTable.orderValue,
-    };
-    setTables((entries) =>
-      entries.map((entry) => (entry.id === table.id ? table : entry)),
-    );
-    setSelectedTable(table);
-    setError("");
+    setBusy(true);
+    try {
+      const table = toTable(
+        await changeTableStatus(
+          selectedTable,
+          nextStatus[selectedTable.status].status,
+        ),
+      );
+      replaceTable(table);
+      setSelectedTable(table);
+      setError("");
+    } catch (err) {
+      setError(message(err));
+      // Outro usuário pode ter mudado a mesa; recarrega para mostrar o estado real.
+      void reload();
+    } finally {
+      setBusy(false);
+    }
   };
   return {
     tables,
@@ -180,6 +217,7 @@ export function useTables() {
     setError,
     busy,
     loading,
+    reload,
     normalizedSearch,
     filteredTables,
     closeForm,

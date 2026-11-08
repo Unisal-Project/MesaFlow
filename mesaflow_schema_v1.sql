@@ -93,6 +93,7 @@ CREATE TABLE IF NOT EXISTS restaurant_tables (
     number INT UNSIGNED NOT NULL,
     name VARCHAR(100) NULL,
     qr_token VARCHAR(120) NOT NULL,
+    seats SMALLINT UNSIGNED NOT NULL DEFAULT 4,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -102,6 +103,10 @@ CREATE TABLE IF NOT EXISTS restaurant_tables (
     UNIQUE KEY uq_restaurant_tables_number (number),
     UNIQUE KEY uq_restaurant_tables_qr_token (qr_token)
 ) ENGINE=InnoDB;
+
+-- Bancos criados antes da capacidade da mesa recebem a coluna sem perder dados.
+ALTER TABLE restaurant_tables
+    ADD COLUMN IF NOT EXISTS seats SMALLINT UNSIGNED NOT NULL DEFAULT 4 AFTER qr_token;
 
 
 -- ============================================================

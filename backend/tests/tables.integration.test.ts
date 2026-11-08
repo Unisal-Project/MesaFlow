@@ -77,6 +77,7 @@ test(
           service.editTable(params, {
             name: table.name!,
             number: table.number,
+            seats: 4,
             active: false,
           }),
           { statusCode: 409 },

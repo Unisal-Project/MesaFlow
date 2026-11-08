@@ -121,6 +121,7 @@ model RestaurantTable {
   number      Int          @unique(map: "uq_restaurant_tables_number") @db.UnsignedInt
   name        String?      @db.VarChar(100)
   qrToken     String       @unique(map: "uq_restaurant_tables_qr_token") @map("qr_token") @db.VarChar(120)
+  seats       Int          @default(4) @db.UnsignedSmallInt
   active      Boolean      @default(true)
   createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)

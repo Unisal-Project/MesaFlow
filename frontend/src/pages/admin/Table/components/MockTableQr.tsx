@@ -35,7 +35,7 @@ export function MockTableQr({ table }: { table: RestaurantTable }) {
     if (!ready || !canvasRef.current) return;
     const link = document.createElement("a");
     link.href = canvasRef.current.toDataURL("image/png");
-    link.download = `mesa-${String(table.number).padStart(2, "0")}-demonstracao.png`;
+    link.download = `mesa-${String(table.number).padStart(2, "0")}.png`;
     link.click();
   };
 
@@ -44,13 +44,13 @@ export function MockTableQr({ table }: { table: RestaurantTable }) {
       <QrCode aria-hidden="true" />
       <h3>QR Code da mesa</h3>
       <p>
-        Prévia demonstrativa para {table.name}. O código abre o cardápio com a
-        mesa identificada. O fluxo atual continua demonstrativo.
+        QR Code de {table.name}. O código abre o cardápio com a mesa
+        identificada.
       </p>
       <canvas
         ref={canvasRef}
         role="img"
-        aria-label={`QR Code demonstrativo da mesa ${table.number}`}
+        aria-label={`QR Code da mesa ${table.number}`}
       />
       {error && <p role="alert">{error}</p>}
       <Button

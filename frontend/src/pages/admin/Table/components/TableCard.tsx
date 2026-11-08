@@ -36,9 +36,7 @@ export function TableCard({ table, onSelect }: TableCardProps) {
           <span>
             {!table.active
               ? "Mesa inativa"
-              : table.status === "available"
-                ? `${table.seats ?? 4} lugares`
-                : `${table.people ?? 2} pessoas`}
+              : `${table.seats} lugares`}
           </span>
           <span>
             {table.openedAt

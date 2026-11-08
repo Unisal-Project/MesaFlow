@@ -30,10 +30,13 @@ export class TableService {
       id: table.id.toString(),
       number: table.number,
       name: table.name,
+      seats: table.seats,
       active: table.active,
       menuUrl: url.toString(),
       status,
       attendanceId: attendance?.id.toString() ?? null,
+      openedAt: attendance?.openedAt?.toISOString() ?? null,
+      closingRequestedAt: attendance?.closingRequestedAt?.toISOString() ?? null,
     };
   }
 
@@ -41,6 +44,7 @@ export class TableService {
     const table = await this.tableRepository.create({
       number: data.number,
       name: data.name,
+      seats: data.seats,
       active: data.active,
       qrToken: randomUUID(),
     });
