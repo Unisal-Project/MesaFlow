@@ -125,3 +125,37 @@ test("rotas do administrativo usam os endpoints novos", async () => {
   );
   assert.deepEqual(JSON.parse(calls[3][2]), { reason: "cliente desistiu", restoreStock: true });
 });
+
+const order = (id) => ({ id });
+
+test("achado 5: seleção cai para o primeiro quando o pedido some da lista", () => {
+  const { pickSelectedOrderId } = hook;
+  assert.equal(pickSelectedOrderId(2, [order(1), order(2)]), 2);
+  assert.equal(pickSelectedOrderId(9, [order(1), order(2)]), 1);
+  assert.equal(pickSelectedOrderId(null, [order(3)]), 3);
+  assert.equal(pickSelectedOrderId(9, []), null);
+});
+
+test("achado 6: polling a cada 15 s, sem sobrepor e parando no cleanup", async (t) => {
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  let calls = 0;
+  let release;
+  const load = () => {
+    calls += 1;
+    return new Promise((resolve) => (release = resolve));
+  };
+  const stop = hook.startPolling(load);
+  assert.equal(hook.POLL_INTERVAL_MS, 15_000);
+  assert.equal(calls, 1);
+  t.mock.timers.tick(15_000);
+  assert.equal(calls, 1, "não sobrepõe requisição em andamento");
+  release();
+  await new Promise((r) => setImmediate(r));
+  t.mock.timers.tick(15_000);
+  assert.equal(calls, 2);
+  release();
+  await new Promise((r) => setImmediate(r));
+  stop();
+  t.mock.timers.tick(60_000);
+  assert.equal(calls, 2, "cleanup interrompe o polling");
+});

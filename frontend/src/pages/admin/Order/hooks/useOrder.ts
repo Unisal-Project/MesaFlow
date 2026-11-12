@@ -172,6 +172,42 @@ export function toOrders(responses: AdminOrderResponse[]): Order[] {
   });
 }
 
+/** Mantém a seleção se o pedido ainda existe; senão cai para o primeiro (ou null). */
+export function pickSelectedOrderId(current: number | null, list: Order[]) {
+  return current !== null && list.some((order) => order.id === current)
+    ? current
+    : (list[0]?.id ?? null);
+}
+
+export const POLL_INTERVAL_MS = 15_000;
+
+/**
+ * Chama `load` agora e a cada `intervalMs`, sem sobrepor requisições.
+ * Retorna a função de limpeza (para o unmount).
+ */
+export function startPolling(
+  load: () => Promise<unknown>,
+  intervalMs = POLL_INTERVAL_MS,
+) {
+  let running = false;
+  let stopped = false;
+  const tick = () => {
+    if (running || stopped) return;
+    running = true;
+    load()
+      .catch(() => undefined)
+      .finally(() => {
+        running = false;
+      });
+  };
+  tick();
+  const timer = setInterval(tick, intervalMs);
+  return () => {
+    stopped = true;
+    clearInterval(timer);
+  };
+}
+
 export function useOrder(
   tables: RestaurantTable[] = [],
   products: AdminProduct[] = [],
@@ -201,7 +237,7 @@ export function useOrder(
         .then((responses) => {
           const list = toOrders(responses);
           setOrders(list);
-          setSelectedOrderId((current) => current ?? list[0]?.id ?? null);
+          setSelectedOrderId((current) => pickSelectedOrderId(current, list));
           setError("");
         })
         .catch((err: unknown) => setError(message(err)))
@@ -209,9 +245,8 @@ export function useOrder(
     [],
   );
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  // Polling leve: pedidos novos do QR aparecem sem recarregar a página.
+  useEffect(() => startPolling(reload), [reload]);
 
   // Toda escrita recarrega a lista: a conta inteira (e a mesa) pode ter mudado.
   const run = async (action: () => Promise<unknown>, success: string) => {

@@ -7,6 +7,7 @@ import {
   type TableRecord,
   type TableStatus,
 } from "@/services/tables.service";
+import { startPolling } from "../../Order/hooks/useOrder";
 import { emptyTableForm, nextStatus } from "../constants/table.constants";
 import type { RestaurantTable, TableForm } from "../types/table.types";
 
@@ -53,9 +54,8 @@ export function useTables() {
     [],
   );
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  // Polling leve: mesas abertas pelo QR aparecem sem recarregar a página.
+  useEffect(() => startPolling(reload), [reload]);
 
   const replaceTable = (table: RestaurantTable) =>
     setTables((entries) =>
