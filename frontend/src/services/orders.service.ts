@@ -113,3 +113,27 @@ export const closeAttendance = (attendanceId: string, input: CloseAttendanceInpu
     `/attendances/${attendanceId}/close`,
     { method: "POST", body: JSON.stringify(input) },
   );
+
+export type SalesReportDay = {
+  date: string;
+  revenue: number;
+  orders: number;
+  tables: number;
+  serviceFee: number;
+  cancellations: number;
+  payments: Partial<Record<PaymentMethodCode, number>>;
+  products: { name: string; quantity: number }[];
+};
+
+export type SalesReport = {
+  start: string;
+  end: string;
+  days: SalesReportDay[];
+  previous: { revenue: number; orders: number; tables: number };
+  activeCategories: number;
+};
+
+export const fetchSalesReport = (start: string, end: string) =>
+  apiRequest<SalesReport>(
+    `/reports/sales?start=${start}&end=${end}&tzOffset=${new Date().getTimezoneOffset()}`,
+  );

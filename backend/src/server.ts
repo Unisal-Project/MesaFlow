@@ -14,6 +14,7 @@ import { mkdir } from "node:fs/promises";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
 import { tableRoutes } from "./modules/tables/table.routers.js";
 import { paymentRoutes } from "./modules/payments/payment.routes.js";
+import { reportRoutes } from "./modules/reports/report.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.router.js";
 import { registerUserRoutes } from "./modules/users/user.router.js";
 import { requireApiAuthentication } from "./shared/api-access.js";
@@ -59,6 +60,7 @@ app.register(
     await instance.register(attendanceRoutes);
     await instance.register(tableRoutes);
     await instance.register(paymentRoutes);
+    await instance.register(reportRoutes);
   },
   { prefix: "/api/v1" },
 );

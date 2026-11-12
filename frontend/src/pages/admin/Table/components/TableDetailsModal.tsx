@@ -4,7 +4,7 @@ import { Pencil, QrCode, ReceiptText } from "lucide-react";
 
 import { Button } from "@/components";
 
-import { MockTableQr } from "./MockTableQr";
+import { TableQr } from "./TableQr";
 
 import { statusInfo, nextStatus } from "../constants/table.constants";
 
@@ -162,7 +162,7 @@ export function TableDetailsModal({
 
           {/* Visualização do QR Code */}
           {selectedDetail === "qr" && (
-            <MockTableQr key={table.id} table={table} />
+            <TableQr key={table.id} table={table} />
           )}
         </div>
 

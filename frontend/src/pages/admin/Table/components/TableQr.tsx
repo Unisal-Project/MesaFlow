@@ -4,7 +4,7 @@ import { Download, QrCode } from "lucide-react";
 import { Button } from "@/components";
 import type { RestaurantTable } from "../types/table.types";
 
-export function MockTableQr({ table }: { table: RestaurantTable }) {
+export function TableQr({ table }: { table: RestaurantTable }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
