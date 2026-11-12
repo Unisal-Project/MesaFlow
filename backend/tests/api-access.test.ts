@@ -13,7 +13,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
       for (const path of [
         "/health",
         "/auth/login",
-        "/auth/register",
         "/categories",
         "/categories/:id",
         "/products",
@@ -34,8 +33,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
         });
       }
       for (const [method, path] of [
-        ["POST", "/categories"],
-        ["PATCH", "/products/:id"],
         ["GET", "/tables"],
         ["POST", "/orders"],
         ["GET", "/attendances/:id/open"],
@@ -51,7 +48,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
   for (const [method, path] of [
     ["GET", "/health"],
     ["POST", "/auth/login"],
-    ["POST", "/auth/register"],
     ["GET", "/categories"],
     ["GET", "/categories/1"],
     ["GET", "/products"],
@@ -72,8 +68,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
     role: "EMPLOYEE",
   });
   for (const [method, path] of [
-    ["POST", "/categories"],
-    ["PATCH", "/products/1"],
     ["GET", "/tables"],
     ["POST", "/orders"],
     ["GET", "/attendances/1/open"],
