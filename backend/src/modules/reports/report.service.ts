@@ -4,7 +4,9 @@ import { AppError } from "../../shared/errors/app-errors.js";
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_DAYS = 366;
 
-export type PaymentMethodCode = "CASH" | "PIX" | "CREDIT_CARD" | "DEBIT_CARD";
+/** UNKNOWN: pagamento sem forma registrada (ex.: fechamento pelo QR). */
+export type PaymentMethodCode =
+  "CASH" | "PIX" | "CREDIT_CARD" | "DEBIT_CARD" | "UNKNOWN";
 
 export interface ReportDay {
   date: string;
@@ -143,7 +145,7 @@ export class ReportService {
       for (const payment of attendance.payments) {
         const value = cents(payment.amount);
         day.revenueCents += value;
-        const method = payment.method ?? "CASH";
+        const method = payment.method ?? "UNKNOWN";
         day.payments[method] = (day.payments[method] ?? 0) + value / 100;
       }
       for (const order of attendance.orders) {
@@ -161,7 +163,9 @@ export class ReportService {
     return [...byDay.values()].map(
       ({ ranking, revenueCents, feeCents, ...day }): ReportDay => ({
         ...day,
-        revenue: revenueCents / 100,
+        // Receita líquida da taxa de serviço (regra 22): a taxa é do
+        // garçom/equipe e já aparece em serviceFee.
+        revenue: (revenueCents - feeCents) / 100,
         serviceFee: feeCents / 100,
         products: [...ranking]
           .map(([name, quantity]) => ({ name, quantity }))

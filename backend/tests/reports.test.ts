@@ -77,7 +77,8 @@ test("agrupa por dia local, soma pagamentos e ordena o ranking", async () => {
     ["2026-11-07", "2026-11-08"],
   );
   const [saturday, sunday] = report.days;
-  assert.equal(saturday.revenue, 76);
+  // Receita líquida da taxa: 76 pagos − 6 de taxa.
+  assert.equal(saturday.revenue, 70);
   assert.equal(saturday.tables, 2);
   assert.equal(saturday.orders, 3);
   assert.equal(saturday.serviceFee, 6);
@@ -86,10 +87,34 @@ test("agrupa por dia local, soma pagamentos e ordena o ranking", async () => {
     { name: "Burger", quantity: 3 },
     { name: "Suco", quantity: 1 },
   ]);
-  assert.equal(sunday.revenue, 33);
+  assert.equal(sunday.revenue, 30);
   assert.equal(sunday.cancellations, 1);
   assert.equal(saturday.cancellations, 0);
   assert.equal(report.activeCategories, 4);
+});
+
+test("pagamento sem forma registrada é agrupado como UNKNOWN, não como dinheiro", async () => {
+  const { client } = fakeClient();
+  client.attendance.findMany = async () => [
+    {
+      closedAt: new Date("2026-11-07T15:00:00Z"),
+      serviceFee: money("2.00"),
+      payments: [
+        { amount: money("22.00"), method: null },
+        { amount: money("5.00"), method: "CASH" },
+      ],
+      orders: [{ items: [item("Suco", 1)] }],
+    },
+  ];
+  const report = await new ReportService(client).getReport({
+    start: "2026-11-07",
+    end: "2026-11-07",
+    tzOffset: 180,
+  });
+  const [day] = report.days;
+  assert.deepEqual(day.payments, { UNKNOWN: 22, CASH: 5 });
+  assert.equal(day.revenue, 25);
+  assert.equal(day.serviceFee, 2);
 });
 
 test("dias sem venda aparecem zerados e o período anterior é comparável", async () => {
@@ -107,7 +132,7 @@ test("dias sem venda aparecem zerados e o período anterior é comparável", asy
     ],
   );
   // Período anterior: 07 e 08/11, mesmo tamanho do selecionado.
-  assert.deepEqual(report.previous, { revenue: 109, orders: 4, tables: 3 });
+  assert.deepEqual(report.previous, { revenue: 100, orders: 4, tables: 3 });
   assert.equal(
     queries[1].closedAt.gte.toISOString(),
     "2026-11-07T03:00:00.000Z",

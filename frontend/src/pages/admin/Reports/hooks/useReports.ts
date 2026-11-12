@@ -9,11 +9,21 @@ const methodLabels = {
   CASH: "Dinheiro",
   DEBIT_CARD: "Débito",
   CREDIT_CARD: "Crédito",
+  UNKNOWN: "Não informado",
 } as const;
 
 /** Variação percentual com uma casa; null quando não há base de comparação. */
 export const percentChange = (current: number, base: number) =>
   base > 0 ? Math.round(((current - base) / base) * 1000) / 10 : null;
+
+/** Forma mais usada e sua fatia do total pago (pagamentos incluem a taxa). */
+export function topMethodLabel(methods: Map<string, number>) {
+  const topMethod = [...methods].sort((a, b) => b[1] - a[1])[0];
+  if (!topMethod) return "—";
+  const paidTotal = [...methods].reduce((total, [, value]) => total + value, 0);
+  const label = methodLabels[topMethod[0] as keyof typeof methodLabels] ?? topMethod[0];
+  return `${label} (${Math.round((topMethod[1] / Math.max(paidTotal, 0.01)) * 100)}%)`;
+}
 
 export function useReports() {
   const [period, setPeriodValue] = useState<ReportPeriod>("7days");
@@ -97,11 +107,10 @@ export function useReports() {
     Object.entries(day.payments).forEach(([method, value]) => methods.set(method, (methods.get(method) ?? 0) + (value ?? 0)));
   }
   const products = [...ranking].map(([name, quantity]) => ({ name, quantity })).sort((a, b) => b.quantity - a.quantity);
-  const topMethod = [...methods].sort((a, b) => b[1] - a[1])[0];
   const summary = {
     serviceFee: sum("serviceFee", scope),
     cancellations: sum("cancellations", scope),
-    topMethod: topMethod ? `${methodLabels[topMethod[0] as keyof typeof methodLabels]} (${Math.round((topMethod[1] / Math.max(revenue, 0.01)) * 100)}%)` : "—",
+    topMethod: topMethodLabel(methods),
     activeCategories: current?.activeCategories ?? 0,
   };
 

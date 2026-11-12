@@ -645,6 +645,16 @@ Isso permite obter:
 - produtos mais vendidos;
 - quantidade vendida.
 
+Regra dos relatórios:
+
+- receita (faturamento) = soma dos pagamentos `PAID` − taxa de serviço dos
+  atendimentos fechados, ou seja, receita **líquida** da taxa;
+- ticket médio = receita líquida ÷ pedidos concluídos;
+- a taxa de serviço é exibida à parte ("Taxa de serviço arrecadada");
+- a distribuição por forma de pagamento usa os valores pagos (com taxa);
+  pagamentos sem forma registrada (ex.: fechamento pelo QR) aparecem como
+  "Não informado" (`UNKNOWN`), nunca como dinheiro.
+
 ---
 
 ## 23. Impressão e ESP32
