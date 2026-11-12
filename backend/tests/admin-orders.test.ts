@@ -375,3 +375,38 @@ test("isenção da taxa cobra só o subtotal", async () => {
   assert.equal(result.total, "10.00");
   assert.equal(result.serviceFee, "0.00");
 });
+
+test("estoque é atualizado em ordem crescente de productId (evita deadlock)", async () => {
+  const db = fakeDb();
+  const repo = new PrismaAdminOrderRepository(db.client);
+  const order = await repo.createForTable(
+    7n,
+    [
+      { productId: 2n, quantity: 1 },
+      { productId: 1n, quantity: 1 },
+    ],
+    null,
+    admin,
+  );
+  await repo.replaceItems(
+    order.id,
+    [
+      { productId: 2n, quantity: 2 },
+      { productId: 1n, quantity: 2 },
+    ],
+    undefined,
+    admin,
+  );
+  await repo.cancel(order.id, "teste", true, admin);
+  assert.deepEqual(
+    db.movements.map((m) => [m.type, m.productId]),
+    [
+      ["SALE", 1n],
+      ["SALE", 2n],
+      ["ADJUSTMENT", 1n],
+      ["ADJUSTMENT", 2n],
+      ["CANCELLATION", 1n],
+      ["CANCELLATION", 2n],
+    ],
+  );
+});

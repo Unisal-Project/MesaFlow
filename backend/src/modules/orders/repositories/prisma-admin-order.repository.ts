@@ -1,7 +1,7 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
-import { moveStock } from "../stock.js";
+import { byProductId, moveStock } from "../stock.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -110,7 +110,7 @@ export class PrismaAdminOrderRepository {
         },
         include: { items: true },
       });
-      for (const item of order.items) {
+      for (const item of [...order.items].sort(byProductId)) {
         await moveStock(tx, item.productId, -item.quantity, {
           type: "SALE",
           orderId: order.id,
@@ -147,7 +147,9 @@ export class PrismaAdminOrderRepository {
         );
       const before = quantities(order.items);
       const after = quantities(items);
-      const touched = [...new Set([...before.keys(), ...after.keys()])];
+      const touched = [...new Set([...before.keys(), ...after.keys()])].sort(
+        (a, b) => (a < b ? -1 : a > b ? 1 : 0),
+      );
 
       // Itens já vendidos mantêm o preço da venda (regra 8).
       const soldPrice = new Map(
@@ -216,7 +218,7 @@ export class PrismaAdminOrderRepository {
         },
       });
       if (restoreStock) {
-        for (const item of order.items) {
+        for (const item of [...order.items].sort(byProductId)) {
           await moveStock(tx, item.productId, item.quantity, {
             type: "CANCELLATION",
             orderId,

@@ -49,3 +49,13 @@ export async function moveStock(
     },
   });
 }
+
+/**
+ * Ordena por productId crescente. Toda transação que mexe em estoque deve
+ * atualizar os produtos nessa ordem para que pedidos simultâneos travem as
+ * linhas na mesma sequência e não entrem em deadlock.
+ */
+export const byProductId = (
+  a: { productId: bigint },
+  b: { productId: bigint },
+) => (a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0);
