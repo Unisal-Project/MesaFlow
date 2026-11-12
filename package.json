@@ -23,7 +23,7 @@
     "prisma:generate": "cd backend && prisma generate",
     "prisma:migrate": "cd backend && prisma migrate dev",
     "start:backend": "cd backend && node dist/server.js",
-    "test:backend": "cd backend && node --test-force-exit --import tsx --test tests/*.test.ts",
+    "test:backend": "cd backend && JWT_SECRET=${JWT_SECRET:-test-jwt-secret} FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173} DATABASE_URL=${DATABASE_URL:-postgresql://test:test@localhost:5432/mesaflow_test} node --test-concurrency=1 --test-force-exit --import tsx --test tests/*.test.ts",
     "test:unit": "cd backend && node --test-force-exit --import tsx --test tests/*.test.ts",
     "typecheck": "cd backend && tsc -p tsconfig.tests.json",
     "format": "cd backend && prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
