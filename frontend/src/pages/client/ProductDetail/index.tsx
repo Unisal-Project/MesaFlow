@@ -1,9 +1,21 @@
 import { ChevronLeft, ShoppingCart } from "lucide-react";
-import { ClientHeader, QuantitySelector, TextAreaField, Button } from "@/components";
+
+import {
+  ClientHeader,
+  QuantitySelector,
+  TextAreaField,
+  Button
+} from "@/components";
+
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
+
 import { useProductDetail } from "./hooks/useProductDetail";
+
 import type { ProductDetailProps } from "./types/productDetail.types";
+
 import { formatPriceMenu } from "@/utils/formatPrice";
+import { resolveImageUrl } from "@/utils/resolveImageUrl";
+
 import "./styles.scss";
 
 export function ProductDetail({ product, categoryName, onBack, onAdded, onGoToCart, onNavigate }: ProductDetailProps) {
@@ -19,7 +31,7 @@ export function ProductDetail({ product, categoryName, onBack, onAdded, onGoToCa
           <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
         </button>} />
       <div className="product-detail-hero">
-        {product.imageUrl ? <img src={product.imageUrl} alt={product.name} /> : <div aria-hidden="true" />}
+        {product.imageUrl ? <img src={resolveImageUrl(product.imageUrl)} alt={product.name} /> : <div aria-hidden="true" />}
       </div>
       <main className="product-detail-content">
         {categoryName && <span className="product-detail-category"><span aria-hidden="true" />{categoryName}</span>}

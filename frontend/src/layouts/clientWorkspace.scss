@@ -65,6 +65,10 @@ html.client-workspace-active .client-workspace .client-header {
 }
 .client-workspace .client-menu .product-card {
   padding: var(--spacing-3);
+  border-radius: 26px;
+}
+.client-workspace .client-menu .client-menu-photo {
+  border-radius: 18px;
 }
 .client-workspace .client-home {
   border-inline: 0;
@@ -110,13 +114,6 @@ html.client-workspace-active .client-workspace .client-header {
 }
 .client-workspace :is(button, input, textarea, summary):focus-visible {
   @include mixins.focus-visible(2px, 3px);
-}
-.client-workspace .client-menu-search {
-  min-height: 48px;
-  border-color: transparent;
-  border-radius: 16px;
-  background: color-mix(in srgb, var(--primary) 5%, var(--surface));
-  box-shadow: inset 0 1px 2px color-mix(in srgb, var(--primary) 3%, transparent);
 }
 .client-workspace .client-menu .category-tabs {
   gap: var(--spacing-1);

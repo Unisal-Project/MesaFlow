@@ -133,6 +133,7 @@ export default class ProductsController {
       ...product,
       id: product.id.toString(),
       categoryId: product.categoryId.toString(),
+      additionalCategoryIds: (product.additionalCategoryIds ?? []).map(String),
       price: product.price.toString(),
     };
   }

@@ -1,5 +1,7 @@
 export type MockProduct = {
-  id: number;
+  id: string | number;
+  categoryId?: string;
+  additionalCategoryIds?: string[];
   name: string;
   category: string;
   price: string;
@@ -15,6 +17,7 @@ export type NewProductForm = {
   price: string;
   observation: string;
   category: string;
+  additionalCategoryIds: string[];
   imageUrl: string;
   available: boolean;
 };

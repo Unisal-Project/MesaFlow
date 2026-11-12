@@ -39,7 +39,7 @@ services:
       MARIADB_ROOT_PASSWORD: root
       MARIADB_DATABASE: orderflow
     volumes:
-      - ./mesaflow_schema_v1.sql:/schema/mesaflow_schema_v1.sql:ro
+      - ./mesaflow_schema_v1.sql:/schema/mesaflow_schema_v1.sql:ro,Z
     depends_on:
       database:
         condition: service_healthy
@@ -97,9 +97,9 @@ services:
       VITE_DEV_PROXY_TARGET: http://backend:3333
     volumes:
       # Mantem o codigo local sincronizado com o servidor de desenvolvimento.
-      - ./frontend:/app/frontend
+      - ./frontend:/frontend
       # Evita que o bind mount esconda as dependencias instaladas na imagem.
-      - frontend_node_modules:/app/node_modules
+      - frontend_node_modules:/node_modules
     depends_on:
       - backend
 

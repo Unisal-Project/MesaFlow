@@ -9,6 +9,7 @@
   box-shadow: var(--shadow-soft);
 }
 .product-card {
+  position: relative;
   overflow: hidden;
   &.indisponivel {
     opacity: 0.6;
@@ -16,6 +17,24 @@
   &.indisponivel.food-photo,
   &.indisponivel.thumb {
     filter: grayscale(1);
+  }
+}
+.product-card-select {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  cursor: pointer;
+  touch-action: manipulation;
+
+  &:focus-visible {
+    outline: 3px solid var(--primary);
+    outline-offset: -3px;
   }
 }
 .food-photo,
