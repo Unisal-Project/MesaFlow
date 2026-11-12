@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   fetchCategories,
@@ -7,13 +7,14 @@ import {
   type Product,
 } from "@/services/menu.service";
 
+import { buildMenuSections } from "../utils/menuSections";
+
 import type { MenuCatalog } from "../types/menu.types";
 
 export function useMenu(catalog?: MenuCatalog) {
   const [remoteCategories, setCategories] = useState<Category[]>([]);
   const [remoteProducts, setProducts] = useState<Product[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState<string>("all");
+  const [activeCategory, setActiveCategory] = useState<string>("menu-featured");
   const [remoteLoading, setIsLoading] = useState(true);
   const [remoteError, setError] = useState<string | null>(null);
 
@@ -45,27 +46,20 @@ export function useMenu(catalog?: MenuCatalog) {
   const products = catalog?.products ?? remoteProducts;
   const isLoading = !catalog && remoteLoading;
   const error = catalog ? null : remoteError;
-  const query = searchQuery.trim().toLocaleLowerCase("pt-BR");
-  const filteredProducts = products.filter((product) =>
-    (activeCategory === "all" || product.categoryId === activeCategory) &&
-    `${product.name} ${product.description ?? ""}`.toLocaleLowerCase("pt-BR").includes(query),
-  );
+  const sections = useMemo(() => buildMenuSections(categories, products), [categories, products]);
 
   const tabs = [
-    { id: "all", label: "Todos" },
-    ...categories.map((category) => ({
-      id: category.id,
-      label: category.name,
+    ...sections.map((section) => ({
+      id: section.id,
+      label: section.name,
     })),
   ];
 
   return {
     isLoading,
     error,
-    searchQuery,
-    setSearchQuery,
     categories,
-    filteredProducts,
+    sections,
     activeCategory,
     setActiveCategory,
     tabs,

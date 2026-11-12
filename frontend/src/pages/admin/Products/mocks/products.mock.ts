@@ -6,6 +6,7 @@ export const emptyProductForm: NewProductForm = {
   price: "",
   observation: "",
   category: "",
+  additionalCategoryIds: [],
   imageUrl: "",
   available: true,
 };

@@ -7,8 +7,8 @@ import type { MockProduct } from "../types/product.types";
 
 type ProductRowProps = {
   product: MockProduct;
-  onUpdateQuantity: (productId: number, quantity: number) => void;
-  onUpdateAvailability: (productId: number, available: boolean) => void;
+  onUpdateQuantity: (productId: string | number, quantity: number) => void;
+  onUpdateAvailability: (productId: string | number, available: boolean) => void;
   onEdit: (product: MockProduct) => void;
   onDelete: (product: MockProduct) => void;
 };

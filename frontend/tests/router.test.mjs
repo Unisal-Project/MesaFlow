@@ -49,7 +49,7 @@ const cases = [
   ["/admin/cardapio/categorias/todas", "Todas as categorias"],
   ["/cardapio?mesa=token-teste", "Cardápio"],
   ["/cliente?mesa=12", "Mesa 12"],
-  ["/produto/demo-risoto?mesa=12", "Risoto de cogumelos"],
+  ["/produto/1?mesa=12", "Carregando produto..."],
   ["/carrinho?mesa=12", "carrinho"],
   ["/conta?mesa=12", "conta"],
   ["/confirmar-pedido?mesa=12", "pedido"],

@@ -1,3 +1,4 @@
+import { signIn } from "@/services/auth.service";
 import { useDocumentClass } from "@/hooks/useDocumentClass";
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import {
@@ -23,7 +24,10 @@ export default function Login({ onEnter }: LoginProps) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isRegistering && password !== confirmPassword) {
       const confirmation = event.currentTarget.elements.namedItem(
@@ -33,7 +37,15 @@ export default function Login({ onEnter }: LoginProps) {
       confirmation.reportValidity();
       return;
     }
-    onEnter();
+    if (isSubmitting) return;
+    setIsSubmitting(true); setError(null);
+    const data = new FormData(event.currentTarget);
+    try {
+      await signIn(email, password, isRegistering ? String(data.get("name") ?? "") : undefined);
+      onEnter();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Não foi possível entrar");
+    } finally { setIsSubmitting(false); }
   };
 
   const handlePasswordChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -188,7 +200,8 @@ export default function Login({ onEnter }: LoginProps) {
                 onChange={handleConfirmPasswordChange}
               />
             )}
-            <Button type="submit">
+            {error && <p role="alert">{error}</p>}
+            <Button type="submit" disabled={isSubmitting}>
               {isRegistering ? "Experimentar o MesaFlow" : "Entrar no painel"}
               <ArrowRight aria-hidden="true" />
             </Button>
@@ -199,16 +212,7 @@ export default function Login({ onEnter }: LoginProps) {
               {isRegistering ? "Entrar" : "Criar conta"}
             </button>
           </p>
-          <p className="login-demo" role="note">
-            <strong>
-              {isRegistering
-                ? "Cadastro demonstrativo"
-                : "Acesso demonstrativo"}
-            </strong>
-            {isRegistering
-              ? "Este formulário permite explorar o painel. Nenhuma conta é criada e os dados não são enviados nem armazenados."
-              : "Preencha os campos para explorar o painel. As credenciais não são verificadas nem armazenadas."}
-          </p>
+
         </div>
         <footer className="login-footer">
           MesaFlow · Gestão que acompanha o seu ritmo.

@@ -65,7 +65,7 @@ export default function Products({
     requestProductDeletion,
     confirmProductDeletion,
   } = productState;
-  const productCategories = categoryState.categories.map(
+  const productCategories = productState.categories.map(
     (category) => category.name,
   );
   const isCategories = activeTab === "categories";
@@ -86,6 +86,8 @@ export default function Products({
         userRole="Administrador"
       />
       <main className="products-content">
+        {productState.error && <p role="alert">{productState.error}</p>}
+        {productState.isLoading && <p role="status">Carregando produtos…</p>}
         <div className="products-topbar">
           <div className="products-breadcrumb" aria-label="Página atual">
             <span>Visão geral</span>
@@ -318,7 +320,9 @@ export default function Products({
 
       {isProductModalOpen && (
         <ProductFormModal
-          categories={productCategories}
+          error={productState.error}
+          isSaving={productState.isSaving}
+          categories={productState.categories}
           editingProductId={editingProductId}
           newProduct={newProduct}
           setNewProduct={setNewProduct}

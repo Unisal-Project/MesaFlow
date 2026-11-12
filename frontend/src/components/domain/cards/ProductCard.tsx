@@ -1,4 +1,3 @@
-import { Button } from "@/components";
 import { Badge } from "@/components/ui/status";
 import { classNames } from "@/utils/classNames";
 import type { ReactNode } from "react";
@@ -9,8 +8,8 @@ type ProductCardProps = {
   price: string;
   image?: ReactNode;
   available?: boolean;
-  onAdd?: () => void;
-  actionLabel?: string;
+  onSelect?: () => void;
+  variant?: "default" | "featured";
 };
 
 export function ProductCard({
@@ -19,24 +18,26 @@ export function ProductCard({
   price,
   image,
   available = true,
-   actionLabel = "Adicionar",
-  onAdd,
+  onSelect,
+  variant = "default",
 }: ProductCardProps) {
   return (
-    <article className={classNames("product-card", !available && "indisponivel")}>
+    <article className={classNames("product-card", variant === "featured" && "product-card--featured", !available && "indisponivel")}>
+      {available && onSelect && (
+        <button
+          type="button"
+          className="product-card-select"
+          aria-label={`Ver item: ${name}`}
+          onClick={onSelect}
+        />
+      )}
       {image ?? <div className="food-photo" aria-hidden="true" />}
       <div className="card-body">
         <h3>{name}</h3>
         <p>{description}</p>
         <div className="card-actions">
           <strong>{price}</strong>
-          {available
-            ? onAdd && (
-                <Button size="small" onClick={onAdd}>
-                   {actionLabel}
-                </Button>
-              )
-            : <Badge variant="error">Indisponível</Badge>}
+          {!available && <Badge variant="error">Indisponível</Badge>}
         </div>
       </div>
     </article>

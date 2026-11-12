@@ -39,42 +39,20 @@
 .client-menu-content {
   padding: var(--spacing-5) var(--spacing-3) calc(108px + env(safe-area-inset-bottom));
 }
-.client-menu-search {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  min-height: 48px;
-  padding: var(--spacing-3) var(--spacing-4);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-medium);
-  background: var(--surface);
-  color: var(--text-secondary);
-  svg {
-    flex: 0 0 20px;
-    width: 20px;
-    height: 20px;
-    stroke-width: 1.5;
-  }
-  input {
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--text);
-    font-size: var(--font-size-sm);
-  }
-  &:focus-within {
-    box-shadow: var(--focus-ring);
-  }
-}
 .client-menu .category-tabs {
+  display: flex;
+  flex-wrap: nowrap;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
   gap: var(--spacing-2);
   padding: var(--spacing-3) 0 var(--spacing-4);
   scrollbar-width: thin;
 }
 .client-menu .category-tabs button {
+  scroll-snap-align: start;
+  white-space: nowrap;
   flex-shrink: 0;
   min-height: 38px;
   padding-inline: var(--spacing-3);
@@ -98,7 +76,8 @@
   justify-content: space-between;
   gap: var(--spacing-3);
   margin-bottom: var(--spacing-4);
-  h1 {
+  h1,
+  h2 {
     margin: 0;
     font-family: var(--font-display);
     font-size: var(--font-size-2xl);
@@ -111,37 +90,62 @@
     font-weight: var(--font-weight-semibold);
   }
 }
+.client-menu-sections,
+.client-menu-section {
+  scroll-margin-top: 88px;
+}
+.client-menu-section + .client-menu-section {
+  margin-top: var(--spacing-6);
+}
 .client-menu-products {
   display: grid;
   gap: var(--spacing-3);
 }
+.client-menu-products--carousel {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--spacing-3);
+  padding: var(--spacing-1) var(--spacing-1) var(--spacing-3);
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+
+  > .product-card {
+    flex: 0 0 72%;
+    max-width: 280px;
+    scroll-snap-align: start;
+  }
+}
 .client-menu .product-card {
   display: grid;
-  grid-template-columns: 88px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 104px;
+  grid-template-areas: "body photo";
   gap: var(--spacing-3);
-  min-height: 124px;
+  min-height: 140px;
   padding: var(--spacing-2) var(--spacing-3) var(--spacing-2) var(--spacing-2);
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: var(--radius-small);
+  border-radius: 26px;
   background: var(--surface);
   box-shadow: var(--shadow-soft);
 }
 .client-menu-photo {
-  width: 88px;
+  grid-area: photo;
+  width: 104px;
   height: 100%;
-  min-height: 104px;
-  border-radius: var(--radius-small);
+  min-height: 120px;
+  border-radius: 18px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 70%, var(--surface)), var(--primary) 50%, var(--primary-dark));
   object-fit: cover;
 }
 .client-menu .product-card .card-body {
+  grid-area: body;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: var(--spacing-2);
   min-width: 0;
   padding: 0;
+  padding-left: var(--spacing-2);
 }
 .client-menu .product-card h3 {
   margin: 0;
@@ -154,6 +158,11 @@
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   line-height: 1.5;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
 }
 .client-menu .card-actions {
   display: flex;
@@ -187,13 +196,43 @@
   color: var(--text-secondary);
   text-align: center;
 }
+.client-menu .client-menu-products--carousel .product-card--featured {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "photo" "body";
+  grid-template-rows: auto 1fr;
+  gap: 0;
+  padding: 0;
+  border-color: color-mix(in srgb, var(--primary) 18%, var(--surface));
+
+  .client-menu-photo {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 16 / 9;
+    border-radius: 0;
+  }
+
+  .card-body {
+    padding: var(--spacing-3);
+    gap: var(--spacing-2);
+    background: color-mix(in srgb, var(--primary) 4%, var(--surface));
+  }
+
+  h3 {
+    font-size: var(--font-size-lg);
+  }
+
+  .card-actions {
+    padding-top: var(--spacing-2);
+  }
+}
 @include mixins.down(compact-phone) {
   .client-menu .product-card {
-    grid-template-columns: 72px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 88px;
     gap: var(--spacing-2);
   }
   .client-menu-photo {
-    width: 72px;
+    width: 88px;
   }
   .client-menu .card-actions > strong {
     font-size: var(--font-size-md);
