@@ -1,0 +1,21 @@
+@use '../../styles/abstracts/mixins';
+.restaurant-info-button {
+  @include mixins.client-header-action;
+  svg { width: 24px; height: 24px; }
+}
+.restaurant-info-dialog {
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: var(--spacing-5);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  color: var(--text);
+  &::backdrop { background: rgb(0 0 0 / 45%); }
+  h2 { font-size: var(--font-size-xl); }
+  dl { margin-block: var(--spacing-4); overflow-wrap: anywhere; }
+  dt { font-weight: var(--font-weight-bold); }
+  dd { margin: var(--spacing-1) 0 var(--spacing-3); color: var(--text-secondary); }
+}

@@ -1,5 +1,5 @@
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
-import { ChevronLeft, ShoppingCart } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 import {
   
@@ -20,15 +20,13 @@ import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import "./styles.scss";
 
 export function ProductDetail({ product, categoryName, onBack, onAdded, onGoToCart, onNavigate }: ProductDetailProps) {
-  const { itemCount, quantity, setQuantity, notes, setUnitNotes, maxQuantity, handleAdd } = useProductDetail(product, onAdded);
+  const { quantity, setQuantity, notes, setUnitNotes, maxQuantity, handleAdd } = useProductDetail(product, onAdded);
 
   return (
     <div className="product-detail-page">
-      <ClientTableHeader  
+      <ClientTableHeader
         backAction={<button type="button" className="product-detail-back" aria-label="Voltar" onClick={onBack}><ChevronLeft aria-hidden="true" /></button>}
-        cartAction={<button type="button" className="product-detail-cart" aria-label={`Carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={onGoToCart}>
-          <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
-        </button>} />
+         />
       <div className="product-detail-hero">
         {product.imageUrl ? <img src={resolveImageUrl(product.imageUrl)} alt={product.name} /> : <div aria-hidden="true" />}
       </div>

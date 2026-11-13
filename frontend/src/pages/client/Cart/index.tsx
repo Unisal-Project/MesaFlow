@@ -31,11 +31,9 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
 
   return (
     <div className="cart-page">
-      <ClientTableHeader  
+      <ClientTableHeader
         backAction={<button type="button" className="cart-back" aria-label="Voltar" onClick={onBack}><ChevronLeft aria-hidden="true" /></button>}
-        cartAction={<button type="button" className="cart-header-count" aria-label={`Pedido com ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
-        </button>} />
+         />
 
       <main className="cart-content">
         {orderPlaced ? (

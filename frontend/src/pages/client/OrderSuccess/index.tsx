@@ -1,19 +1,8 @@
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
-import { 
-  Check, 
-  ChevronLeft,
-  ShoppingCart 
-} from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
+import { Button, IconButton } from "@/components";
 
-import { 
-  Badge, 
-  BottomNavigation, 
-  Button, 
-   
-  IconButton 
-} from "@/components";
-
-import { navigationItems } from "./constants/orderSuccess.constants";
+import { ClientTabBar } from "@/components/layout/ClientTabBar";
 
 import type { OrderSuccessProps } from "./types/orderSuccess.types";
 
@@ -27,23 +16,9 @@ export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
   return (
     <div className="order-success-page">
       <ClientTableHeader
-        
-        
         backAction={
           <IconButton type="button" label="Voltar" onClick={onBack}>
             <ChevronLeft aria-hidden="true" />
-          </IconButton>
-        }
-        cartAction={
-          <IconButton
-            type="button"
-            label="Carrinho, 0 itens"
-            onClick={() => handleNavigate("order")}
-          >
-            <ShoppingCart aria-hidden="true" />
-            <Badge variant="warning" className="order-success-cart-count" aria-hidden="true">
-              0
-            </Badge>
           </IconButton>
         }
       />
@@ -69,7 +44,7 @@ export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
         </div>
       </main>
 
-      <BottomNavigation items={navigationItems} activeId="" onChange={handleNavigate} />
+      <ClientTabBar activeId="orders" onMenu={() => handleNavigate("menu")} onOrder={() => handleNavigate("order")} onNavigate={handleNavigate} />
     </div>
   );
 }

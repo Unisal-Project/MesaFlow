@@ -10,6 +10,7 @@ export const clientPaths: Record<string, string> = {
   home: "/cliente",
   menu: "/cardapio",
   order: "/carrinho",
+  orders: "/pedidos",
   bill: "/conta",
   review: "/confirmar-pedido",
 };

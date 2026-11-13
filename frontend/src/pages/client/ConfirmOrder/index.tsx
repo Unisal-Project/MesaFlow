@@ -1,5 +1,5 @@
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
-import { Check, ChevronLeft, ShoppingCart } from "lucide-react";
+import { Check, ChevronLeft } from "lucide-react";
 import { Button } from "@/components";
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
 import { useCart } from "@/contexts/useCart";
@@ -16,7 +16,7 @@ type ConfirmOrderProps = {
 };
 
 export function ConfirmOrder({ tableToken, customerName, onBack, onGoToMenu, onNavigate }: ConfirmOrderProps) {
-  const { items, itemCount, total } = useCart();
+  const { items, total } = useCart();
   const {
     handleSendOrder,
     isSubmitting,
@@ -24,11 +24,9 @@ export function ConfirmOrder({ tableToken, customerName, onBack, onGoToMenu, onN
     error,
   } = useConfirmOrder(tableToken, customerName);
   return <div className="confirm-order-page">
-    <ClientTableHeader  
+    <ClientTableHeader
       backAction={<button type="button" className="confirm-order-back" aria-label="Voltar ao carrinho" onClick={onBack}><ChevronLeft aria-hidden="true" /></button>}
-      cartAction={<button type="button" className="confirm-order-cart" aria-label={`Carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={onBack}>
-        <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
-      </button>} />
+       />
     <main className="confirm-order-content">
       {orderId !== null ? (
         <section className="confirm-order-feedback" role="status">

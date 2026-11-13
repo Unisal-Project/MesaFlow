@@ -10,12 +10,6 @@ const tableController = new TableController(tableService);
 const qrOrderController = new QrOrderController(new QrOrderService());
 
 export function tableRoutes(app: FastifyInstance) {
-  app.post("/tables/by-token/:token/orders", (request, reply) =>
-    qrOrderController.submit(request, reply),
-  );
-  app.post("/tables/by-token/:token/request-closing", (request, reply) =>
-    qrOrderController.requestClosing(request, reply),
-  );
   app.get("/tables/by-token/:token", (request, reply) =>
     tableController.getTableByToken(request, reply),
   );
@@ -27,6 +21,17 @@ export function tableRoutes(app: FastifyInstance) {
   );
   app.get("/tables", (request, reply) =>
     tableController.getAllTables(request, reply),
+  );
+
+  app.get("/tables/by-token/:token/orders", (request, reply) =>
+    qrOrderController.findOrders(request, reply),
+  );
+  
+  app.post("/tables/by-token/:token/orders", (request, reply) =>
+    qrOrderController.submit(request, reply),
+  );
+  app.post("/tables/by-token/:token/request-closing", (request, reply) =>
+    qrOrderController.requestClosing(request, reply),
   );
 
   app.post("/tables", (request, reply) =>

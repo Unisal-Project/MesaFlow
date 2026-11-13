@@ -1,5 +1,5 @@
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
-import { ChevronLeft, ShoppingCart } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { Button,  Radio, SystemMessage } from "@/components";
 
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
@@ -36,24 +36,9 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
   return (
     <div className="table-bill-page">
       <ClientTableHeader
-        
-        
         backAction={
           <button type="button" className="table-bill-back" aria-label="Voltar" onClick={onBack}>
             <ChevronLeft aria-hidden="true" />
-          </button>
-        }
-        cartAction={
-          <button
-            className="table-bill-cart"
-            type="button"
-            aria-label={`Carrinho, ${bill.cartItemCount} ${bill.cartItemCount === 1 ? "item" : "itens"}`}
-            onClick={() => handleNavigate("order")}
-          >
-            <ShoppingCart aria-hidden="true" />
-            <span aria-hidden="true">
-              {bill.cartItemCount}
-            </span>
           </button>
         }
       />

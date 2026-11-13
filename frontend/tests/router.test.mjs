@@ -51,6 +51,8 @@ const cases = [
   ["/cliente?mesa=12", "Identificando sua mesa"],
   ["/produto/1?mesa=12", "Identificando sua mesa"],
   ["/carrinho?mesa=12", "Identificando sua mesa"],
+  ["/pedidos?mesa=12", "Identificando sua mesa"],
+  ["/pedidos", "Carregando pedidos..."],
   ["/conta?mesa=12", "Identificando sua mesa"],
   ["/confirmar-pedido?mesa=12", "Identificando sua mesa"],
 ];

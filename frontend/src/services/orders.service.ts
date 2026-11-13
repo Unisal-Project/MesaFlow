@@ -43,6 +43,48 @@ export type CreateQrOrderResponse = {
   };
 };
 
+export type OrderStatus =
+  | "PENDING"
+  | "PREPARING"
+  | "READY"
+  | "DELIVERED"
+  | "CANCELLED";
+
+export type AttendanceOrderItem = {
+  id: string;
+  productId: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  notes: string | null;
+};
+
+export type AttendanceOrder = {
+  id: string;
+  status: OrderStatus;
+  customerName: string | null;
+  createdAt: string;
+  notes: string | null;
+  items: AttendanceOrderItem[];
+};
+
+export type AttendanceOrdersResponse = {
+  attendanceId: string | null;
+  orders: AttendanceOrder[];
+};
+
+export function fetchOrdersByTableToken(
+  token: string,
+  signal?: AbortSignal,
+): Promise<AttendanceOrdersResponse> {
+  return apiRequest<AttendanceOrdersResponse>(
+    `/tables/by-token/${encodeURIComponent(token)}/orders`,
+    {
+      signal,
+    },
+  );
+}
+
 export function createOrder(
   input: CreateOrderInput
 ): Promise<OrderResponse> {
