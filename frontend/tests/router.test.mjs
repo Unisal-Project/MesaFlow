@@ -47,12 +47,14 @@ const cases = [
   ["/admin/cardapio/produtos", "Todos os produtos"],
   ["/admin/cardapio/categorias", "Categorias cadastradas"],
   ["/admin/cardapio/categorias/todas", "Todas as categorias"],
-  ["/cardapio?mesa=token-teste", "Cardápio"],
-  ["/cliente?mesa=12", "Mesa 12"],
-  ["/produto/1?mesa=12", "Carregando produto..."],
-  ["/carrinho?mesa=12", "carrinho"],
-  ["/conta?mesa=12", "conta"],
-  ["/confirmar-pedido?mesa=12", "pedido"],
+  ["/cardapio?mesa=token-teste", "Identificando sua mesa"],
+  ["/cliente?mesa=12", "Identificando sua mesa"],
+  ["/produto/1?mesa=12", "Identificando sua mesa"],
+  ["/carrinho?mesa=12", "Identificando sua mesa"],
+  ["/pedidos?mesa=12", "Identificando sua mesa"],
+  ["/pedidos", "Carregando pedidos..."],
+  ["/conta?mesa=12", "Identificando sua mesa"],
+  ["/confirmar-pedido?mesa=12", "Identificando sua mesa"],
 ];
 
 for (const [url, expected] of cases) {

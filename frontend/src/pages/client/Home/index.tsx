@@ -1,7 +1,6 @@
-import { ShoppingCart, Sparkles } from "lucide-react";
-import { Button, ClientHeader, TextField } from "@/components";
-import { useCart } from "@/contexts/useCart";
-import { mockRestaurant } from "./mocks/home.mocks";
+import { useClientTable } from "@/contexts/ClientTableContext";
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
+import { Button,  TextField } from "@/components";
 import "./styles.scss";
 
 type HomeProps = {
@@ -11,18 +10,12 @@ type HomeProps = {
   onOpenCart: () => void;
 };
 
-export function Home({ guestName, onGuestNameChange, onExploreMenu, onOpenCart }: HomeProps) {
-  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
-  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
-  const { itemCount } = useCart();
+export function Home({ guestName, onGuestNameChange, onExploreMenu }: HomeProps) {
+  const { tableLabel } = useClientTable();
 
   return (
     <div className="client-home">
-      <ClientHeader title="MesaFlow" subtitle={tableLabel} cartAction={
-        <button type="button" className="client-home-cart" aria-label={`Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={onOpenCart}>
-          <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
-        </button>
-      } />
+      <ClientTableHeader />
       <div className="client-home-banner" aria-label={tableLabel}>
         <span>{tableLabel}</span>
       </div>
@@ -33,10 +26,6 @@ export function Home({ guestName, onGuestNameChange, onExploreMenu, onOpenCart }
         <form className="client-home-form" onSubmit={(event) => { event.preventDefault(); onExploreMenu(); }}>
           <TextField id="client-guest-name" label="Insira seu nome na mesa (opcional)" autoComplete="given-name" maxLength={80}
             value={guestName} onChange={(event) => onGuestNameChange(event.target.value)} />
-          <div className="client-home-restaurant">
-            <span className="client-home-restaurant-icon"><Sparkles aria-hidden="true" /></span>
-            <div><strong>{mockRestaurant.name}</strong><p>Atendimento · {mockRestaurant.location}</p></div>
-          </div>
           <Button type="submit">Explorar cardápio</Button>
         </form>
       </main>

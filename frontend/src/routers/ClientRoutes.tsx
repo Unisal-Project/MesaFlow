@@ -18,14 +18,16 @@ import {
 
 import { ClientWorkspace } from "@/layouts/ClientWorkspace";
 
+import { ClientTableProvider, useClientTable } from "@/contexts/ClientTableContext";
+
 import { CartProvider } from "@/contexts/CartProvider";
-import { useCart } from "@/contexts/useCart";
 
 import { Home } from "@/pages/client/Home";
 import { Menu } from "@/pages/client/Menu";
 import { Cart } from "@/pages/client/Cart";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
+import { Orders } from "@/pages/client/Orders";
 import { TableBill } from "@/pages/client/TableBill";
 
 import { clientPaths, clientTarget } from "./paths";
@@ -126,9 +128,9 @@ function ProductRoute({
 function ClientPages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { clearCart } = useCart();
-  const [guestName, setGuestName] = useState("");
-  const [nextOrderId, setNextOrderId] = useState(1842);
+  const { guestName, setGuestName } = useClientTable();
+  const tableToken =
+  new URLSearchParams(location.search).get("mesa")?.trim() ?? "";
   const goTo = (destination: string) => {
     if (destination === "order") {
       openCart();
@@ -141,11 +143,7 @@ function ClientPages() {
     navigate(clientTarget("/carrinho", location.search), {
       state: { returnPath: location.pathname },
     });
-  const sendDemoOrder = () => {
-    setNextOrderId((current) => current + 1);
-    clearCart();
-  };
-
+    
   return (
     <Routes>
       <Route element={<ClientWorkspace />}>
@@ -212,13 +210,22 @@ function ClientPages() {
           path="confirmar-pedido"
           element={
             <ConfirmOrder
-              orderId={nextOrderId}
+              tableToken={tableToken}
+              customerName={guestName}
               onBack={() => goTo("order")}
               onGoToMenu={() => goTo("menu")}
               onNavigate={goTo}
-              onSend={sendDemoOrder}
             />
           }
+        />
+        <Route 
+          path="pedidos" 
+          element={
+            <Orders 
+              tableToken={tableToken} 
+              onNavigate={goTo} 
+            />
+          } 
         />
         <Route
           path="conta"
@@ -247,7 +254,9 @@ export function ClientRoutes() {
       key={tableToken}
       storageKey={tableToken ? `mesaflow:cart:${tableToken}` : "mesaflow:cart"}
     >
-      <ClientPages />
+      <ClientTableProvider key={tableToken} token={tableToken}>
+        <ClientPages />
+      </ClientTableProvider>
     </CartProvider>
   );
 }

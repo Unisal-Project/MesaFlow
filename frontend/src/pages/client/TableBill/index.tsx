@@ -1,5 +1,6 @@
-import { ChevronLeft, ShoppingCart } from "lucide-react";
-import { Button, ClientHeader, Radio, SystemMessage } from "@/components";
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
+import { ChevronLeft } from "lucide-react";
+import { Button,  Radio, SystemMessage } from "@/components";
 
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
 
@@ -30,31 +31,14 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
     feedbackRef
   } = useTableBill(bill, onNavigate);
 
-  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
-  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
   const requestDisabled = isClosed || closureRequested;
 
   return (
     <div className="table-bill-page">
-      <ClientHeader
-        title="MesaFlow"
-        subtitle={tableLabel}
+      <ClientTableHeader
         backAction={
           <button type="button" className="table-bill-back" aria-label="Voltar" onClick={onBack}>
             <ChevronLeft aria-hidden="true" />
-          </button>
-        }
-        cartAction={
-          <button
-            className="table-bill-cart"
-            type="button"
-            aria-label={`Carrinho, ${bill.cartItemCount} ${bill.cartItemCount === 1 ? "item" : "itens"}`}
-            onClick={() => handleNavigate("order")}
-          >
-            <ShoppingCart aria-hidden="true" />
-            <span aria-hidden="true">
-              {bill.cartItemCount}
-            </span>
           </button>
         }
       />
