@@ -18,8 +18,9 @@ import {
 
 import { ClientWorkspace } from "@/layouts/ClientWorkspace";
 
+import { ClientTableProvider, useClientTable } from "@/contexts/ClientTableContext";
+
 import { CartProvider } from "@/contexts/CartProvider";
-import { useCart } from "@/contexts/useCart";
 
 import { Home } from "@/pages/client/Home";
 import { Menu } from "@/pages/client/Menu";
@@ -126,9 +127,9 @@ function ProductRoute({
 function ClientPages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { clearCart } = useCart();
-  const [guestName, setGuestName] = useState("");
-  const [nextOrderId, setNextOrderId] = useState(1842);
+  const { guestName, setGuestName } = useClientTable();
+  const tableToken =
+  new URLSearchParams(location.search).get("mesa")?.trim() ?? "";
   const goTo = (destination: string) => {
     if (destination === "order") {
       openCart();
@@ -141,11 +142,7 @@ function ClientPages() {
     navigate(clientTarget("/carrinho", location.search), {
       state: { returnPath: location.pathname },
     });
-  const sendDemoOrder = () => {
-    setNextOrderId((current) => current + 1);
-    clearCart();
-  };
-
+    
   return (
     <Routes>
       <Route element={<ClientWorkspace />}>
@@ -212,11 +209,11 @@ function ClientPages() {
           path="confirmar-pedido"
           element={
             <ConfirmOrder
-              orderId={nextOrderId}
+              tableToken={tableToken}
+              customerName={guestName}
               onBack={() => goTo("order")}
               onGoToMenu={() => goTo("menu")}
               onNavigate={goTo}
-              onSend={sendDemoOrder}
             />
           }
         />
@@ -247,7 +244,9 @@ export function ClientRoutes() {
       key={tableToken}
       storageKey={tableToken ? `mesaflow:cart:${tableToken}` : "mesaflow:cart"}
     >
-      <ClientPages />
+      <ClientTableProvider key={tableToken} token={tableToken}>
+        <ClientPages />
+      </ClientTableProvider>
     </CartProvider>
   );
 }

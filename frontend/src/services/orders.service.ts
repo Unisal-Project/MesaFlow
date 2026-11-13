@@ -26,9 +26,41 @@ export type OrderResponse = {
   items: OrderItemResponse[];
 };
 
-export function createOrder(input: CreateOrderInput): Promise<OrderResponse> {
+export type CreateQrOrderInput = {
+  customerName: string;
+  notes?: string;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    notes?: string;
+  }>;
+};
+
+export type CreateQrOrderResponse = {
+  attendanceId: string;
+  order: OrderResponse & {
+    customerName: string | null;
+  };
+};
+
+export function createOrder(
+  input: CreateOrderInput
+): Promise<OrderResponse> {
   return apiRequest<OrderResponse>("/orders", {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export function createQrOrder(
+  token: string,
+  input: CreateQrOrderInput,
+): Promise<CreateQrOrderResponse> {
+  return apiRequest<CreateQrOrderResponse>(
+    `/tables/by-token/${encodeURIComponent(token)}/orders`,
+    {
+      method: "POST",
+      body: JSON.stringify(input),
+    },
+  );
 }

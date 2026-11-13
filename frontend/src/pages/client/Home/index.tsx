@@ -1,5 +1,7 @@
+import { useClientTable } from "@/contexts/ClientTableContext";
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { ShoppingCart, Sparkles } from "lucide-react";
-import { Button, ClientHeader, TextField } from "@/components";
+import { Button,  TextField } from "@/components";
 import { useCart } from "@/contexts/useCart";
 import { mockRestaurant } from "./mocks/home.mocks";
 import "./styles.scss";
@@ -12,13 +14,12 @@ type HomeProps = {
 };
 
 export function Home({ guestName, onGuestNameChange, onExploreMenu, onOpenCart }: HomeProps) {
-  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
-  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
+  const { tableLabel } = useClientTable();
   const { itemCount } = useCart();
 
   return (
     <div className="client-home">
-      <ClientHeader title="MesaFlow" subtitle={tableLabel} cartAction={
+      <ClientTableHeader   cartAction={
         <button type="button" className="client-home-cart" aria-label={`Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={onOpenCart}>
           <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
         </button>

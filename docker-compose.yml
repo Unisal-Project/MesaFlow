@@ -97,7 +97,7 @@ services:
       VITE_DEV_PROXY_TARGET: http://backend:3333
     volumes:
       # Mantem o codigo local sincronizado com o servidor de desenvolvimento.
-      - ./frontend:/frontend
+      - ./frontend:/app/frontend:z
       # Evita que o bind mount esconda as dependencias instaladas na imagem.
       - frontend_node_modules:/node_modules
     depends_on:

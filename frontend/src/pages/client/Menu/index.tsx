@@ -1,3 +1,4 @@
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
 import { useRef } from "react";
 
@@ -7,7 +8,7 @@ import {
 } from "lucide-react";
 
 import {
-  ClientHeader,
+  
   CategoryTabs,
   ProductCard
 } from "@/components";
@@ -37,8 +38,6 @@ export function Menu({ onSelectProduct, onOpenCart, onBack, onNavigate, catalog 
       block: "start",
     });
   }
-  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
-  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
 
   function handleSelectProduct(product: Product) {
     onSelectProduct(product, categories.find((item) => item.id === product.categoryId)?.name ?? "");
@@ -46,7 +45,7 @@ export function Menu({ onSelectProduct, onOpenCart, onBack, onNavigate, catalog 
 
   return (
     <div className="client-menu">
-      <ClientHeader title="MesaFlow" subtitle={tableLabel}
+      <ClientTableHeader  
         backAction={onBack ? <button type="button" className="client-menu-back" aria-label="Voltar ao início" onClick={onBack}><ChevronLeft aria-hidden="true" /></button> : undefined}
         cartAction={<button type="button" className="client-menu-cart" aria-label={`Abrir carrinho, ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={onOpenCart}>
           <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>

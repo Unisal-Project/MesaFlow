@@ -1,3 +1,4 @@
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { 
   Check, 
   ChevronLeft,
@@ -8,7 +9,7 @@ import {
   Badge, 
   BottomNavigation, 
   Button, 
-  ClientHeader, 
+   
   IconButton 
 } from "@/components";
 
@@ -25,9 +26,9 @@ export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
 
   return (
     <div className="order-success-page">
-      <ClientHeader
-        title="MesaFlow"
-        subtitle="Pedido enviado"
+      <ClientTableHeader
+        
+        
         backAction={
           <IconButton type="button" label="Voltar" onClick={onBack}>
             <ChevronLeft aria-hidden="true" />

@@ -1,4 +1,5 @@
 import { QuantitySelector, TextAreaField } from "@/components";
+import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { formatPrice } from "@/utils/formatPrice";
 import type { CartItemProps } from "../types/cart.types";
 
@@ -7,7 +8,7 @@ export function CartItem({ line, maxQuantity, onUpdateQuantity, onUpdateNotes, o
   return (
     <li className="cart-line">
       <div className="cart-line-overview">
-        {line.product.imageUrl ? <img className="cart-line-photo" src={line.product.imageUrl} alt={line.product.name} /> : <div className="cart-line-photo" aria-hidden="true" />}
+        {line.product.imageUrl ? <img className="cart-line-photo" src={resolveImageUrl(line.product.imageUrl)} alt={line.product.name} /> : <div className="cart-line-photo" aria-hidden="true" />}
         <div className="cart-line-body">
           <h2>{line.product.name}</h2>
           <p className="cart-line-notes">{line.notes || "Sem observações"}</p>
