@@ -70,6 +70,11 @@ export type AttendanceOrder = {
 
 export type AttendanceOrdersResponse = {
   attendanceId: string | null;
+  attendanceStatus: 
+    | "OPEN"
+    | "CLOSING_REQUESTED"
+    | "AWAITING_PAYMENT"
+    | null;
   orders: AttendanceOrder[];
 };
 

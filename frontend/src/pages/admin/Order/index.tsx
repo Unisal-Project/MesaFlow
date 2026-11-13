@@ -134,7 +134,7 @@ export default function Orders({
               />
             </label>
 
-            <Notifications items={[]} />
+            <Notifications />
           </div>
         </div>
 

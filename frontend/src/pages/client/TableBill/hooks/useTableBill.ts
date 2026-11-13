@@ -1,46 +1,43 @@
-import { calculateBill } from "@/utils/serviceFee";
-import { useEffect, useRef, useState } from "react";
-import { mockTableBill } from "../mocks/tableBill.mocks";
 
-import type { BillClosingOption, TableBillProps } from "../types/tableBill.types";
+import { useState } from "react";
+
+import { requestQrClosing } from "@/services/attendance.service";
 
 export function useTableBill(
-    bill = mockTableBill, 
-    onNavigate: TableBillProps["onNavigate"]
+  tableToken: string,
+  onSuccess: () => void,
 ) {
-    const [closingOption, setClosingOption] = useState<BillClosingOption>("cashier");
-    const [closureRequested, setClosureRequested] = useState(false);
-    const feedbackRef = useRef<HTMLDivElement>(null);
-    const isClosed = bill.status === "closed";
-    const { serviceInCents, totalInCents } = calculateBill(
-        bill.orders.reduce((total, order) => total + order.amountInCents, 0)
-    );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (closureRequested) {
-        feedbackRef.current?.scrollIntoView({ block: "nearest" });
-        }
-    }, [closureRequested]);
+  async function handleRequestClose() {
+    if (isSubmitting) return;
 
-    function handleNavigate(destination: string) {
-        onNavigate?.(destination);
+    if (!tableToken) {
+      setRequestError("Mesa não identificada. Escaneie o QR Code novamente.");
+      return;
     }
 
-    function handleRequestClose() {
-        if (isClosed || closureRequested) return;
-        // Apenas confirmação visual. A integração com o backend será feita aqui depois.
-        setClosureRequested(true);
-    }
+    setIsSubmitting(true);
+    setRequestError(null);
 
-    return {
-        closingOption,
-        setClosingOption,
-        isClosed,
-        serviceInCents,
-        totalInCents,
-        handleNavigate,
-        handleRequestClose,
-        closureRequested,
-        feedbackRef
+    try {
+      await requestQrClosing(tableToken);
+      onSuccess();
+    } catch (reason) {
+      setRequestError(
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível solicitar o fechamento da conta.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
+  }
+
+  return {
+    isSubmitting,
+    requestError,
+    handleRequestClose,
+  };
 }

@@ -1,3 +1,4 @@
+import { authHeaders } from "./auth.service";
 import { apiRequest } from "@/api/client";
 
 export type ClosingRequestedAttendance = {
@@ -12,15 +13,10 @@ export type ClosingRequestedAttendance = {
     };
 };
 
-export const findClosingRequestedAttendances= async () => {
-    return apiRequest<ClosingRequestedAttendance[]>(`/attendances/closing-requested`);
+export type RequestQrClosingResponse = {
+  attendanceId: string;
+  status: "closing_requested";
 };
-
-export const setClosingRequestedAttendances = async (attendanceId: string) => {
-    return apiRequest<ClosingRequestedAttendance>(`/attendances/${attendanceId}/request-closing`, {
-        method: "PATCH",
-    });
-}
 
 export type CancelledRequestAttendance = {
     id: string;
@@ -34,12 +30,33 @@ export type CancelledRequestAttendance = {
     };
 };
 
+export const findClosingRequestedAttendances= async () => {
+    return apiRequest<ClosingRequestedAttendance[]>(`/attendances/closing-requested`, { headers: authHeaders() });
+};
+
+export const setClosingRequestedAttendances = async (attendanceId: string) => {
+    return apiRequest<ClosingRequestedAttendance>(`/attendances/${attendanceId}/request-closing`, {
+        method: "PATCH",
+    });
+}
+
 export const findCancelledAttendances= async () => {
-    return apiRequest<CancelledRequestAttendance[]>(`/attendances/cancelled`);
+    return apiRequest<CancelledRequestAttendance[]>(`/attendances/cancelled`, { headers: authHeaders() });
 }
 
 export const setCancelledRequestedAttendances = async (attendanceId: string) => {
     return apiRequest<CancelledRequestAttendance>(`/attendances/${attendanceId}/request-cancelled`, {
         method: "PATCH",
     });
+}
+
+export function requestQrClosing(
+  token: string,
+): Promise<RequestQrClosingResponse> {
+  return apiRequest<RequestQrClosingResponse>(
+    `/tables/by-token/${encodeURIComponent(token)}/request-closing`,
+    {
+      method: "POST",
+    },
+  );
 }

@@ -110,7 +110,7 @@ export default function Products({
                 }
               />
             </label>
-            <Notifications items={[]} />
+            <Notifications />
           </div>
         </div>
         <div className="products-body" ref={contentRef}>

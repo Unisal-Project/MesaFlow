@@ -1,3 +1,4 @@
+import { waiterCallRoutes } from "./waiter-call.routes.js";
 import { TableController } from "./table.controller.js";
 import { FastifyInstance } from "fastify";
 import { makeTableService } from "./table.factory.js";
@@ -10,6 +11,7 @@ const tableController = new TableController(tableService);
 const qrOrderController = new QrOrderController(new QrOrderService());
 
 export function tableRoutes(app: FastifyInstance) {
+  waiterCallRoutes(app);
   app.get("/tables/by-token/:token", (request, reply) =>
     tableController.getTableByToken(request, reply),
   );

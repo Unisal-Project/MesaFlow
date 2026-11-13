@@ -37,12 +37,13 @@ export class QrOrderService {
         },
       },
       orderBy: { createdAt: "desc" },
-      select: { id: true },
+      select: { id: true, status: true, },
     });
 
     if (!attendance) {
       return {
         attendanceId: null,
+        attendanceStatus: null,
         orders: [],
       };
     }
@@ -63,6 +64,7 @@ export class QrOrderService {
 
     return {
       attendanceId: attendance.id.toString(),
+      attendanceStatus: attendance.status,
       orders: orders.map((order) => ({
         id: order.id.toString(),
         status: order.status,

@@ -137,6 +137,7 @@ model RestaurantTable {
   active      Boolean      @default(true)
   createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
+  waiterCalls WaiterCall[]
   attendances Attendance[]
 
   @@map("restaurant_tables")
@@ -287,4 +288,24 @@ view AttendancePayment {
   totalPaid    Decimal @map("total_paid") @db.Decimal(32, 2)
 
   @@map("vw_attendance_payments")
+}
+
+
+enum WaiterCallStatus {
+  PENDING
+  ATTENDED
+}
+
+model WaiterCall {
+  id BigInt @id @default(autoincrement()) @db.UnsignedBigInt
+  tableId BigInt @map("table_id") @db.UnsignedBigInt
+  status WaiterCallStatus @default(PENDING)
+  createdAt DateTime @default(now()) @map("created_at") @db.DateTime(0)
+  attendedAt DateTime? @map("attended_at") @db.DateTime(0)
+  // Calculada no SQL: apenas chamadas pendentes ocupam a chave única.
+  pendingTableId BigInt? @unique(map: "uq_waiter_calls_pending_table") @default(dbgenerated()) @map("pending_table_id") @db.UnsignedBigInt
+  table RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Restrict, onUpdate: Restrict, map: "fk_waiter_calls_table")
+
+  @@index([status, createdAt], map: "idx_waiter_calls_status_created")
+  @@map("waiter_calls")
 }

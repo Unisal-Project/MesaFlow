@@ -58,7 +58,7 @@ export default function Dashboard({ onNavigate, onViewOrders, onViewReports, onV
                 placeholder="Buscar pedidos, mesas ou produtos"
               />
             </label>
-            <Notifications items={[]} />
+            <Notifications />
           </div>
         </header>
 

@@ -139,6 +139,7 @@
 }
 .table-bill-page .table-bill-close {
   width: 100%;
+  margin-top: var(--spacing-4);
   min-height: 46px;
   border-radius: var(--radius-medium);
   font: var(--font-weight-bold) var(--font-size-sm) var(--font-heading);

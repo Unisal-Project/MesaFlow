@@ -1,11 +1,12 @@
 
-import { ChevronLeft, RefreshCw, ReceiptText } from "lucide-react";
+import { ChevronLeft, RefreshCw, ReceiptText, BellRing } from "lucide-react";
 
 import { Button } from "@/components";
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
 import { formatPrice } from "@/utils/formatPrice";
 
+import { useCallWaiter } from "./hooks/useCallWaiter";
 import { useOrders } from "./hooks/useOrders";
 
 import type { OrderStatus } from "@/services/orders.service";
@@ -26,6 +27,7 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 export function Orders({ tableToken, onNavigate }: OrdersProps) {
+  const waiter = useCallWaiter(tableToken);
   const {
     orders,
     isLoading,
@@ -65,6 +67,15 @@ export function Orders({ tableToken, onNavigate }: OrdersProps) {
             Atualizar
           </Button>
         </div>
+
+        <section className="client-orders-waiter" aria-label="Atendimento da mesa">
+          <Button variant="secondary" onClick={waiter.handleCall} loading={waiter.isCalling} disabled={!tableToken || waiter.isCalling}>
+            <BellRing aria-hidden="true" />
+            Chamar garçom
+          </Button>
+          {waiter.success && <p role="status">Solicitação confirmada. Um garçom foi chamado para sua mesa.</p>}
+          {waiter.error && <p role="alert">{waiter.error}</p>}
+        </section>
 
         {isLoading ? (
           <p role="status">Carregando pedidos...</p>

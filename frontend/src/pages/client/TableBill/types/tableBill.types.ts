@@ -1,13 +1,5 @@
-export type TableBillData = {
-  status: "open" | "closed";
-  orders: { id: number; amountInCents: number }[];
-  cartItemCount: number;
-};
-
 export type TableBillProps = {
-  bill?: TableBillData;
+  tableToken?: string;
   onBack?: () => void;
   onNavigate?: (destination: string) => void;
 };
-
-export type BillClosingOption = "cashier" | "waiter" | "split";
