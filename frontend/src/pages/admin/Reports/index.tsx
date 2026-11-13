@@ -30,7 +30,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
             <label className="reports-search"><Search aria-hidden="true" />
               <input type="search" aria-label="Buscar produto no relatório" placeholder="Buscar produto no relatório..." value={report.search} onChange={(event) => report.setSearch(event.target.value)} />
             </label>
-            <Notifications items={[]} />
+            <Notifications />
           </div>
         </header>
         <div className="reports-body">

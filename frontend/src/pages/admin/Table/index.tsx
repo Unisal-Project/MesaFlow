@@ -88,16 +88,7 @@ export default function Tables({
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
             </label>
-            <Notifications
-              items={tables
-                .filter((table) => table.closingRequestedAt)
-                .map((table) => ({
-                  id: table.id,
-                  status: "CLOSING_REQUESTED",
-                  closingRequestedAt: table.closingRequestedAt!,
-                  table: { number: table.number },
-                }))}
-            />
+            <Notifications />
           </div>
         </div>
         <div className="tables-body">

@@ -13,6 +13,7 @@ const publicRoutes = new Set([
   "GET /tables/by-token/:token/orders",
   "POST /tables/by-token/:token/orders",
   "POST /tables/by-token/:token/request-closing",
+  "POST /tables/by-token/:token/call-waiter",
 ]);
 
 export async function requireApiAuthentication(

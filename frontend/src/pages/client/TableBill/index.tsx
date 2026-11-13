@@ -1,100 +1,168 @@
+
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
-import { ChevronLeft } from "lucide-react";
-import { Button,  Radio, SystemMessage } from "@/components";
-
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
+import { ChevronLeft } from "lucide-react";
+import { SystemMessage, Button } from "@/components";
 
+import { useBillOrders } from "./hooks/useBillOrders";
 import { useTableBill } from "./hooks/useTableBill";
-
-import { closingOptions } from "./constants/tableBill.constants";
-
-import { mockTableBill } from "./mocks/tableBill.mocks";
-
-import type {
-  TableBillProps,
-} from "./types/tableBill.types";
+import type { TableBillProps } from "./types/tableBill.types";
 
 import "./styles.scss";
 
-const currency = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+const currency = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
 
-export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBillProps) {
+const formatCurrency = (cents: number) =>
+  currency.format(cents / 100);
+
+export function TableBill({
+  tableToken = "",
+  onBack,
+  onNavigate,
+}: TableBillProps) {
   const {
-    closingOption,
-    setClosingOption,
-    isClosed,
-    serviceInCents,
-    totalInCents,
-    handleNavigate,
+    orders,
+    attendanceStatus,
+    isLoading,
+    error,
+    refreshBill,
+  } = useBillOrders(tableToken);
+
+  const {
+    isSubmitting,
+    requestError,
     handleRequestClose,
-    closureRequested,
-    feedbackRef
-  } = useTableBill(bill, onNavigate);
+  } = useTableBill(tableToken, refreshBill);
 
-  const requestDisabled = isClosed || closureRequested;
+  const activeOrders = orders.filter(
+    (order) => order.status !== "CANCELLED",
+  );
 
+  const subtotalInCents = activeOrders
+    .flatMap((order) => order.items)
+    .reduce(
+      (total, item) =>
+        total +
+        Math.round(Number(item.unitPrice) * 100) * item.quantity,
+      0,
+    );
+
+  const closingRequested =
+    attendanceStatus === "CLOSING_REQUESTED" ||
+    attendanceStatus === "AWAITING_PAYMENT";
+
+  const canRequestClosing =
+    !isLoading &&
+    !error &&
+    attendanceStatus === "OPEN" &&
+    activeOrders.length > 0 &&
+    !isSubmitting;
+  
   return (
     <div className="table-bill-page">
       <ClientTableHeader
         backAction={
-          <button type="button" className="table-bill-back" aria-label="Voltar" onClick={onBack}>
+          <button
+            type="button"
+            className="table-bill-back"
+            aria-label="Voltar"
+            onClick={onBack}
+          >
             <ChevronLeft aria-hidden="true" />
           </button>
         }
       />
 
-      <main className="table-bill-main" aria-labelledby="table-bill-title">
+      <main
+        className="table-bill-main"
+        aria-labelledby="table-bill-title"
+      >
         <div className="table-bill-heading">
           <h1 id="table-bill-title">Conta da mesa</h1>
-          <span className="table-bill-status">{isClosed ? "Fechada" : closureRequested ? "Conta solicitada" : "Aberta"}</span>
+
+          {!isLoading && !error && (
+            <span className="table-bill-status">
+              {closingRequested ? "Conta solicitada" : "Aberta"}
+            </span>
+          )}
         </div>
 
-        <section className="table-bill-summary" aria-label="Resumo da conta">
-          <dl>
-            {bill.orders.map((order) => (
-              <div className="table-bill-row" key={order.id}>
-                <dt>Pedido #{order.id}</dt>
-                <dd>{currency.format(order.amountInCents / 100)}</dd>
+        <section
+          className="table-bill-summary"
+          aria-label="Resumo da conta"
+          aria-busy={isLoading}
+        >
+          {isLoading ? (
+            <p role="status">Carregando conta...</p>
+          ) : error ? (
+            <div role="alert">
+              <SystemMessage variant="error">
+                {error}
+              </SystemMessage>
+
+              <button type="button" onClick={refreshBill}>
+                Tentar novamente
+              </button>
+            </div>
+          ) : activeOrders.length === 0 ? (
+            <p>Nenhum pedido encontrado para esta mesa.</p>
+          ) : (
+            <dl>
+              {activeOrders.flatMap((order) =>
+                order.items.map((item) => (
+                  <div
+                    className="table-bill-row"
+                    key={`${order.id}-${item.id}`}
+                  >
+                    <dt>
+                      {item.quantity}x {item.productName}
+                    </dt>
+
+                    <dd>
+                      {formatCurrency(
+                        Math.round(
+                          Number(item.unitPrice) * 100,
+                        ) * item.quantity,
+                      )}
+                    </dd>
+                  </div>
+                )),
+              )}
+
+              <div className="table-bill-row table-bill-total">
+                <dt>Total do consumo</dt>
+                <dd>{formatCurrency(subtotalInCents)}</dd>
               </div>
-            ))}
-            <div className="table-bill-row">
-              <dt>Taxa de serviço</dt>
-              <dd>{currency.format(serviceInCents / 100)}</dd>
-            </div>
-            <div className="table-bill-row table-bill-total">
-              <dt>Total da mesa</dt>
-              <dd>{currency.format(totalInCents / 100)}</dd>
-            </div>
-          </dl>
+            </dl>
+          )}
         </section>
 
-        <fieldset className="table-bill-options" aria-label="Opções para fechamento da conta" disabled={requestDisabled}>
-          {closingOptions.map((option) => (
-            <Radio
-              key={option.id}
-              className="table-bill-option"
-              name="table-bill-closing-option"
-              value={option.id}
-              label={option.label}
-              checked={closingOption === option.id}
-              disabled={requestDisabled}
-              onChange={() => setClosingOption(option.id)}
-            />
-          ))}
-        </fieldset>
 
-        <Button
-          type="button"
-          variant="primary"
-          className="table-bill-close"
-          disabled={requestDisabled}
-          onClick={handleRequestClose}
-        >
-          {closureRequested ? "Conta solicitada" : "Solicitar fechamento"}
-        </Button>
+        {!isLoading && !error && attendanceStatus === "OPEN" && (
+          <Button
+            type="button"
+            variant="primary"
+            className="table-bill-close"
+            disabled={!canRequestClosing}
+            onClick={handleRequestClose}
+          >
+            {isSubmitting ? "Solicitando..." : "Solicitar fechamento"}
+          </Button>
+        )}
 
-        {closureRequested && (
-          <div className="table-bill-feedback" ref={feedbackRef}>
+        {requestError && (
+          <div className="table-bill-feedback" role="alert">
+            <SystemMessage variant="error">
+              {requestError}
+            </SystemMessage>
+          </div>
+        )}
+
+        {closingRequested && !isLoading && !error && (
+          <div className="table-bill-feedback">
             <SystemMessage variant="success">
               Conta solicitada! Aguarde o atendimento para finalizar.
             </SystemMessage>
@@ -102,7 +170,12 @@ export function TableBill({ bill = mockTableBill, onBack, onNavigate }: TableBil
         )}
       </main>
 
-      <ClientTabBar activeId="bill" onMenu={() => handleNavigate("menu")} onOrder={() => handleNavigate("order")} onNavigate={handleNavigate} />
+      <ClientTabBar
+        activeId="bill"
+        onMenu={() => onNavigate?.("menu")}
+        onOrder={() => onNavigate?.("order")}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

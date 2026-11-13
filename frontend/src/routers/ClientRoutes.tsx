@@ -229,7 +229,13 @@ function ClientPages() {
         />
         <Route
           path="conta"
-          element={<TableBill onBack={() => goTo("menu")} onNavigate={goTo} />}
+          element={
+            <TableBill 
+              tableToken={tableToken}
+              onBack={() => goTo("menu")} 
+              onNavigate={goTo} 
+            />
+          }
         />
         <Route
           path="*"

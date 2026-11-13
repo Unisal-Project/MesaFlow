@@ -114,3 +114,11 @@
   text-align: center;
 }
 
+
+.client-orders-waiter {
+  display: grid;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+  p { margin: 0; }
+  [role='alert'] { color: var(--error); }
+}

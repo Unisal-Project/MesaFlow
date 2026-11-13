@@ -7,8 +7,10 @@ let server, apiRequest, attendance, ApiError;
 
 const previousFetch = globalThis.fetch;
 const previousWindow = globalThis.window;
+const previousStorage = globalThis.sessionStorage;
 
 before(async () => {
+  globalThis.sessionStorage = { getItem: () => "test-token" };
   globalThis.window = {
     location: { protocol: "http:", hostname: "localhost" },
   };
@@ -32,6 +34,7 @@ after(async () => {
   await server?.close();
   globalThis.fetch = previousFetch;
   globalThis.window = previousWindow;
+  globalThis.sessionStorage = previousStorage;
 });
 
 test("notificações usam a mesma URL da API e prefixo dos demais services", async () => {

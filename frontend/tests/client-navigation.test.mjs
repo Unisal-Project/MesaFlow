@@ -37,6 +37,8 @@ test("Pedidos apresenta estado inicial de carregamento", () => {
     onNavigate() {},
   });
 
+  assert.match(html, /Chamar garçom/);
+  assert.doesNotMatch(html, /Solicitação confirmada/);
   assert.match(html, /Carregando pedidos/);
   assert.match(html, /aria-busy="true"/);
   assert.doesNotMatch(html, /ainda não está disponível/);
