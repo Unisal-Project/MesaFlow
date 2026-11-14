@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Prisma } from "../src/generated/prisma/client.js";
-import { PrismaProductRepository } from "../src/modules/products/repositories/prisma-products.repository.js";
+process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:1/products_test";
+process.env.JWT_SECRET ??= "products-test-secret";
+process.env.FRONTEND_URL ??= "https://menu.example";
+const { PrismaProductRepository } =
+  await import("../src/modules/products/repositories/prisma-products.repository.js");
 import type { PrismaConnector } from "../src/database/prisma.js";
 
 test("Prisma repository returns a storage-independent product price", async () => {

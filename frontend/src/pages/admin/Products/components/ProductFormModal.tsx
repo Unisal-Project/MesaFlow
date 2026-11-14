@@ -2,7 +2,6 @@ import { Button, SelectField, TextAreaField, TextField } from "@/components";
 
 import { ChevronDown, Plus, Trash, X } from "lucide-react";
 
-
 import { useEffect, useRef } from "react";
 
 import type { ChangeEvent, Dispatch, FormEvent, SetStateAction } from "react";
@@ -13,7 +12,7 @@ import type {
 } from "../types/product.types";
 
 type ProductFormModalProps = {
-  categories: { id: string; name: string }[];
+  categories: { id: string; name: string; active?: boolean }[];
   editingProductId: string | null;
   error?: string;
   busy?: boolean;
@@ -97,9 +96,7 @@ export function ProductFormModal({
         <header className="product-modal-heading">
           <div>
             <h2 id="product-form-title">
-              {editingProductId === null
-                ? "Novo produto"
-                : "Editar produto"}
+              {editingProductId === null ? "Novo produto" : "Editar produto"}
             </h2>
 
             <p>
@@ -135,24 +132,113 @@ export function ProductFormModal({
           />
 
           <div className="new-product-category">
-            <SelectField label="Categoria" id="product-category" required value={newProduct.category}
-              onChange={(event) => setNewProduct((current) => ({ ...current, category: event.target.value }))}>
-              <option value="" disabled>Selecione uma categoria</option>
-              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            <SelectField
+              label="Categoria principal"
+              id="product-category"
+              required
+              value={newProduct.category}
+              onChange={(event) =>
+                setNewProduct((current) => ({
+                  ...current,
+                  category: event.target.value,
+                  additionalCategoryIds: current.additionalCategoryIds.filter(
+                    (id) => id !== event.target.value,
+                  ),
+                }))
+              }
+            >
+              <option value="" disabled>
+                Selecione uma categoria
+              </option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                  {category.active === false ? " (inativa)" : ""}
+                </option>
+              ))}
             </SelectField>
             <ChevronDown aria-hidden="true" />
           </div>
-          <TextField label="Preço (R$)" id="product-price" type="number" min={0} step="0.01" placeholder="0,00" required
-            value={newProduct.price} onChange={(event) => setNewProduct((current) => ({ ...current, price: event.target.value }))} />
-          <TextField label="Quantidade" id="product-quantity" type="number" min={0} step={1} required
-            value={newProduct.quantity} onChange={(event) => setNewProduct((current) => ({ ...current, quantity: event.target.value }))} />
-          <label className="field new-product-status-field" htmlFor="product-availability">
+          <fieldset className="new-product-additional-categories">
+            <legend>Categorias adicionais (opcional)</legend>
+            {categories
+              .filter((category) => category.id !== newProduct.category)
+              .map((category) => (
+                <label key={category.id}>
+                  <input
+                    type="checkbox"
+                    checked={newProduct.additionalCategoryIds.includes(
+                      category.id,
+                    )}
+                    onChange={(event) =>
+                      setNewProduct((current) => ({
+                        ...current,
+                        additionalCategoryIds: event.target.checked
+                          ? [...current.additionalCategoryIds, category.id]
+                          : current.additionalCategoryIds.filter(
+                              (id) => id !== category.id,
+                            ),
+                      }))
+                    }
+                  />
+                  {category.name}
+                  {category.active === false ? " (inativa)" : ""}
+                </label>
+              ))}
+            {!categories.length && <p>Nenhuma categoria cadastrada.</p>}
+          </fieldset>
+          <TextField
+            label="Preço (R$)"
+            id="product-price"
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="0,00"
+            required
+            value={newProduct.price}
+            onChange={(event) =>
+              setNewProduct((current) => ({
+                ...current,
+                price: event.target.value,
+              }))
+            }
+          />
+          <TextField
+            label="Quantidade"
+            id="product-quantity"
+            type="number"
+            min={0}
+            step={1}
+            required
+            value={newProduct.quantity}
+            onChange={(event) =>
+              setNewProduct((current) => ({
+                ...current,
+                quantity: event.target.value,
+              }))
+            }
+          />
+          <label
+            className="field new-product-status-field"
+            htmlFor="product-availability"
+          >
             <span>Disponibilidade</span>
-            <span className={`product-availability-control${newProduct.available ? "" : " is-unavailable"}`}>
+            <span
+              className={`product-availability-control${newProduct.available ? "" : " is-unavailable"}`}
+            >
               <span aria-hidden="true" />
-              <select id="product-availability" value={newProduct.available ? "available" : "unavailable"}
-                onChange={(event) => setNewProduct((current) => ({ ...current, available: event.target.value === "available" }))}>
-                <option value="available">Disponível</option><option value="unavailable">Indisponível</option>
+              <select
+                id="product-availability"
+                value={newProduct.available ? "available" : "unavailable"}
+                onChange={(event) =>
+                  setNewProduct((current) => ({
+                    ...current,
+                    available: event.target.value === "available",
+                  }))
+                }
+              >
+                <option value="available">Disponível</option>
+                <option value="unavailable">Indisponível</option>
               </select>
             </span>
           </label>
@@ -173,10 +259,19 @@ export function ProductFormModal({
           <div className="new-product-photo">
             <span>Imagem do produto</span>
             <label className="product-photo-upload">
-              <input type="file" aria-label="Adicionar imagem do produto" accept="image/png,image/jpeg,image/webp" onChange={onPhotoChange} />
+              <input
+                type="file"
+                aria-label="Adicionar imagem do produto"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={onPhotoChange}
+              />
               <Plus aria-hidden="true" />
-              {newProduct.imageUrl ? "Alterar imagem" : "Adicionar imagem (opcional)"}
-              {newProduct.imageUrl && <img src={newProduct.imageUrl} alt="Prévia do produto" />}
+              {newProduct.imageUrl
+                ? "Alterar imagem"
+                : "Adicionar imagem (opcional)"}
+              {newProduct.imageUrl && (
+                <img src={newProduct.imageUrl} alt="Prévia do produto" />
+              )}
             </label>
           </div>
 
@@ -197,17 +292,12 @@ export function ProductFormModal({
                 }}
               >
                 <Trash />
-
                 Excluir produto
               </Button>
             )}
 
             <div className="product-modal-save-actions">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={onClose}
-              >
+              <Button type="button" variant="secondary" onClick={onClose}>
                 Cancelar
               </Button>
 

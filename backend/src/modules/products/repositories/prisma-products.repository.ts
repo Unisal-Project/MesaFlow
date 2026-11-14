@@ -15,20 +15,27 @@ export class PrismaProductRepository implements ProductsRepository {
 
   async createProduct(productInput: ProductInput): Promise<ProductOutput> {
     try {
-      return this.toProduct(
-        await this.prismaClient.product.create({
-          data: {
-            name: productInput.name,
-            description: productInput.description,
-            imageUrl: productInput.imageUrl,
-            price: productInput.price,
-            categoryId: productInput.categoryId,
-            stockQuantity: productInput.stockQuantity,
-            available: productInput.available,
-            active: productInput.active,
-          },
-        }),
-      );
+      return await this.prismaClient.$transaction(async (tx) => {
+        await this.validateCategories(
+          tx,
+          productInput.categoryId,
+          productInput.additionalCategoryIds ?? [],
+        );
+        const { additionalCategoryIds, ...data } = productInput;
+        return this.toProduct(
+          await tx.product.create({
+            data: {
+              ...data,
+              additionalCategories: {
+                create: (additionalCategoryIds ?? []).map((categoryId) => ({
+                  categoryId,
+                })),
+              },
+            },
+            include: { additionalCategories: true },
+          }),
+        );
+      });
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -37,12 +44,15 @@ export class PrismaProductRepository implements ProductsRepository {
   async getProductById(id: bigint): Promise<ProductOutput | null> {
     const product = await this.prismaClient.product.findUnique({
       where: { id },
+      include: { additionalCategories: true },
     });
     return product ? this.toProduct(product) : null;
   }
 
   async getAllProducts(): Promise<ProductOutput[]> {
-    const products = await this.prismaClient.product.findMany();
+    const products = await this.prismaClient.product.findMany({
+      include: { additionalCategories: true },
+    });
     return products.map((product) => this.toProduct(product));
   }
 
@@ -85,12 +95,33 @@ export class PrismaProductRepository implements ProductsRepository {
     }
 
     try {
-      return this.toProduct(
-        await this.prismaClient.product.update({
+      return await this.prismaClient.$transaction(async (tx) => {
+        // Serializa mudanças de categorias do mesmo produto.
+        await tx.$queryRaw`SELECT id FROM products WHERE id = ${id} FOR UPDATE`;
+        const current = await tx.product.findUnique({
           where: { id },
-          data,
-        }),
-      );
+          include: { additionalCategories: true },
+        });
+        if (!current) throw new AppError("Produto não encontrado", 404);
+        const categoryId = productUpdateInput.categoryId ?? current.categoryId;
+        const additionalIds =
+          productUpdateInput.additionalCategoryIds ??
+          current.additionalCategories.map((item) => item.categoryId);
+        await this.validateCategories(tx, categoryId, additionalIds);
+        if (productUpdateInput.additionalCategoryIds !== undefined) {
+          data.additionalCategories = {
+            deleteMany: {},
+            create: additionalIds.map((categoryId) => ({ categoryId })),
+          };
+        }
+        return this.toProduct(
+          await tx.product.update({
+            where: { id },
+            data,
+            include: { additionalCategories: true },
+          }),
+        );
+      });
     } catch (error) {
       this.handlePrismaError(error);
     }
@@ -111,16 +142,7 @@ export class PrismaProductRepository implements ProductsRepository {
     id: bigint,
     newCategoryId: bigint,
   ): Promise<ProductOutput> {
-    try {
-      return this.toProduct(
-        await this.prismaClient.product.update({
-          where: { id },
-          data: { categoryId: newCategoryId },
-        }),
-      );
-    } catch (error) {
-      this.handlePrismaError(error);
-    }
+    return this.updateProduct(id, { categoryId: newCategoryId });
   }
 
   async findAvailableByIds(
@@ -140,8 +162,37 @@ export class PrismaProductRepository implements ProductsRepository {
     }));
   }
 
-  private toProduct(product: Product): ProductOutput {
-    return { ...product, price: product.price.toString() };
+  private async validateCategories(
+    tx: Prisma.TransactionClient,
+    categoryId: bigint,
+    additionalIds: bigint[],
+  ) {
+    if (
+      new Set(additionalIds).size !== additionalIds.length ||
+      additionalIds.includes(categoryId)
+    ) {
+      throw new AppError(
+        "Categorias adicionais duplicadas ou iguais à principal",
+        400,
+      );
+    }
+    const ids = [categoryId, ...additionalIds];
+    const count = await tx.category.count({ where: { id: { in: ids } } });
+    if (count !== ids.length)
+      throw new AppError("Categoria não encontrada", 404);
+  }
+
+  private toProduct(
+    product: Product & { additionalCategories?: { categoryId: bigint }[] },
+  ): ProductOutput {
+    const { additionalCategories, ...data } = product;
+    return {
+      ...data,
+      price: product.price.toString(),
+      additionalCategoryIds: (additionalCategories ?? []).map(
+        (item) => item.categoryId,
+      ),
+    };
   }
 
   private handlePrismaError(error: unknown): never {

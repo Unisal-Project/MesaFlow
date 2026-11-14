@@ -13,7 +13,7 @@ export type CartContextValue = {
   itemCount: number;
   subtotal: number;
   total: number;
-  addItem: (product: Product, quantity: number, notes: string) => void;
+  addItem: (product: Product, quantity: number, notes: string | string[]) => void;
   removeItem: (lineId: string) => void;
   updateQuantity: (lineId: string, quantity: number) => void;
   updateNotes: (lineId: string, notes: string) => void;

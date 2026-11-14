@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
 import {
   Navigate,
   Route,
@@ -7,16 +8,27 @@ import {
   useNavigate,
   useParams,
 } from "react-router";
+
+import {
+  fetchCategories,
+  fetchProductsById,
+  type Category,
+  type Product,
+} from "@/services/menu.service";
+
 import { ClientWorkspace } from "@/layouts/ClientWorkspace";
+
+import { ClientTableProvider, useClientTable } from "@/contexts/ClientTableContext";
+
 import { CartProvider } from "@/contexts/CartProvider";
-import { useCart } from "@/contexts/useCart";
+
 import { Home } from "@/pages/client/Home";
 import { Menu } from "@/pages/client/Menu";
 import { Cart } from "@/pages/client/Cart";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
+import { Orders } from "@/pages/client/Orders";
 import { TableBill } from "@/pages/client/TableBill";
-import { demoCatalog } from "@/data/catalog.mock";
 
 import { clientPaths, clientTarget } from "./paths";
 
@@ -30,15 +42,76 @@ function ProductRoute({
   onGoToCart: () => void;
 }) {
   const { productId } = useParams();
-  const { search } = useLocation();
-  const product = demoCatalog.products.find(
-    (product) => product.id === productId,
-  );
-  if (!product)
-    return <Navigate to={{ pathname: "/cardapio", search }} replace />;
-  const category = demoCatalog.categories.find(
-    (category) => category.id === product.categoryId,
-  );
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [category, setCategory] = useState<Category | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadProduct() {
+      setIsLoading(true);
+      setError(null);
+      setProduct(null);
+      setCategory(null);
+
+      if (!productId) {
+        setError("Produto inválido.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const [productData, categoriesData] = await Promise.all([
+          fetchProductsById(productId, controller.signal),
+          fetchCategories(controller.signal),
+        ]);
+
+        if (controller.signal.aborted) return;
+
+        const productCategory = categoriesData.find(
+          (item) => item.id === productData.categoryId
+        );
+
+        setProduct(productData);
+        setCategory(productCategory ?? null);
+      } catch (reason) {
+        if (controller.signal.aborted) return;
+
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível carregar o produto."
+        );
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadProduct();
+
+    return () => controller.abort();
+  }, [productId]);
+
+  if (isLoading) {
+    return <p role="status">Carregando produto...</p>;
+  }
+
+  if (error || !product) {
+    return (
+      <div role="alert">
+        <p>{error ?? "Produto não encontrado."}</p>
+        <button type="button" onClick={onBack}>
+          Voltar ao cardápio
+        </button>
+      </div>
+    );
+  }
+
   return (
     <ProductDetail
       product={product}
@@ -51,12 +124,13 @@ function ProductRoute({
   );
 }
 
+
 function ClientPages() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { clearCart } = useCart();
-  const [guestName, setGuestName] = useState("");
-  const [nextOrderId, setNextOrderId] = useState(1842);
+  const { guestName, setGuestName } = useClientTable();
+  const tableToken =
+  new URLSearchParams(location.search).get("mesa")?.trim() ?? "";
   const goTo = (destination: string) => {
     if (destination === "order") {
       openCart();
@@ -69,11 +143,7 @@ function ClientPages() {
     navigate(clientTarget("/carrinho", location.search), {
       state: { returnPath: location.pathname },
     });
-  const sendDemoOrder = () => {
-    setNextOrderId((current) => current + 1);
-    clearCart();
-  };
-
+    
   return (
     <Routes>
       <Route element={<ClientWorkspace />}>
@@ -92,7 +162,6 @@ function ClientPages() {
           path="cardapio"
           element={
             <Menu
-              catalog={demoCatalog}
               onBack={() => goTo("home")}
               onNavigate={goTo}
               onOpenCart={openCart}
@@ -141,17 +210,32 @@ function ClientPages() {
           path="confirmar-pedido"
           element={
             <ConfirmOrder
-              orderId={nextOrderId}
+              tableToken={tableToken}
+              customerName={guestName}
               onBack={() => goTo("order")}
               onGoToMenu={() => goTo("menu")}
               onNavigate={goTo}
-              onSend={sendDemoOrder}
             />
           }
         />
+        <Route 
+          path="pedidos" 
+          element={
+            <Orders 
+              tableToken={tableToken} 
+              onNavigate={goTo} 
+            />
+          } 
+        />
         <Route
           path="conta"
-          element={<TableBill onBack={() => goTo("menu")} onNavigate={goTo} />}
+          element={
+            <TableBill 
+              tableToken={tableToken}
+              onBack={() => goTo("menu")} 
+              onNavigate={goTo} 
+            />
+          }
         />
         <Route
           path="*"
@@ -176,7 +260,9 @@ export function ClientRoutes() {
       key={tableToken}
       storageKey={tableToken ? `mesaflow:cart:${tableToken}` : "mesaflow:cart"}
     >
-      <ClientPages />
+      <ClientTableProvider key={tableToken} token={tableToken}>
+        <ClientPages />
+      </ClientTableProvider>
     </CartProvider>
   );
 }

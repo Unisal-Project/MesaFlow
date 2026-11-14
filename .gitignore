@@ -69,3 +69,4 @@ skills-lock.json
 
 # Archives / backups
 *.tar.gz
+.codex/

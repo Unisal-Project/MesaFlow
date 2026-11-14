@@ -24,6 +24,7 @@ export const emptyProductForm: NewProductForm = {
   price: "",
   observation: "",
   category: "",
+  additionalCategoryIds: [],
   imageUrl: "",
   available: true,
 };
@@ -82,6 +83,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     return records.map((record) => ({
       id: record.id,
       categoryId: record.categoryId,
+      additionalCategoryIds: record.additionalCategoryIds ?? [],
       name: record.name,
       category: names.get(record.categoryId) ?? "Sem categoria",
       price: formatPrice(record.price),
@@ -197,6 +199,7 @@ export function useProducts(categories: CategoryRef[] = []) {
       price: record?.price ?? "",
       observation: product.observation ?? "",
       category: product.categoryId,
+      additionalCategoryIds: product.additionalCategoryIds,
       imageUrl: product.imageUrl ?? "",
       available: product.available,
     });
@@ -237,6 +240,7 @@ export function useProducts(categories: CategoryRef[] = []) {
           stockQuantity,
           available: newProduct.available,
           categoryId: newProduct.category,
+          additionalCategoryIds: newProduct.additionalCategoryIds,
         },
         editingProductId ?? undefined,
       );

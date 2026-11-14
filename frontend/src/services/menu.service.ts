@@ -10,6 +10,7 @@ export type Category = {
 export type Product = {
   id: string;
   categoryId: string;
+  additionalCategoryIds?: string[];
   name: string;
   description: string | null;
   imageUrl: string | null;
@@ -44,6 +45,11 @@ export const fetchProducts = (signal?: AbortSignal) =>
     products.map(withImage),
   );
 
+export const fetchProductsById = (id: string, signal?: AbortSignal) =>
+  apiRequest<Product>(`/products/${encodeURIComponent(id)}`, { signal }).then(
+    withImage,
+  );
+
 export type ProductInput = {
   name: string;
   description: string | null;
@@ -51,6 +57,7 @@ export type ProductInput = {
   stockQuantity: number;
   available: boolean;
   categoryId: string;
+  additionalCategoryIds?: string[];
 };
 export const saveProduct = (data: Partial<ProductInput>, id?: string) =>
   apiRequest<Product>(id ? `/products/${id}` : "/products", {

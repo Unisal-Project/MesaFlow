@@ -1,11 +1,14 @@
 import type { CartLine } from "@/contexts/CartContext";
 import { formatPrice } from "@/utils/formatPrice";
 
-type OrderReviewCardProps = { orderId: number; items: CartLine[]; total: number };
+type OrderReviewCardProps = {
+  items: CartLine[];
+  total: number;
+};
 
-export function OrderReviewCard({ orderId, items, total }: OrderReviewCardProps) {
+export function OrderReviewCard({ items, total }: OrderReviewCardProps) {
   return <section className="confirm-review-card" aria-labelledby="confirm-review-title">
-    <h2 id="confirm-review-title">Pedido #{orderId}</h2>
+    <h2 id="confirm-review-title">Resumo do pedido</h2>
     <p>Revise os itens antes de enviar.</p>
     <ul>{items.map((line) => <li key={line.id}>
       <div><strong>{line.quantity}x {line.product.name}</strong>{line.notes && <span>{line.notes}</span>}</div>

@@ -16,16 +16,36 @@ const ProductFieldsSchema = z.object({
   available: z.boolean(),
   active: z.boolean(),
   categoryId: ProductCategoryIdSchema,
+  additionalCategoryIds: z
+    .array(ProductCategoryIdSchema)
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Categorias adicionais duplicadas",
+    )
+    .optional(),
 });
 
 export const ProductSchema = ProductFieldsSchema.extend({
   stockQuantity: ProductFieldsSchema.shape.stockQuantity.default(0),
   available: ProductFieldsSchema.shape.available.default(true),
   active: ProductFieldsSchema.shape.active.default(true),
-}).strict();
+})
+  .strict()
+  .refine(
+    (product) => !product.additionalCategoryIds?.includes(product.categoryId),
+    { message: "A categoria principal não pode ser adicional" },
+  );
 
 export const ProductUpdateSchema = ProductFieldsSchema.partial()
   .strict()
+  .refine(
+    (product) =>
+      product.categoryId === undefined ||
+      !product.additionalCategoryIds?.includes(product.categoryId),
+    {
+      message: "A categoria principal não pode ser adicional",
+    },
+  )
   .refine((product) => Object.keys(product).length > 0, {
     message: "Informe pelo menos um campo do produto",
   });

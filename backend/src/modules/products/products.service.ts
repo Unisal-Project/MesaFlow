@@ -14,6 +14,7 @@ export default class ProductService {
   ) {}
 
   async createProduct(productDTO: ProductDTO): Promise<ProductOutput> {
+    this.validateCategorySelection(productDTO);
     return this.productRepository.createProduct(productDTO);
   }
 
@@ -35,6 +36,7 @@ export default class ProductService {
     id: bigint,
     productUpdateDTO: ProductUpdateDTO,
   ): Promise<ProductOutput> {
+    this.validateCategorySelection(productUpdateDTO);
     return this.productRepository.updateProduct(id, productUpdateDTO);
   }
 
@@ -71,6 +73,23 @@ export default class ProductService {
     }
 
     return updatedProduct;
+  }
+
+  private validateCategorySelection(input: {
+    categoryId?: bigint;
+    additionalCategoryIds?: bigint[];
+  }) {
+    const ids = input.additionalCategoryIds;
+    if (
+      ids &&
+      (new Set(ids).size !== ids.length ||
+        (input.categoryId !== undefined && ids.includes(input.categoryId)))
+    ) {
+      throw new AppError(
+        "Categorias adicionais duplicadas ou iguais à principal",
+        400,
+      );
+    }
   }
 
   private async cleanupFile(filePath: string): Promise<void> {

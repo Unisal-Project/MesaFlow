@@ -69,7 +69,7 @@ export default function Products({
     confirmProductDeletion,
   } = productState;
   const productCategories = categoryState.categories.map(
-    (category) => ({ id: category.id, name: category.name }),
+    (category) => ({ id: category.id, name: category.name, active: category.active }),
   );
   const isCategories = activeTab === "categories";
   const switchTab = (tab: "products" | "categories") => {
@@ -109,7 +109,7 @@ export default function Products({
                 }
               />
             </label>
-            <Notifications items={[]} />
+            <Notifications />
           </div>
         </div>
         <div className="products-body" ref={contentRef}>

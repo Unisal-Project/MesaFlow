@@ -1,7 +1,8 @@
+import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
 import { ChevronLeft, ShoppingCart } from "lucide-react";
 
-import { ClientHeader, Button } from "@/components";
+import {  Button } from "@/components";
 import { CartItem } from "./components/CartItem";
 import { CartSummary } from "./components/CartSummary";
 
@@ -27,16 +28,12 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
     handleConfirm,
   } = useCartOrder(allowOrdering, attendanceId);
 
-  const table = new URLSearchParams(window.location.search).get("mesa")?.trim() || "12";
-  const tableLabel = /^mesa\s/i.test(table) ? table : `Mesa ${table}`;
 
   return (
     <div className="cart-page">
-      <ClientHeader title="MesaFlow" subtitle={tableLabel}
+      <ClientTableHeader
         backAction={<button type="button" className="cart-back" aria-label="Voltar" onClick={onBack}><ChevronLeft aria-hidden="true" /></button>}
-        cartAction={<button type="button" className="cart-header-count" aria-label={`Pedido com ${itemCount} ${itemCount === 1 ? "item" : "itens"}`} onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-          <ShoppingCart aria-hidden="true" /><span aria-hidden="true">{itemCount}</span>
-        </button>} />
+         />
 
       <main className="cart-content">
         {orderPlaced ? (

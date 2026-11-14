@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/buttons/Button";
+import { attendWaiterCall } from "@/services/waiter-calls.service";
 import { BellIcon, BellRing } from "lucide-react";
 import { useAttendanceNotifications } from "@/hooks/useAttendanceNotifications";
 import { useEffect, useId, useRef, useState } from "react";
@@ -14,6 +16,20 @@ type NotificationsProps = { items?: NotificationItem[] };
 
 export function Notifications({ items }: NotificationsProps = {}) {
   const attendanceNotifications = useAttendanceNotifications(items === undefined);
+  const [attendingId, setAttendingId] = useState<string | null>(null);
+  const [attendError, setAttendError] = useState<string | null>(null);
+  const [attendedIds, setAttendedIds] = useState<Set<string>>(() => new Set());
+  async function handleAttend(id: string) {
+    if (attendingId) return;
+    setAttendingId(id);
+    setAttendError(null);
+    try {
+      await attendWaiterCall(id);
+      setAttendedIds((current) => new Set([...current, id]));
+    } catch (reason) {
+      setAttendError(reason instanceof Error ? reason.message : "Não foi possível atender a solicitação.");
+    } finally { setAttendingId(null); }
+  }
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const panelId = useId();
   const bellRef = useRef<SVGSVGElement>(null);
@@ -47,7 +63,7 @@ export function Notifications({ items }: NotificationsProps = {}) {
 
   const notifications = [
     ...(items ?? attendanceNotifications),
-  ].sort(
+  ].filter((item) => item.status !== "WAITER_CALL" || !attendedIds.has(item.id)).sort(
     (a, b) =>
       new Date(b.closingRequestedAt).getTime() -
       new Date(a.closingRequestedAt).getTime(),
@@ -103,6 +119,7 @@ export function Notifications({ items }: NotificationsProps = {}) {
           aria-label="Notificações"
         >
           <h3>Notificações</h3>
+          {attendError && <p role="alert">{attendError}</p>}
           {notifications.length === 0 ? (
             <p>Nenhuma notificação no momento.</p>
           ) : (
@@ -110,19 +127,20 @@ export function Notifications({ items }: NotificationsProps = {}) {
               {notifications.map((request) => (
                 <li
                   key={`${request.status}-${request.id}`}
-                  className={`notification-item ${request.status === "CANCELLED" ? "notification-item--cancelled" : "notification-item--closing"}`}
+                  className={`notification-item ${request.status === "WAITER_CALL" ? "notification-item--waiter" : request.status === "CANCELLED" ? "notification-item--cancelled" : "notification-item--closing"}`}
                 >
                   <span className="notification-type">
-                    {request.status === "CANCELLED"
+                    {request.status === "WAITER_CALL" ? "Chamada de garçom" : request.status === "CANCELLED"
                       ? "Solicitação cancelada"
                       : "Fechamento solicitado"}
                   </span>
-                  <strong>Mesa {request.table.number}</strong>
+                  <strong>{request.status === "WAITER_CALL" ? `Mesa ${String(request.table.number).padStart(2, "0")} solicitou um garçom` : `Mesa ${request.table.number}`}</strong>
                   <time dateTime={request.closingRequestedAt}>
                     {new Date(request.closingRequestedAt).toLocaleString(
                       "pt-BR",
                     )}
                   </time>
+                  {request.status === "WAITER_CALL" && <Button variant="secondary" onClick={() => handleAttend(request.id)} loading={attendingId === request.id} disabled={attendingId !== null}>Marcar como atendida</Button>}
                 </li>
               ))}
             </ul>

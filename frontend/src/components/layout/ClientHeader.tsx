@@ -10,14 +10,10 @@ export function ClientHeader({ title, subtitle, backAction, cartAction }: Client
   return (
     <header className="client-header">
       {backAction ?? <span />}
-      {subtitle ? (
-        <div className="client-header-heading">
-          <strong>{title}</strong>
-          <span className="client-header-subtitle">{subtitle}</span>
-        </div>
-      ) : (
+      <div className="client-header-heading">
         <strong>{title}</strong>
-      )}
+        {subtitle && <span className="client-header-subtitle">{subtitle}</span>}
+      </div>
       {cartAction ?? <span />}
     </header>
   );

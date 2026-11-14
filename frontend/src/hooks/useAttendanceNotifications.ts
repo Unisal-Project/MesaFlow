@@ -1,3 +1,4 @@
+import { fetchWaiterCalls } from "@/services/waiter-calls.service";
 import { useEffect, useState } from "react";
 import {
   findCancelledAttendances,
@@ -6,7 +7,9 @@ import {
   type ClosingRequestedAttendance,
 } from "@/services/attendance.service";
 
-type AttendanceNotification = ClosingRequestedAttendance | CancelledRequestAttendance;
+type AttendanceNotification = ClosingRequestedAttendance | CancelledRequestAttendance | {
+  id: string; status: "WAITER_CALL"; closingRequestedAt: string; table: { number: number };
+};
 
 export function useAttendanceNotifications(enabled: boolean) {
   const [notifications, setNotifications] = useState<AttendanceNotification[]>([]);
@@ -18,10 +21,10 @@ export function useAttendanceNotifications(enabled: boolean) {
 
     async function refresh() {
       try {
-        const [closing, cancelled] = await Promise.all([
-          findClosingRequestedAttendances(), findCancelledAttendances(),
+        const [closing, cancelled, waiterCalls] = await Promise.all([
+          findClosingRequestedAttendances(), findCancelledAttendances(), fetchWaiterCalls(),
         ]);
-        if (!disposed) setNotifications([...closing, ...cancelled]);
+        if (!disposed) setNotifications([...closing, ...cancelled, ...waiterCalls.map((call) => ({ id: call.id, status: "WAITER_CALL" as const, closingRequestedAt: call.createdAt, table: call.table }))]);
       } catch (error) {
         if (!disposed) console.error("Erro ao buscar notificações:", error);
       } finally {

@@ -1,5 +1,6 @@
 export type ProductInput = {
   categoryId: bigint;
+  additionalCategoryIds?: bigint[];
   name: string;
   description?: string | null;
   imageUrl?: string | null;
@@ -11,6 +12,7 @@ export type ProductInput = {
 
 export type ProductUpdateInput = {
   categoryId?: bigint;
+  additionalCategoryIds?: bigint[];
   name?: string;
   description?: string | null;
   imageUrl?: string | null;
@@ -23,6 +25,7 @@ export type ProductUpdateInput = {
 export type ProductOutput = {
   id: bigint;
   categoryId: bigint;
+  additionalCategoryIds?: bigint[];
   name: string;
   description: string | null;
   imageUrl: string | null;
@@ -37,6 +40,7 @@ export type ProductOutput = {
 export type ProductResponse = {
   id: string;
   categoryId: string;
+  additionalCategoryIds: string[];
   name: string;
   description: string | null;
   imageUrl: string | null;

@@ -36,8 +36,15 @@ export function CartProvider({
     }
   }, [items, storageKey]);
 
-  function addItem(product: Product, quantity: number, notes: string) {
+  function addItem(product: Product, quantity: number, notes: string | string[]) {
     setItems((current) => {
+      if (Array.isArray(notes)) {
+        const units = notes.slice(0, quantity).map((note) => ({
+          id: createLineId(), product, quantity: 1, notes: note,
+        }));
+        return [...current.filter((line) => line.product.id !== product.id), ...units];
+      }
+
       const existingIndex = current.findIndex(
         (line) => line.product.id === product.id && line.notes === notes,
       );

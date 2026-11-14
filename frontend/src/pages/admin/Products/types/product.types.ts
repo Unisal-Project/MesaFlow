@@ -1,6 +1,7 @@
 export type AdminProduct = {
   id: string;
   categoryId: string;
+  additionalCategoryIds: string[];
   name: string;
   /** Nome da categoria, derivado de categoryId. */
   category: string;
@@ -19,6 +20,7 @@ export type NewProductForm = {
   observation: string;
   /** Guarda o id da categoria selecionada. */
   category: string;
+  additionalCategoryIds: string[];
   imageUrl: string;
   available: boolean;
 };

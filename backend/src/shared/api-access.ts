@@ -9,8 +9,10 @@ const publicRoutes = new Set([
   "GET /products",
   "GET /products/:id",
   "GET /tables/by-token/:token",
+  "GET /tables/by-token/:token/orders",
   "POST /tables/by-token/:token/orders",
   "POST /tables/by-token/:token/request-closing",
+  "POST /tables/by-token/:token/call-waiter",
 ]);
 
 // Rotas de gestão: criar contas, catálogo, cadastro de mesas,

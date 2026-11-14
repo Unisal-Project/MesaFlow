@@ -129,3 +129,9 @@
     padding: var(--spacing-4);
   }
 }
+
+.notification-item--waiter {
+  --notification-color: var(--primary);
+  --notification-label: var(--primary);
+  button { margin-top: var(--spacing-2); }
+}
