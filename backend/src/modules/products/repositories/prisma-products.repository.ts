@@ -51,6 +51,7 @@ export class PrismaProductRepository implements ProductsRepository {
 
   async getAllProducts(): Promise<ProductOutput[]> {
     const products = await this.prismaClient.product.findMany({
+      where: { active: true },
       include: { additionalCategories: true },
     });
     return products.map((product) => this.toProduct(product));

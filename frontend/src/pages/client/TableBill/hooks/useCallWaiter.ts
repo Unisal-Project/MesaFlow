@@ -13,7 +13,9 @@ export function useCallWaiter(token: string) {
     setIsCalling(false);
     setSuccess(false);
     setError(null);
-    return () => { generation.current++; };
+    return () => {
+      generation.current++;
+    };
   }, [token]);
 
   async function handleCall() {
@@ -27,7 +29,12 @@ export function useCallWaiter(token: string) {
       await callWaiter(token);
       if (attempt === generation.current) setSuccess(true);
     } catch (reason) {
-      if (attempt === generation.current) setError(reason instanceof Error ? reason.message : "Não foi possível chamar o garçom.");
+      if (attempt === generation.current)
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Não foi possível chamar o garçom.",
+        );
     } finally {
       if (attempt === generation.current) {
         pending.current = false;

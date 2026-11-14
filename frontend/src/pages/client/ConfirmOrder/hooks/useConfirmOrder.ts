@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 
+import { ApiError } from "@/api/client";
 import { useCart } from "@/contexts/useCart";
 import { createQrOrder } from "@/services/orders.service";
 
@@ -42,10 +43,16 @@ export function useConfirmOrder(
       setOrderId(response.order.id);
       clearCart();
     } catch (reason) {
+      // 400 de validação traz o motivo em issues (ex.: limite de itens).
+      const issue =
+        reason instanceof ApiError
+          ? (reason.data as { issues?: { message: string }[] })?.issues?.[0]
+          : undefined;
       setError(
-        reason instanceof Error
-          ? reason.message
-          : "Não foi possível enviar o pedido. Tente novamente.",
+        issue?.message ??
+          (reason instanceof Error
+            ? reason.message
+            : "Não foi possível enviar o pedido. Tente novamente."),
       );
     } finally {
       submitting.current = false;

@@ -246,3 +246,21 @@ test("missing principal categories are rejected before saving", async () => {
     false,
   );
 });
+
+test("deleted products stay out of the catalog after a new query", async () => {
+  let product = { ...stored, active: true };
+  const client = {
+    product: {
+      update: async ({ data }: any) => {
+        product = { ...product, ...data };
+        return product;
+      },
+      findMany: async ({ where }: any) =>
+        where?.active === true && !product.active ? [] : [product],
+    },
+  } as unknown as typeof PrismaConnector;
+  const repository = new PrismaProductRepository(client);
+  assert.equal((await repository.getAllProducts()).length, 1);
+  await repository.deactivateProduct(10n);
+  assert.deepEqual(await repository.getAllProducts(), []);
+});

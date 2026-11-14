@@ -64,9 +64,21 @@ Thumbs.db
 # ─────────────────────────────────────────
 .agents/
 .claude/
+.maestri/
 .windsurf/
+.cursor/
+.codex/
+.gemini/
+.opencode/
+.github/copilot-instructions.md
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+GEMINI.md
 skills-lock.json
+# Planos, specs e briefings gerados por agentes de IA
+docs/superpowers/
+docs/maestri-briefing-*.md
 
 # Archives / backups
 *.tar.gz
-.codex/

@@ -43,14 +43,7 @@ export type CreateQrOrderResponse = {
   };
 };
 
-export type OrderStatus =
-  | "PENDING"
-  | "PREPARING"
-  | "READY"
-  | "DELIVERED"
-  | "CANCELLED";
-
-export type AttendanceOrderItem = {
+export type BillItem = {
   id: string;
   productId: string;
   productName: string;
@@ -59,40 +52,20 @@ export type AttendanceOrderItem = {
   notes: string | null;
 };
 
-export type AttendanceOrder = {
-  id: string;
-  status: OrderStatus;
-  customerName: string | null;
-  createdAt: string;
-  notes: string | null;
-  items: AttendanceOrderItem[];
-};
-
-export type AttendanceOrdersResponse = {
+export type TableBillResponse = {
   attendanceId: string | null;
-  attendanceStatus:
-    | "OPEN"
-    | "CLOSING_REQUESTED"
-    | "AWAITING_PAYMENT"
-    | null;
-  orders: AttendanceOrder[];
+  attendanceStatus: "OPEN" | "CLOSING_REQUESTED" | "AWAITING_PAYMENT" | null;
+  items: BillItem[];
 };
 
-export function fetchOrdersByTableToken(
-  token: string,
-  signal?: AbortSignal,
-): Promise<AttendanceOrdersResponse> {
-  return apiRequest<AttendanceOrdersResponse>(
-    `/tables/by-token/${encodeURIComponent(token)}/orders`,
-    {
-      signal,
-    },
+export function fetchTableBill(token: string, signal?: AbortSignal) {
+  return apiRequest<TableBillResponse>(
+    `/tables/by-token/${encodeURIComponent(token)}/bill`,
+    { signal },
   );
 }
 
-export function createOrder(
-  input: CreateOrderInput
-): Promise<OrderResponse> {
+export function createOrder(input: CreateOrderInput): Promise<OrderResponse> {
   return apiRequest<OrderResponse>("/orders", {
     method: "POST",
     body: JSON.stringify(input),
@@ -105,7 +78,7 @@ export type PaymentMethodCode = "CASH" | "PIX" | "CREDIT_CARD" | "DEBIT_CARD";
 
 export type AdminOrderResponse = {
   id: string;
-  status: "PENDING" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
+  status: "PENDING" | "CANCELLED";
   notes: string | null;
   customerName: string | null;
   createdAt: string;
@@ -114,7 +87,12 @@ export type AdminOrderResponse = {
   table: { id: string; number: number; name: string | null };
   attendance: {
     id: string;
-    status: "OPEN" | "CLOSING_REQUESTED" | "AWAITING_PAYMENT" | "CLOSED" | "CANCELLED";
+    status:
+      | "OPEN"
+      | "CLOSING_REQUESTED"
+      | "AWAITING_PAYMENT"
+      | "CLOSED"
+      | "CANCELLED";
     closedAt: string | null;
     serviceFee: string | null;
     payments: Array<{
@@ -153,13 +131,19 @@ export type CloseAttendanceInput = {
 export const fetchAdminOrders = (days = 90) =>
   apiRequest<AdminOrderResponse[]>(`/orders?days=${days}`);
 
-export const createTableOrder = (tableId: string, input: AdminOrderItemsInput) =>
+export const createTableOrder = (
+  tableId: string,
+  input: AdminOrderItemsInput,
+) =>
   apiRequest<AdminOrderResponse>(`/tables/${tableId}/orders`, {
     method: "POST",
     body: JSON.stringify(input),
   });
 
-export const updateOrderItems = (orderId: string, input: AdminOrderItemsInput) =>
+export const updateOrderItems = (
+  orderId: string,
+  input: AdminOrderItemsInput,
+) =>
   apiRequest<AdminOrderResponse>(`/orders/${orderId}/items`, {
     method: "PUT",
     body: JSON.stringify(input),
@@ -174,7 +158,10 @@ export const cancelAdminOrder = (
     body: JSON.stringify(input),
   });
 
-export const closeAttendance = (attendanceId: string, input: CloseAttendanceInput) =>
+export const closeAttendance = (
+  attendanceId: string,
+  input: CloseAttendanceInput,
+) =>
   apiRequest<{ total: string; serviceFee: string }>(
     `/attendances/${attendanceId}/close`,
     { method: "POST", body: JSON.stringify(input) },

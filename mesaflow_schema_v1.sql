@@ -204,9 +204,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
     status ENUM(
         'PENDING',
-        'PREPARING',
-        'READY',
-        'DELIVERED',
         'CANCELLED'
     ) NOT NULL DEFAULT 'PENDING',
 

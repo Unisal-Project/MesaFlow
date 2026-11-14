@@ -56,6 +56,7 @@ function fixture(initialStatus?: string) {
       );
   };
   const client: any = {
+    order: { count: async () => 0 },
     restaurantTable: {
       create: async ({ data }: any) => {
         assertLocked();
@@ -136,6 +137,26 @@ function fixture(initialStatus?: string) {
     printJobs: () => printJobs,
   };
 }
+
+test("table with consumption cannot bypass payment through status changes", async () => {
+  const { service, row, client, attendances } = fixture("AWAITING_PAYMENT");
+  client.order.count = async ({ where }: any) => {
+    assert.equal(where.attendanceId, 1n);
+    assert.deepEqual(where.status, { not: "CANCELLED" });
+    return 1;
+  };
+  await assert.rejects(
+    service.changeStatus(
+      { id: row().id },
+      { status: "available", attendanceId: 1n },
+    ),
+    {
+      statusCode: 409,
+      message: "Registre o pagamento para fechar uma conta com consumo.",
+    },
+  );
+  assert.equal(attendances()[0].status, "AWAITING_PAYMENT");
+});
 
 test("creation assigns unique tokens; editing preserves the QR URL", async () => {
   const { service, row } = fixture();

@@ -6,6 +6,7 @@ import {
   type CancelledRequestAttendance,
   type ClosingRequestedAttendance,
 } from "@/services/attendance.service";
+import { getSession } from "@/services/auth.service";
 
 type AttendanceNotification = ClosingRequestedAttendance | CancelledRequestAttendance | {
   id: string; status: "WAITER_CALL"; closingRequestedAt: string; table: { number: number };
@@ -22,7 +23,7 @@ export function useAttendanceNotifications(enabled: boolean) {
     async function refresh() {
       try {
         const [closing, cancelled, waiterCalls] = await Promise.all([
-          findClosingRequestedAttendances(), findCancelledAttendances(), fetchWaiterCalls(),
+          findClosingRequestedAttendances(), getSession()?.user.role === "ADMIN" ? findCancelledAttendances() : [], fetchWaiterCalls(),
         ]);
         if (!disposed) setNotifications([...closing, ...cancelled, ...waiterCalls.map((call) => ({ id: call.id, status: "WAITER_CALL" as const, closingRequestedAt: call.createdAt, table: call.table }))]);
       } catch (error) {

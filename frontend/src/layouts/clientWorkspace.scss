@@ -54,7 +54,7 @@ html.client-workspace-active .client-workspace .client-header {
   color: var(--primary);
   box-shadow: 0 2px 8px color-mix(in srgb, var(--primary) 4%, transparent);
 }
-.client-workspace :is(.product-card, .cart-line, .cart-summary, .confirm-review-card, .order-steps, .table-bill-summary, .client-home-restaurant) {
+.client-workspace :is(.product-card, .cart-line, .cart-summary, .confirm-review-card, .table-bill-summary, .client-home-restaurant) {
   border: 1px solid color-mix(in srgb, var(--primary) 7%, var(--surface));
   border-radius: 22px;
   background: var(--surface);

@@ -1,5 +1,4 @@
-export type OrderStatus =
-  "PENDING" | "PREPARING" | "READY" | "DELIVERED" | "CANCELLED";
+export type OrderStatus = "PENDING" | "CANCELLED";
 
 export type CancellationSource = "CUSTOMER" | "EMPLOYEE" | "ADMIN";
 

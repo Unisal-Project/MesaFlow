@@ -223,6 +223,21 @@ export class PrismaTableRepository implements TableRepository {
           change,
         );
 
+        if (status === "CLOSED" && attendance) {
+          const orders = await tx.order.count({
+            where: {
+              attendanceId: attendance.id,
+              status: { not: "CANCELLED" },
+            },
+          });
+          if (orders > 0) {
+            throw new AppError(
+              "Registre o pagamento para fechar uma conta com consumo.",
+              409,
+            );
+          }
+        }
+
         if (!attendance) {
           await tx.attendance.create({
             data: {

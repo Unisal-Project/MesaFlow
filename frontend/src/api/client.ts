@@ -100,7 +100,7 @@ async function sendRequest(
 
   // Token expirado ou inválido: encerra a sessão e volta para o login.
   // Em /auth/* o 401 significa credencial errada e deve chegar ao formulário.
-  if (response.status === 401 && token && !path.startsWith("/auth/")) {
+  if (response.status === 401 && !path.startsWith("/auth/")) {
     logout();
     window.location.assign("/login");
   }

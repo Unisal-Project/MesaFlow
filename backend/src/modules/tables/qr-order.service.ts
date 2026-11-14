@@ -1,8 +1,7 @@
-
 import { AppError } from "../../shared/errors/app-errors.js";
 import { PrismaConnector } from "../../database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
-import { moveStock } from "../orders/stock.js";
+import { byProductId, moveStock } from "../orders/stock.js";
 
 export interface QrOrderInput {
   customerName: string;
@@ -19,8 +18,8 @@ export class QrOrderService {
     private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
   ) {}
 
-  // Consultar pedidos pelo token da mesa
-  async findOrders(token: string) {
+  // Consulta apenas o consumo da conta, sem acompanhamento de preparo.
+  async findBill(token: string) {
     const table = await this.prismaClient.restaurantTable.findUnique({
       where: { qrToken: token },
       select: { id: true, active: true },
@@ -38,19 +37,19 @@ export class QrOrderService {
         },
       },
       orderBy: { createdAt: "desc" },
-      select: { id: true, status: true, },
+      select: { id: true, status: true },
     });
 
     if (!attendance) {
       return {
         attendanceId: null,
         attendanceStatus: null,
-        orders: [],
+        items: [],
       };
     }
 
     const orders = await this.prismaClient.order.findMany({
-      where: { attendanceId: attendance.id },
+      where: { attendanceId: attendance.id, status: { not: "CANCELLED" } },
       orderBy: { createdAt: "desc" },
       include: {
         items: {
@@ -66,13 +65,8 @@ export class QrOrderService {
     return {
       attendanceId: attendance.id.toString(),
       attendanceStatus: attendance.status,
-      orders: orders.map((order) => ({
-        id: order.id.toString(),
-        status: order.status,
-        customerName: order.customerName,
-        createdAt: order.createdAt.toISOString(),
-        notes: order.notes,
-        items: order.items.map((item) => ({
+      items: orders.flatMap((order) =>
+        order.items.map((item) => ({
           id: item.id.toString(),
           productId: item.productId.toString(),
           productName: item.product.name,
@@ -80,7 +74,7 @@ export class QrOrderService {
           unitPrice: item.unitPrice.toString(),
           notes: item.notes,
         })),
-      })),
+      ),
     };
   }
 
@@ -100,10 +94,7 @@ export class QrOrderService {
         });
 
         if (!table || !table.active) {
-          throw new AppError(
-            "QR Code inválido ou mesa indisponível",
-            404,
-          );
+          throw new AppError("QR Code inválido ou mesa indisponível", 404);
         }
 
         const attendance = await tx.attendance.findFirst({
@@ -117,17 +108,11 @@ export class QrOrderService {
         });
 
         if (!attendance) {
-          throw new AppError(
-            "Não há atendimento aberto nesta mesa.",
-            409,
-          );
+          throw new AppError("Não há atendimento aberto nesta mesa.", 409);
         }
 
         if (attendance.status !== "OPEN") {
-          throw new AppError(
-            "A conta desta mesa já foi solicitada.",
-            409,
-          );
+          throw new AppError("A conta desta mesa já foi solicitada.", 409);
         }
 
         const updated = await tx.attendance.updateMany({
@@ -179,10 +164,7 @@ export class QrOrderService {
         });
 
         if (!table || !table.active) {
-          throw new AppError(
-            "QR Code inválido ou mesa indisponível",
-            404,
-          );
+          throw new AppError("QR Code inválido ou mesa indisponível", 404);
         }
 
         let attendance = await tx.attendance.findFirst({
@@ -196,10 +178,7 @@ export class QrOrderService {
         });
 
         if (attendance && attendance.status !== "OPEN") {
-          throw new AppError(
-            "Atendimento não está aberto para pedidos.",
-            409,
-          );
+          throw new AppError("Atendimento não está aberto para pedidos.", 409);
         }
 
         if (!attendance) {
@@ -211,9 +190,7 @@ export class QrOrderService {
           });
         }
 
-        const productIds = data.items.map(({ productId }) =>
-          BigInt(productId),
-        );
+        const productIds = data.items.map(({ productId }) => BigInt(productId));
 
         const products = await tx.product.findMany({
           where: {
@@ -228,20 +205,14 @@ export class QrOrderService {
         });
 
         const byId = new Map(
-          products.map((product) => [
-            product.id.toString(),
-            product,
-          ]),
+          products.map((product) => [product.id.toString(), product]),
         );
 
         const items = data.items.map((item) => {
           const product = byId.get(item.productId);
 
           if (!product) {
-            throw new AppError(
-              "Produto não encontrado ou indisponível.",
-              409,
-            );
+            throw new AppError("Produto não encontrado ou indisponível.", 409);
           }
 
           return {
@@ -267,7 +238,7 @@ export class QrOrderService {
         });
 
         // Regra 9: o pedido do QR também debita estoque na mesma transação.
-        for (const item of order.items) {
+        for (const item of [...order.items].sort(byProductId)) {
           await moveStock(tx, item.productId, -item.quantity, {
             type: "SALE",
             orderId: order.id,
@@ -275,6 +246,10 @@ export class QrOrderService {
             userId: null,
           });
         }
+
+        await tx.printJob.create({
+          data: { orderId: order.id, type: "ORDER" },
+        });
 
         return {
           attendanceId: attendance.id.toString(),

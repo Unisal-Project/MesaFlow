@@ -14,7 +14,7 @@
     "lint": "cd frontend && oxlint",
     "lint:backend": "cd backend && tsc -p tsconfig.tests.json && prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "npm run test:backend && npm run test:frontend",
-    "test:db": "cd backend && RUN_TABLES_DB_TESTS=1 node --test-force-exit --import tsx --test tests/tables.integration.test.ts",
+    "test:db": "cd backend && RUN_TABLES_DB_TESTS=1 node --test-force-exit --import tsx --test tests/*.integration.test.ts",
     "install:all": "npm ci",
     "setup": "npm run install:all && npm run prisma:generate",
     "db:up": "docker compose up -d database",

@@ -159,3 +159,9 @@
     padding-inline: var(--spacing-3);
   }
 }
+
+.table-bill-waiter {
+  display: grid;
+  gap: var(--spacing-3);
+  margin-bottom: var(--spacing-4);
+}

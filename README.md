@@ -118,7 +118,7 @@ gerenciar funcionários;
 
 controlar estoque;
 
-acompanhar pedidos e comandas;
+consultar pedidos e comandas;
 
 visualizar vendas;
 
@@ -304,21 +304,10 @@ CANCELLED
 
 Status de Pedido
 
-PENDING
-PREPARING
-READY
-DELIVERED
-CANCELLED
+PENDING — pedido registrado.
+CANCELLED — pedido cancelado administrativamente.
 
-Fluxo normal:
-
-PENDING
-   ↓
-PREPARING
-   ↓
-READY
-   ↓
-DELIVERED
+Não há acompanhamento de preparo ou entrega. O cliente consulta os itens em Conta.
 
 Controle de Estoque
 

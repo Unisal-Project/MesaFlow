@@ -25,10 +25,10 @@ export function tableRoutes(app: FastifyInstance) {
     tableController.getAllTables(request, reply),
   );
 
-  app.get("/tables/by-token/:token/orders", (request, reply) =>
-    qrOrderController.findOrders(request, reply),
+  app.get("/tables/by-token/:token/bill", (request, reply) =>
+    qrOrderController.findBill(request, reply),
   );
-  
+
   app.post("/tables/by-token/:token/orders", (request, reply) =>
     qrOrderController.submit(request, reply),
   );

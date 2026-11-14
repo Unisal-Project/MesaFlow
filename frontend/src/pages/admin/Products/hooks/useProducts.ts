@@ -232,7 +232,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     }
     setBusy(true);
     try {
-      let saved = await saveProduct(
+      const product = await saveProduct(
         {
           name: newProduct.name.trim(),
           description: newProduct.observation.trim() || null,
@@ -244,17 +244,18 @@ export function useProducts(categories: CategoryRef[] = []) {
         },
         editingProductId ?? undefined,
       );
-      if (photo) saved = await uploadProductImage(saved.id, photo);
+      setEditingProductId(product.id);
       setRecords((current) =>
-        editingProductId
-          ? current.map((entry) => (entry.id === saved.id ? saved : entry))
-          : [...current, saved],
+        current.some((entry) => entry.id === product.id)
+          ? current.map((entry) => (entry.id === product.id ? product : entry))
+          : [...current, product],
       );
+      if (photo) replaceRecord(await uploadProductImage(product.id, photo));
       closeProductModal();
     } catch (err) {
-      setError(message(err));
       // O produto pode ter sido salvo antes de a imagem falhar.
-      void reload();
+      await reload();
+      setError(message(err));
     } finally {
       setBusy(false);
     }

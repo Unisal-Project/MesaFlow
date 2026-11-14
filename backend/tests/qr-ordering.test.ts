@@ -39,6 +39,12 @@ test("first QR order opens the table attendance and stores the customer name", a
         calls.push(`${data.type} ${data.quantity}`);
       },
     },
+    printJob: {
+      create: async ({ data }: any) => {
+        assert.deepEqual(data, { orderId: 21n, type: "ORDER" });
+        calls.push("print");
+      },
+    },
     order: {
       create: async ({ data }: any) => {
         calls.push("order");
@@ -71,7 +77,13 @@ test("first QR order opens the table attendance and stores the customer name", a
   assert.equal(result.attendanceId, "12");
   assert.equal(result.order.customerName, "Ana");
   assert.equal(result.order.items[0].unitPrice, "18.50");
-  assert.deepEqual(calls, ["lock", "order", "stock -2 if >= 2", "SALE -2"]);
+  assert.deepEqual(calls, [
+    "lock",
+    "order",
+    "stock -2 if >= 2",
+    "SALE -2",
+    "print",
+  ]);
 });
 
 test("QR order without enough stock is rejected", async () => {
@@ -162,6 +174,121 @@ test("QR order endpoint validates the customer and returns the created order", a
       payload: { items: [] },
     });
     assert.equal(malformed.statusCode, 400);
+    const tooMany = await app.inject({
+      method: "POST",
+      url: "/tables/by-token/table-token/orders",
+      payload: {
+        customerName: "Ana",
+        items: [{ productId: "4", quantity: 100 }],
+      },
+    });
+    assert.equal(tooMany.statusCode, 400);
+    const overLimit = await app.inject({
+      method: "POST",
+      url: "/tables/by-token/table-token/orders",
+      payload: {
+        customerName: "Ana",
+        items: Array.from({ length: 101 }, () => ({
+          productId: "4",
+          quantity: 1,
+        })),
+      },
+    });
+    assert.equal(overLimit.statusCode, 400);
+    assert.equal(
+      overLimit.json().issues[0].message,
+      "Limite de 100 itens por pedido",
+    );
+  } finally {
+    await app.close();
+  }
+});
+
+test("bill query contains consumption without order tracking and excludes cancelled orders", async () => {
+  const client: any = {
+    restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
+    attendance: { findFirst: async () => ({ id: 12n, status: "OPEN" }) },
+    order: {
+      findMany: async ({ where }: any) => {
+        assert.deepEqual(where, {
+          attendanceId: 12n,
+          status: { not: "CANCELLED" },
+        });
+        return [
+          {
+            id: 21n,
+            items: [
+              {
+                id: 31n,
+                productId: 4n,
+                product: { name: "Suco" },
+                quantity: 2,
+                unitPrice: "18.50",
+                notes: null,
+              },
+            ],
+          },
+        ];
+      },
+    },
+  };
+  const result = await new QrOrderService(client).findBill("table-token");
+  assert.deepEqual(result, {
+    attendanceId: "12",
+    attendanceStatus: "OPEN",
+    items: [
+      {
+        id: "31",
+        productId: "4",
+        productName: "Suco",
+        quantity: 2,
+        unitPrice: "18.50",
+        notes: null,
+      },
+    ],
+  });
+});
+
+test("bill of a free table has no consumption", async () => {
+  const client: any = {
+    restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
+    attendance: { findFirst: async () => null },
+  };
+  assert.deepEqual(await new QrOrderService(client).findBill("table-token"), {
+    attendanceId: null,
+    attendanceStatus: null,
+    items: [],
+  });
+});
+
+test("public bill route replaces the old tracking route", async (t) => {
+  const { tableRoutes } =
+    await import("../src/modules/tables/table.routers.js");
+  const { requireApiAuthentication } =
+    await import("../src/shared/api-access.js");
+  const bill = { attendanceId: null, attendanceStatus: null, items: [] };
+  t.mock.method(QrOrderService.prototype, "findBill", async (token: string) => {
+    assert.equal(token, "table-token");
+    return bill;
+  });
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(
+    async (api) => {
+      api.addHook("onRequest", requireApiAuthentication);
+      tableRoutes(api);
+    },
+    { prefix: "/api/v1" },
+  );
+  try {
+    const response = await app.inject(
+      "/api/v1/tables/by-token/table-token/bill",
+    );
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(response.json(), bill);
+    assert.equal(response.headers["cache-control"], "no-store");
+    const old = await app.inject("/api/v1/tables/by-token/table-token/orders");
+    assert.equal(old.statusCode, 404);
   } finally {
     await app.close();
   }

@@ -44,7 +44,7 @@ export function OrderSuccess({ onBack, onNavigate }: OrderSuccessProps) {
         </div>
       </main>
 
-      <ClientTabBar activeId="orders" onMenu={() => handleNavigate("menu")} onOrder={() => handleNavigate("order")} onNavigate={handleNavigate} />
+      <ClientTabBar activeId="order" onMenu={() => handleNavigate("menu")} onOrder={() => handleNavigate("order")} onNavigate={handleNavigate} />
     </div>
   );
 }
