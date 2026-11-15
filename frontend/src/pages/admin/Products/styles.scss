@@ -294,9 +294,17 @@
   font-size: var(--font-size-xs);
 }
 .product-price {
+  // Com promoção (preço antigo + novo + selo) as peças quebram dentro da
+  // coluna em vez de invadir a coluna de estoque ao lado.
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--spacing-1);
+  min-width: 0;
   color: var(--primary);
   font-size: var(--font-size-sm);
-  white-space: nowrap;
+
+  > * { white-space: nowrap; }
 }
 .product-controls {
   display: flex;
@@ -827,5 +835,179 @@
     width: 18px;
     height: 18px;
     accent-color: var(--primary);
+  }
+}
+
+.product-quantity--untracked {
+  text-align: center;
+}
+.new-product-track-stock {
+  align-self: end;
+  min-height: 44px;
+}
+.new-product-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+
+  .product-card {
+    width: min(100%, 280px);
+  }
+  .new-product-preview-photo {
+    display: block;
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+  }
+}
+
+/* Bloco "Promoção" (produto e categoria). */
+.promotion-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+
+  legend {
+    padding-inline: var(--spacing-1);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+  }
+  .field {
+    min-width: 0;
+  }
+  .promotion-fields-active {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.new-product-promo-inherited {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.product-price .badge {
+  margin-left: 0;
+}
+
+/* Estados da lista: vazio com ação e filtro sem resultado. */
+.products-no-results {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-3);
+  p {
+    margin: 0;
+  }
+}
+
+/* Estoque na linha: − [campo] +. */
+.product-stock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+}
+.product-stock-step {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--background);
+  color: var(--primary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    @include mixins.focus-visible(2px, 2px);
+  }
+}
+@include mixins.down(workspace) {
+  .product-controls .product-stock {
+    align-items: flex-end;
+    .product-stock-step {
+      flex-basis: 44px;
+      width: 44px;
+      height: 44px;
+    }
+  }
+}
+
+/* Dinheiro: prefixo "R$" fixo dentro do campo. */
+.money-field {
+  position: relative;
+  &::after {
+    content: "R$";
+    position: absolute;
+    left: var(--spacing-3);
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    height: 42px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    pointer-events: none;
+  }
+}
+label.field.money-field input {
+  padding-left: 38px;
+}
+
+/* Categoria principal + "+ Nova" (inline). */
+.new-product-category-group {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--spacing-2);
+}
+.new-product-category-row,
+.new-product-new-category {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  > :first-child {
+    flex: 1;
+  }
+  > .btn {
+    min-height: 42px;
+  }
+}
+.new-product-new-category > .product-modal-close {
+  align-self: center;
+  margin-top: var(--spacing-5);
+}
+
+/* Blocos recolhidos do formulário. */
+.promotion-fields-toggle {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+.new-product-more {
+  grid-column: 1 / -1;
+  summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+  }
+  .new-product-additional-categories {
+    margin-top: var(--spacing-2);
   }
 }

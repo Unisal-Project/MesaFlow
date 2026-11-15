@@ -1,6 +1,10 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import type { AuthService } from "./auth.service.js";
-import { registerSchema, loginSchema } from "./dto/auth.dto.js";
+import {
+  registerSchema,
+  loginSchema,
+  changePasswordSchema,
+} from "./dto/auth.dto.js";
 
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -22,5 +26,17 @@ export class AuthController {
       ...result,
       user: { ...result.user, id: result.user.id.toString() },
     });
+  }
+
+  async changePassword(request: FastifyRequest, reply: FastifyReply) {
+    const { currentPassword, newPassword } = changePasswordSchema.parse(
+      request.body,
+    );
+    await this.authService.changePassword(
+      BigInt(request.user.id),
+      currentPassword,
+      newPassword,
+    );
+    return reply.status(204).send();
   }
 }

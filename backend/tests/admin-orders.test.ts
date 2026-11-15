@@ -410,3 +410,39 @@ test("estoque é atualizado em ordem crescente de productId (evita deadlock)", a
     ],
   );
 });
+
+test("pedido admin cobra a promoção vigente; itens já vendidos mantêm o preço", async () => {
+  const db = fakeDb();
+  const repo = new PrismaAdminOrderRepository(db.client);
+  Object.assign(db.products[1], {
+    promoType: "PERCENT",
+    promoValue: "50",
+    promoActive: true,
+  });
+  const order = await repo.createForTable(
+    7n,
+    [{ productId: 2n, quantity: 1 }],
+    null,
+    admin,
+  );
+  assert.equal(order.items[0].unitPrice, "5.00");
+  Object.assign(db.products[1], { promoActive: false });
+  Object.assign(db.products[0], {
+    promoType: "AMOUNT",
+    promoValue: "10",
+    promoActive: true,
+  });
+  const edited = await repo.replaceItems(
+    order.id,
+    [
+      { productId: 2n, quantity: 1 },
+      { productId: 1n, quantity: 1 },
+    ],
+    null,
+    admin,
+  );
+  const price = (id: bigint) =>
+    edited.items.find((i: any) => i.productId === id)!.unitPrice;
+  assert.equal(price(2n), "5.00"); // snapshot da venda
+  assert.equal(price(1n), "20.00"); // novo item: 30 - 10
+});

@@ -123,3 +123,44 @@ test("401 fora de /auth encerra a sessão e volta ao login", async () => {
   assert.equal(auth.getSession(), null);
   assert.deepEqual(redirects, ["/login"]);
 });
+
+test("trocar senha faz PATCH autenticado e mantém a sessão; erro chega ao formulário", async () => {
+  const session = JSON.stringify({ user, accessToken: jwt(nowSec() + 3600) });
+  store.set("mesaflow.session", session);
+  globalThis.fetch = async (url, options) => {
+    assert.match(url, /\/api\/v1\/auth\/password$/);
+    assert.equal(options.method, "PATCH");
+    assert.match(options.headers.get("Authorization"), /^Bearer /);
+    assert.deepEqual(JSON.parse(options.body), {
+      currentPassword: "antiga123",
+      newPassword: "novaSenha1",
+    });
+    return new Response(null, { status: 204 });
+  };
+  await auth.changePassword("antiga123", "novaSenha1");
+  assert.equal(store.get("mesaflow.session"), session);
+
+  globalThis.fetch = async () =>
+    Response.json({ message: "Senha atual incorreta" }, { status: 400 });
+  await assert.rejects(
+    auth.changePassword("errada", "novaSenha1"),
+    /Senha atual incorreta/,
+  );
+  assert.equal(store.get("mesaflow.session"), session);
+  assert.deepEqual(redirects, []);
+});
+
+test("401 só é 'credencial errada' em login/cadastro; em /auth/password encerra a sessão", async () => {
+  const session = JSON.stringify({ user, accessToken: jwt(nowSec() + 3600) });
+  globalThis.fetch = async () =>
+    Response.json({ message: "Token inválido ou não informado" }, { status: 401 });
+
+  store.set("mesaflow.session", session);
+  await assert.rejects(apiRequest("/auth/login", { method: "POST" }));
+  assert.equal(store.get("mesaflow.session"), session);
+  assert.deepEqual(redirects, []);
+
+  await assert.rejects(auth.changePassword("antiga123", "novaSenha1"));
+  assert.equal(auth.getSession(), null);
+  assert.deepEqual(redirects, ["/login"]);
+});

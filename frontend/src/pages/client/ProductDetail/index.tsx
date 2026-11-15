@@ -34,7 +34,10 @@ export function ProductDetail({ product, categoryName, onBack, onAdded, onGoToCa
         {categoryName && <span className="product-detail-category"><span aria-hidden="true" />{categoryName}</span>}
         <h1>{product.name}</h1>
         <p className="product-detail-description">{product.description}</p>
-        <strong className="product-detail-price">{formatPriceMenu(product.price)}</strong>
+        <strong className="product-detail-price">
+          {product.promotion && <><s className="product-card-old-price"><span className="sr-only">de </span>{formatPriceMenu(product.price)}</s>{" "}<span className="sr-only">por </span></>}
+          {formatPriceMenu(product.finalPrice ?? product.price)}
+        </strong>
         {notes.map((note, index) => (
           <TextAreaField key={index} id={`product-notes-${index}`} label={quantity > 1 ? `Observações — unidade ${index + 1}` : "Observações"} placeholder="Ex.: sem cebola, molho à parte" value={note} onChange={(event) => setUnitNotes(index, event.target.value)} />
         ))}

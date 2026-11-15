@@ -12,6 +12,7 @@ export type StockMovementInput = {
  * Soma `change` ao estoque e registra o stock_movement (regras 10 e 11).
  * O débito usa uma condição no próprio UPDATE: só desconta se houver saldo,
  * então pedidos simultâneos nunca deixam o estoque negativo.
+ * Produto com trackStock=false não tem saldo: nada é alterado nem registrado.
  */
 export async function moveStock(
   tx: Prisma.TransactionClient,
@@ -22,6 +23,7 @@ export async function moveStock(
   const updated = await tx.product.updateMany({
     where: {
       id: productId,
+      trackStock: true,
       ...(change < 0 ? { stockQuantity: { gte: -change } } : {}),
     },
     data: { stockQuantity: { increment: change } },
@@ -29,8 +31,9 @@ export async function moveStock(
   if (updated.count !== 1) {
     const product = await tx.product.findUnique({
       where: { id: productId },
-      select: { name: true, stockQuantity: true },
+      select: { name: true, stockQuantity: true, trackStock: true },
     });
+    if (product?.trackStock === false) return;
     throw new AppError(
       product
         ? `Estoque insuficiente para ${product.name} (disponível: ${product.stockQuantity})`

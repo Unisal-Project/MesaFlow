@@ -12,6 +12,11 @@ datasource db {
   provider = "mysql"
 }
 
+enum PromoType {
+  PERCENT
+  AMOUNT
+}
+
 enum UserRole {
   ADMIN
   EMPLOYEE
@@ -91,6 +96,11 @@ model Category {
   id                 BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
   name               String            @unique(map: "uq_categories_name") @db.VarChar(100)
   description        String?           @db.VarChar(255)
+  promoType          PromoType?        @map("promo_type")
+  promoValue         Decimal?          @map("promo_value") @db.Decimal(10, 2)
+  promoActive        Boolean           @default(false) @map("promo_active")
+  promoStartsAt      DateTime?         @map("promo_starts_at") @db.DateTime(0)
+  promoEndsAt        DateTime?         @map("promo_ends_at") @db.DateTime(0)
   active             Boolean           @default(true)
   createdAt          DateTime          @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
@@ -107,7 +117,13 @@ model Product {
   description          String?           @db.Text
   imageUrl             String?           @map("image_url") @db.VarChar(2048)
   price                Decimal           @db.Decimal(10, 2)
+  promoType            PromoType?        @map("promo_type")
+  promoValue           Decimal?          @map("promo_value") @db.Decimal(10, 2)
+  promoActive          Boolean           @default(false) @map("promo_active")
+  promoStartsAt        DateTime?         @map("promo_starts_at") @db.DateTime(0)
+  promoEndsAt          DateTime?         @map("promo_ends_at") @db.DateTime(0)
   stockQuantity        Int               @default(0) @map("stock_quantity")
+  trackStock           Boolean           @default(true) @map("track_stock")
   available            Boolean           @default(true)
   active               Boolean           @default(true)
   createdAt            DateTime          @default(now()) @map("created_at") @db.DateTime(0)

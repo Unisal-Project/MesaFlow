@@ -43,6 +43,7 @@ export default function Products({
     editingProductId,
     newProduct,
     setNewProduct,
+    hasUnsavedChanges,
     searchQuery,
     setSearchQuery,
     availabilityFilter,
@@ -68,10 +69,23 @@ export default function Products({
     requestProductDeletion,
     confirmProductDeletion,
   } = productState;
-  const productCategories = categoryState.categories.map(
-    (category) => ({ id: category.id, name: category.name, active: category.active }),
-  );
+  // Inclui a promoção da categoria para a prévia do formulário de produto.
+  const productCategories = categoryState.categories;
   const isCategories = activeTab === "categories";
+  // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
+  const isFiltering =
+    normalizedSearch !== "" ||
+    categoryFilter !== "all" ||
+    availabilityFilter !== "all";
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCategoryFilter("all");
+    setAvailabilityFilter("all");
+  };
+  const visibleProducts =
+    showAllProducts || isFiltering
+      ? filteredProducts
+      : filteredProducts.slice(0, 4);
   const switchTab = (tab: "products" | "categories") => {
     transitionContent(() => onSwitchTab(tab));
   };
@@ -93,22 +107,7 @@ export default function Products({
             <strong>/ &nbsp;Cardápio</strong>
           </div>
           <div className="products-topbar-actions">
-            <label className="product-search product-header-search">
-              <Search aria-hidden="true" />
-              <input
-                type="search"
-                aria-label="Pesquisar no cardápio"
-                placeholder={
-                  isCategories ? "Buscar categorias..." : "Buscar produtos..."
-                }
-                value={isCategories ? categoryState.searchQuery : searchQuery}
-                onChange={(event) =>
-                  isCategories
-                    ? categoryState.setSearchQuery(event.target.value)
-                    : setSearchQuery(event.target.value)
-                }
-              />
-            </label>
+            {/* A busca fica só na barra de filtros de cada aba. */}
             <Notifications />
           </div>
         </div>
@@ -196,6 +195,7 @@ export default function Products({
               state={categoryState}
               products={products}
               onShowProducts={() => switchTab("products")}
+              onProductsChanged={() => void productState.reload()}
             />
           ) : (
             <>
@@ -275,9 +275,7 @@ export default function Products({
                   <div>
                     <h2 id="products-list-title">Produtos cadastrados</h2>
                     <p>
-                      {normalizedSearch ||
-                      categoryFilter !== "all" ||
-                      availabilityFilter !== "all"
+                      {isFiltering
                         ? `${filteredProducts.length} de ${products.length} produtos`
                         : showAllProducts
                           ? `${products.length} produtos cadastrados`
@@ -296,10 +294,7 @@ export default function Products({
                 )}
                 {productLoading && <p role="status">Carregando produtos...</p>}
                 <div className="products-list-body">
-                  {(showAllProducts
-                    ? filteredProducts
-                    : filteredProducts.slice(0, 4)
-                  ).map((product) => (
+                  {visibleProducts.map((product) => (
                     <ProductRow
                       key={product.id}
                       product={product}
@@ -309,10 +304,22 @@ export default function Products({
                       onDelete={setProductToDelete}
                     />
                   ))}
-                  {filteredProducts.length === 0 && (
-                    <p className="products-no-results">
-                      Nenhum produto encontrado com os filtros selecionados.
-                    </p>
+                  {!productLoading && products.length === 0 && (
+                    <div className="products-no-results">
+                      <p>Nenhum produto ainda.</p>
+                      <Button size="small" onClick={openNewProduct}>
+                        <Plus aria-hidden="true" />
+                        Cadastrar primeiro produto
+                      </Button>
+                    </div>
+                  )}
+                  {products.length > 0 && filteredProducts.length === 0 && (
+                    <div className="products-no-results">
+                      <p>Nenhum produto encontrado com os filtros selecionados.</p>
+                      <Button size="small" variant="secondary" onClick={clearFilters}>
+                        Limpar filtros
+                      </Button>
+                    </div>
                   )}
                 </div>
               </section>
@@ -325,6 +332,7 @@ export default function Products({
         <ProductFormModal
           categories={productCategories}
           editingProductId={editingProductId}
+          hasUnsavedChanges={hasUnsavedChanges}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
           products={products}
@@ -332,6 +340,7 @@ export default function Products({
           onSave={handleSaveProduct}
           onPhotoChange={handlePhotoChange}
           onDelete={requestProductDeletion}
+          onCreateCategory={categoryState.createCategory}
           error={productError}
           busy={productBusy}
         />

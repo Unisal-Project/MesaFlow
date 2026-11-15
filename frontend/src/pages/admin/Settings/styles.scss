@@ -1,0 +1,57 @@
+.settings-content {
+  min-width: 0;
+  padding: var(--spacing-7) var(--spacing-9) var(--spacing-10);
+  h1 {
+    margin: 0 0 var(--spacing-6);
+  }
+}
+.settings-card {
+  max-width: 560px;
+  padding: var(--spacing-6);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 5%, transparent);
+  h2 {
+    margin: 0 0 var(--spacing-4);
+    font-size: var(--font-size-lg);
+  }
+  dl {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--spacing-3) var(--spacing-6);
+    margin: 0;
+  }
+  dt {
+    color: var(--text-secondary);
+  }
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+.settings-card + .settings-card {
+  margin-top: var(--spacing-6);
+}
+.settings-password-form {
+  display: grid;
+  gap: var(--spacing-4);
+  justify-items: start;
+  .field {
+    width: 100%;
+  }
+}
+.settings-message {
+  margin: 0;
+  color: var(--success);
+  &--error {
+    color: var(--error);
+  }
+}
+.settings-soon {
+  color: var(--text-secondary);
+}
+@media (max-width: 640px) {
+  .settings-content {
+    padding: var(--spacing-6) var(--spacing-4);
+  }
+}

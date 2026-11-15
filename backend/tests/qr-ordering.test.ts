@@ -293,3 +293,55 @@ test("public bill route replaces the old tracking route", async (t) => {
     await app.close();
   }
 });
+
+test("pedido QR cobra o preço promocional calculado no servidor", async () => {
+  let charged: unknown;
+  const client: any = {
+    $transaction: async (callback: (tx: any) => unknown) => callback(client),
+    $queryRaw: async () => undefined,
+    restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
+    attendance: { findFirst: async () => ({ id: 12n, status: "OPEN" }) },
+    product: {
+      findMany: async () => [
+        {
+          id: 4n,
+          price: "18.50",
+          promoType: "AMOUNT",
+          promoValue: "3.50",
+          promoActive: true,
+          promoStartsAt: null,
+          promoEndsAt: null,
+        },
+      ],
+      updateMany: async () => ({ count: 1 }),
+    },
+    stockMovement: { create: async () => undefined },
+    printJob: { create: async () => undefined },
+    order: {
+      create: async ({ data }: any) => {
+        charged = data.items.create[0].unitPrice;
+        return {
+          id: 21n,
+          attendanceId: 12n,
+          customerName: "Ana",
+          notes: null,
+          items: [
+            {
+              id: 31n,
+              orderId: 21n,
+              productId: 4n,
+              quantity: 1,
+              unitPrice: charged,
+              notes: null,
+            },
+          ],
+        };
+      },
+    },
+  };
+  await new QrOrderService(client).submit("table-token", {
+    customerName: "Ana",
+    items: [{ productId: "4", quantity: 1 }],
+  });
+  assert.equal(charged, "15.00");
+});

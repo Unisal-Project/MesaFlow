@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ChevronDown, Eye, List, Search, Tag } from "lucide-react";
+import { ChevronDown, Eye, List, Plus, Search, Tag } from "lucide-react";
 import { Button } from "@/components";
 import { CategoryRow } from "./components/CategoryRow";
 import { CategoryFormModal } from "./components/CategoryFormModal";
@@ -14,9 +14,11 @@ type CategoriesProps = {
   state: ReturnType<typeof useCategories>;
   products: AdminProduct[];
   onShowProducts: () => void;
+  /** Recarrega os produtos depois de movê-los na exclusão da categoria. */
+  onProductsChanged?: () => void;
 };
 
-export default function Categories({ state, products, onShowProducts, showAll, onShowAll }: CategoriesProps) {
+export default function Categories({ state, products, onShowProducts, onProductsChanged, showAll, onShowAll }: CategoriesProps) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
@@ -25,6 +27,15 @@ export default function Categories({ state, products, onShowProducts, showAll, o
     .filter((category) => (categoryFilter === "all" || String(category.id) === categoryFilter) &&
       (availabilityFilter === "all" || category.active === (availabilityFilter === "available")))
     .sort((a, b) => sortOrder === "name" ? a.name.localeCompare(b.name, "pt-BR") : sortOrder === "products" ? b.productCount - a.productCount : 0);
+
+  // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
+  const isFiltering = state.normalizedSearch !== "" || categoryFilter !== "all" || availabilityFilter !== "all";
+  const visible = showAll || isFiltering ? categories : categories.slice(0, 4);
+  const clearFilters = () => {
+    state.setSearchQuery("");
+    setCategoryFilter("all");
+    setAvailabilityFilter("all");
+  };
 
   const openAll = () => {
     state.setSearchQuery("");
@@ -68,7 +79,7 @@ export default function Categories({ state, products, onShowProducts, showAll, o
         <div className="products-list-heading">
           <div>
             <h2 id="categories-list-title">{showAll ? "Todas as categorias" : "Categorias cadastradas"}</h2>
-            <p>{showAll ? categories.length : Math.min(4, categories.length)} de {state.categories.length} categorias organizam o cardápio</p>
+            <p>{visible.length} de {state.categories.length} categorias organizam o cardápio</p>
           </div>
           {!showAll && <Button size="small" onClick={openAll}><Eye aria-hidden="true" />Ver todos</Button>}
         </div>
@@ -77,18 +88,25 @@ export default function Categories({ state, products, onShowProducts, showAll, o
         )}
         {state.loading && <p role="status">Carregando categorias...</p>}
         <div className="categories-list-body">
-          {(showAll ? categories : categories.slice(0, 4)).map((category) => (
+          {visible.map((category) => (
             <CategoryRow key={category.id} category={category} onStatusChange={state.updateCategoryStatus}
               onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
           ))}
-          {categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria encontrada com os filtros selecionados.</p></div>}
+          {!state.loading && state.categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria ainda.</p>
+            <Button size="small" onClick={state.openNewCategory}><Plus aria-hidden="true" />Cadastrar primeira categoria</Button></div>}
+          {state.categories.length > 0 && categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria encontrada com os filtros selecionados.</p>
+            <Button size="small" variant="secondary" onClick={clearFilters}>Limpar filtros</Button></div>}
         </div>
       </section>
       {state.isModalOpen && <CategoryFormModal isOpen editingCategoryId={state.editingCategoryId} form={state.categoryForm}
+        hasUnsavedChanges={state.hasUnsavedChanges}
         error={state.error} busy={state.busy}
-        onFormChange={state.setCategoryForm} onClose={state.closeModal} onSubmit={state.handleSaveCategory}
+        onFormChange={state.setCategoryForm} onClose={state.closeModal} onSubmit={(event) => void state.handleSaveCategory(event).finally(onProductsChanged)}
         onDelete={state.requestEditingCategoryDeletion} />}
-      <DeleteCategoryModal category={state.categoryToDelete} onClose={state.cancelCategoryDeletion} onConfirm={state.confirmCategoryDeletion}
+      <DeleteCategoryModal key={state.categoryToDelete?.id} category={state.categoryToDelete} categories={state.categories}
+        products={products.filter((product) => product.categoryId === state.categoryToDelete?.id)}
+        onClose={state.cancelCategoryDeletion}
+        onConfirm={(moveTo, moves) => void state.confirmCategoryDeletion(moveTo, moves).finally(onProductsChanged)}
         error={state.error} busy={state.busy} />
     </div>
   );

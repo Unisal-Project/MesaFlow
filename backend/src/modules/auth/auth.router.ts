@@ -5,6 +5,7 @@ import { AuthService } from "./auth.service.js";
 import { AuthController } from "./auth.controller.js";
 import { BcryptPasswordHasher } from "../../config/hash/bcrypt-password-hasher.js";
 import { createAuthRateLimit } from "./auth-rate-limit.js";
+import { authenticate } from "../../shared/authenticate.js";
 
 export async function registerAuthRoutes(
   app: FastifyInstance,
@@ -32,5 +33,11 @@ export async function registerAuthRoutes(
   );
   app.post("/auth/login", { onRequest: rateLimit }, (request, reply) =>
     controller.login(request, reply),
+  );
+  // Qualquer usuário autenticado troca a PRÓPRIA senha (fora de api-access).
+  app.patch(
+    "/auth/password",
+    { onRequest: [rateLimit, authenticate] },
+    (request, reply) => controller.changePassword(request, reply),
   );
 }

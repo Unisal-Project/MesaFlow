@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { promoIssue, promoSchemaFields } from "../promotion.js";
 
 const ProductCategoryIdSchema = z
   .union([
@@ -13,6 +14,7 @@ const ProductFieldsSchema = z.object({
   description: z.string().trim().nullable().optional(),
   price: z.number().positive().max(99_999_999.99).multipleOf(0.01),
   stockQuantity: z.number().int().nonnegative(),
+  trackStock: z.boolean(),
   available: z.boolean(),
   active: z.boolean(),
   categoryId: ProductCategoryIdSchema,
@@ -23,10 +25,23 @@ const ProductFieldsSchema = z.object({
       "Categorias adicionais duplicadas",
     )
     .optional(),
+  ...promoSchemaFields,
 });
+
+// No PATCH parcial o repositório revalida com os valores atuais.
+const checkPromo = (
+  product:
+    | z.infer<typeof ProductFieldsSchema>
+    | Partial<z.infer<typeof ProductFieldsSchema>>,
+  ctx: z.RefinementCtx,
+) => {
+  const message = promoIssue(product, product.price);
+  if (message) ctx.addIssue({ code: "custom", message });
+};
 
 export const ProductSchema = ProductFieldsSchema.extend({
   stockQuantity: ProductFieldsSchema.shape.stockQuantity.default(0),
+  trackStock: ProductFieldsSchema.shape.trackStock.default(true),
   available: ProductFieldsSchema.shape.available.default(true),
   active: ProductFieldsSchema.shape.active.default(true),
 })
@@ -34,7 +49,8 @@ export const ProductSchema = ProductFieldsSchema.extend({
   .refine(
     (product) => !product.additionalCategoryIds?.includes(product.categoryId),
     { message: "A categoria principal não pode ser adicional" },
-  );
+  )
+  .superRefine(checkPromo);
 
 export const ProductUpdateSchema = ProductFieldsSchema.partial()
   .strict()
@@ -48,7 +64,8 @@ export const ProductUpdateSchema = ProductFieldsSchema.partial()
   )
   .refine((product) => Object.keys(product).length > 0, {
     message: "Informe pelo menos um campo do produto",
-  });
+  })
+  .superRefine(checkPromo);
 
 export const ProductIdSchema = z
   .string()

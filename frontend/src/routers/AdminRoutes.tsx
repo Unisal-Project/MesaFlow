@@ -8,8 +8,12 @@ import {
   useParams,
 } from "react-router";
 import { AdminWorkspace } from "@/layouts/AdminWorkspace";
+import { ClientWorkspace } from "@/layouts/ClientWorkspace";
+import MenuPreview from "@/pages/admin/MenuPreview";
+import ProductPreview from "@/pages/admin/MenuPreview/ProductPreview";
 import Dashboard from "@/pages/admin/Dashboard";
 import Reports from "@/pages/admin/Reports";
+import Settings from "@/pages/admin/Settings";
 import Products from "@/pages/admin/Products";
 import Tables from "@/pages/admin/Table";
 import Orders from "@/pages/admin/Order";
@@ -81,6 +85,17 @@ export function AdminRoutes() {
   return (
     <>
       <Routes>
+        {/* Prévia do cardápio como o cliente vê: página cheia, sem sidebar. */}
+        <Route element={<ClientWorkspace />}>
+          <Route
+            path="ver-cardapio"
+            element={<MenuPreview />}
+          />
+          <Route
+            path="ver-cardapio/produto/:productId"
+            element={<ProductPreview />}
+          />
+        </Route>
         <Route element={<AdminWorkspace />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route
@@ -89,6 +104,12 @@ export function AdminRoutes() {
               <Dashboard
                 orders={orderState.orders}
                 tables={tableState.tables}
+                loading={orderState.loading || tableState.loading}
+                error={orderState.error || tableState.error}
+                onRetry={() => {
+                  void orderState.reload();
+                  void tableState.reload();
+                }}
                 onNavigate={goTo}
                 onViewOrders={() => showOrder()}
                 onViewOrder={showOrder}
@@ -107,6 +128,10 @@ export function AdminRoutes() {
                 state={tableState}
                 orders={orderState.orders}
                 onViewOrder={showOrder}
+                onLaunchOrder={(tableId) => {
+                  orderState.setIsCreatingOrder(true, tableId);
+                  navigate(adminPaths.orders);
+                }}
                 onNavigate={goTo}
               />
             }
@@ -147,6 +172,10 @@ export function AdminRoutes() {
             }
           />
           <Route path="relatorios" element={<Reports onNavigate={goTo} />} />
+          <Route
+            path="configuracoes"
+            element={<Settings onNavigate={goTo} />}
+          />
           <Route
             path="*"
             element={<Navigate to="/admin/dashboard" replace />}

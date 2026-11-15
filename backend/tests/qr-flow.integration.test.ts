@@ -52,6 +52,7 @@ test(
         categoryId,
         price: 10,
         stockQuantity: 5,
+        trackStock: true,
         available: true,
         active: true,
       });

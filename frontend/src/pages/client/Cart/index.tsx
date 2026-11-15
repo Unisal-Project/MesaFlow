@@ -7,6 +7,7 @@ import { CartItem } from "./components/CartItem";
 import { CartSummary } from "./components/CartSummary";
 
 import { useCartOrder } from "./hooks/useCartOrder";
+import { stockLimit } from "@/services/menu.service";
 
 import type { CartPageProps } from "./types/cart.types";
 
@@ -74,7 +75,7 @@ export function Cart({ onBack, onGoToMenu, onOrderConfirmed, allowOrdering = tru
 
                     const maxQuantity = Math.max(
                       line.quantity,
-                      line.product.stockQuantity - quantityReservedElsewhere
+                      stockLimit(line.product) - quantityReservedElsewhere
                     );
 
                     return (

@@ -37,6 +37,15 @@ export function logout() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+/**
+ * Botão "Sair": replace tira o painel do histórico (Voltar não retorna)
+ * e o recarregamento descarta o estado do admin em memória.
+ */
+export function signOut() {
+  logout();
+  window.location.replace("/login");
+}
+
 function saveSession(result: AuthResult) {
   localStorage.setItem(SESSION_KEY, JSON.stringify(result));
   return result;
@@ -53,3 +62,10 @@ export const register = (name: string, email: string, password: string) =>
     method: "POST",
     body: JSON.stringify({ name, email, password }),
   }).then(saveSession);
+
+/** Troca a senha do usuário logado; a sessão (token) continua válida. */
+export const changePassword = (currentPassword: string, newPassword: string) =>
+  apiRequest<void>("/auth/password", {
+    method: "PATCH",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });

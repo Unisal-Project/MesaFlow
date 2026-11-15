@@ -4,7 +4,10 @@ import CategoryService from "./category.service.js";
 
 import { createCategorySchema } from "./dto/create-category.dto.js";
 import { updateCategorySchema } from "./dto/update-category.dto.js";
-import { categoryIdSchema } from "./dto/category-id.dto.js";
+import {
+  categoryIdSchema,
+  deleteCategoryQuerySchema,
+} from "./dto/category-id.dto.js";
 
 import type { CategoryEntity } from "./entity/category.entity.js";
 
@@ -53,8 +56,9 @@ export default class CategoryController {
 
   async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
     const { id } = categoryIdSchema.parse(request.params);
+    const { moveTo } = deleteCategoryQuerySchema.parse(request.query);
 
-    await this.categoryService.deleteCategory(id);
+    await this.categoryService.deleteCategory(id, moveTo);
 
     return reply.status(204).send();
   }
@@ -65,6 +69,7 @@ export default class CategoryController {
       name: category.name,
       description: category.description,
       active: category.active,
+      ...category.promo,
       createdAt: category.createdAt,
       updatedAt: category.updatedAt,
     };

@@ -1,3 +1,5 @@
+import type { AppliedPromotion, PromoForm } from "@/utils/promotion";
+
 export type AdminProduct = {
   id: string;
   categoryId: string;
@@ -7,7 +9,12 @@ export type AdminProduct = {
   category: string;
   price: string;
   priceValue: number;
+  /** Preço cobrado hoje (backend), já com promoção. */
+  finalPrice: string;
+  finalPriceValue: number;
+  promotion: AppliedPromotion | null;
   quantity: number;
+  trackStock: boolean;
   available: boolean;
   observation?: string;
   imageUrl?: string;
@@ -22,7 +29,9 @@ export type NewProductForm = {
   category: string;
   additionalCategoryIds: string[];
   imageUrl: string;
+  trackStock: boolean;
   available: boolean;
+  promo: PromoForm;
 };
 
 export type ProductsProps = {

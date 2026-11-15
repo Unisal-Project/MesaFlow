@@ -32,6 +32,7 @@ export type TablesProps = {
   state: ReturnType<typeof useTables>;
   orders: Order[];
   onViewOrder: (orderId: number) => void;
+  onLaunchOrder?: (tableId: string) => void;
   onNavigate?: (id: string) => void;
 };
 

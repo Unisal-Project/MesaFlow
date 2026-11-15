@@ -236,10 +236,25 @@ export default function Orders({
                   );
                 })}
 
-                {filteredOrders.length === 0 && (
+                {/* Carregando já tem aviso próprio; separa vazio real de filtro. */}
+                {!state.loading && filteredOrders.length === 0 && (
                   <div className="orders-empty-state">
-                    <h3>Nenhum pedido encontrado</h3>
-                    <p>Ajuste a busca para encontrar o pedido.</p>
+                    {orders.length === 0 ? (
+                      <>
+                        <h3>Nenhum pedido ainda</h3>
+                        <Button onClick={() => setIsCreatingOrder(true)}>
+                          <Plus aria-hidden="true" />
+                          Lançar primeiro pedido
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h3>Nenhum pedido encontrado</h3>
+                        <Button variant="secondary" onClick={() => openOrder()}>
+                          Limpar filtros
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -465,7 +480,7 @@ export default function Orders({
       {isCreatingOrder && (
         <OrderEditPanel
           mode="create"
-          tableId=""
+          tableId={state.newOrderTableId ?? ""}
           items={[]}
           catalog={state.catalog}
           tableOptions={state.tableOptions}

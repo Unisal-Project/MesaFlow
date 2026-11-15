@@ -17,7 +17,7 @@ function LoginRoute() {
   return <Login onEnter={() => navigate("/admin/dashboard")} />;
 }
 
-function RequireAuth({ children }: { children: ReactNode }) {
+export function RequireAuth({ children }: { children: ReactNode }) {
   return getSession() ? children : <Navigate to="/login" replace />;
 }
 

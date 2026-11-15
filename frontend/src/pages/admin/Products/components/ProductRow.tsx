@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
-import { Button, Switch, TextField } from "@/components";
+import { Badge, Button, Switch, TextField } from "@/components";
+import { promotionLabel } from "@/utils/promotion";
 
 import { Pencil } from "lucide-react";
 
@@ -20,6 +22,12 @@ export function ProductRow({
   onEdit,
   onDelete,
 }: ProductRowProps) {
+  // Texto em edição; vazio não é salvo e volta ao valor gravado ao sair do campo.
+  const [draft, setDraft] = useState<string | null>(null);
+  const step = (delta: number) => {
+    setDraft(null);
+    onUpdateQuantity(product.id, Math.max(0, product.quantity + delta));
+  };
   return (
     <article className="product-row">
       <div className="product-identity">
@@ -37,31 +45,68 @@ export function ProductRow({
         </div>
       </div>
 
-      <strong className="product-price">{product.price}</strong>
+      <strong className="product-price">
+        {product.promotion && (
+          <s className="product-card-old-price">{product.price}</s>
+        )}
+        <span>{product.finalPrice}</span>
+        {product.promotion && (
+          <Badge variant="success">{promotionLabel(product.promotion)}</Badge>
+        )}
+      </strong>
 
       <div className="product-controls">
-        <TextField
-          className="product-quantity"
-          id={`product-quantity-${product.id}`}
-          label="Estoque"
-          aria-label={`Estoque de ${product.name}`}
-          type="number"
-          min={0}
-          value={product.quantity}
-          onChange={(event) =>
-            onUpdateQuantity(
-              product.id,
-              Math.max(0, Number(event.target.value)),
-            )
-          }
-        />
+        {product.trackStock ? (
+          <div className="product-stock">
+            <button
+              type="button"
+              className="product-stock-step"
+              aria-label={`Diminuir estoque de ${product.name}`}
+              disabled={product.quantity <= 0}
+              onClick={() => step(-1)}
+            >
+              −
+            </button>
+            <TextField
+              className="product-quantity"
+              id={`product-quantity-${product.id}`}
+              label="Estoque"
+              aria-label={`Estoque de ${product.name}`}
+              type="number"
+              inputMode="numeric"
+              min={0}
+              value={draft ?? product.quantity}
+              onChange={(event) => {
+                setDraft(event.target.value);
+                if (event.target.value !== "")
+                  onUpdateQuantity(
+                    product.id,
+                    Math.max(0, Number(event.target.value)),
+                  );
+              }}
+              onBlur={() => setDraft(null)}
+            />
+            <button
+              type="button"
+              className="product-stock-step"
+              aria-label={`Aumentar estoque de ${product.name}`}
+              onClick={() => step(1)}
+            >
+              +
+            </button>
+          </div>
+        ) : (
+          <span className="product-quantity product-quantity--untracked">
+            Sem controle
+          </span>
+        )}
 
         <Switch
           className={`product-status ${
             product.available ? "is-active" : "is-inactive"
           }`}
           aria-label={`Disponibilidade de ${product.name}`}
-          label={product.available ? "Ativo" : "Inativo"}
+          label={product.available ? "Disponível" : "Indisponível"}
           checked={product.available}
           onChange={(event) =>
             onUpdateAvailability(product.id, event.target.checked)

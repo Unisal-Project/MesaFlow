@@ -118,3 +118,89 @@ for (const failReload of [false, true])
     assert.equal(hook.isProductModalOpen, false);
     assert.match(hook.products[0].imageUrl, /uploads\/products\/suco.webp$/);
   });
+
+test("produto sem controle de estoque salva sem exigir nem enviar quantidade", async () => {
+  let body;
+  globalThis.fetch = async (url, options) => {
+    if (!options.method) return Response.json([]);
+    body = JSON.parse(options.body);
+    return Response.json({ id: "9", ...body, price: "5.00", imageUrl: null });
+  };
+  const render = createHookRunner(() =>
+    useProducts([{ id: "1", name: "Bebidas" }]),
+  );
+  let hook = render();
+  hook.openNewProduct();
+  hook = render();
+  hook.setNewProduct({
+    ...hook.newProduct,
+    name: "Água",
+    price: "5",
+    quantity: "",
+    trackStock: false,
+    category: "1",
+  });
+  hook = render();
+  await hook.handleSaveProduct({ preventDefault() {} });
+  hook = render();
+  assert.equal(hook.error, "");
+  assert.equal(body.trackStock, false);
+  assert.equal("stockQuantity" in body, false);
+});
+
+test("salvar produto envia a promoção e a lista mostra o preço final do backend", async () => {
+  let body;
+  globalThis.fetch = async (url, options) => {
+    if (!options.method) return Response.json([]);
+    body = JSON.parse(options.body);
+    return Response.json({
+      id: "9",
+      ...body,
+      price: "20.00",
+      finalPrice: "16.00",
+      promotion: { type: "PERCENT", value: "20", source: "PRODUCT" },
+      imageUrl: null,
+    });
+  };
+  const render = createHookRunner(() =>
+    useProducts([{ id: "1", name: "Bebidas" }]),
+  );
+  let hook = render();
+  hook.openNewProduct();
+  hook = render();
+  hook.setNewProduct({
+    ...hook.newProduct,
+    name: "Suco",
+    price: "20",
+    category: "1",
+    promo: { ...hook.newProduct.promo, promoValue: "20", promoActive: true },
+  });
+  hook = render();
+  await hook.handleSaveProduct({ preventDefault() {} });
+  hook = render();
+  assert.deepEqual(
+    {
+      promoType: body.promoType,
+      promoValue: body.promoValue,
+      promoActive: body.promoActive,
+    },
+    { promoType: "PERCENT", promoValue: 20, promoActive: true },
+  );
+  assert.equal("price" in body && body.price, 20);
+  assert.equal(hook.products[0].finalPriceValue, 16);
+  assert.equal(hook.products[0].promotion.source, "PRODUCT");
+});
+
+test("formulário de edição detecta alterações não salvas", () => {
+  const render = createHookRunner(() => useProducts([{ id: "1", name: "Bebidas" }]));
+  let hook = render();
+  hook.openEditProduct({
+    id: "8", name: "Suco", quantity: 4, categoryId: "1", additionalCategoryIds: [],
+    imageUrl: "", observation: "", trackStock: true, available: true,
+  });
+  hook = render();
+  assert.equal(hook.hasUnsavedChanges, false);
+  hook.setNewProduct({ ...hook.newProduct, name: "Suco de laranja" });
+  hook = render();
+  assert.equal(hook.hasUnsavedChanges, true);
+});

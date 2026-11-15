@@ -27,37 +27,6 @@
   align-items: center;
   gap: clamp(var(--spacing-4), 5vw, var(--spacing-16));
 }
-.mf-dashboard-search {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-3);
-  width: min(280px, 28vw);
-  min-height: 40px;
-  padding: 0 var(--spacing-4);
-  border-radius: var(--radius-medium);
-  background: var(--background);
-  color: var(--text);
-  svg {
-    width: 20px;
-    height: 20px;
-    flex-shrink: 0;
-  }
-  input {
-    min-width: 0;
-    width: 100%;
-    border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--text);
-    font-size: var(--font-size-xs);
-  }
-  input::placeholder {
-    color: var(--text-secondary);
-  }
-  &:focus-within {
-    box-shadow: var(--focus-ring);
-  }
-}
 .mf-dashboard-body {
   padding: var(--spacing-5) var(--spacing-9) var(--spacing-12);
 }
@@ -331,11 +300,8 @@
   }
   .mf-dashboard-tools {
     width: 100%;
+    justify-content: flex-end;
     gap: var(--spacing-4);
-  }
-  .mf-dashboard-search {
-    width: auto;
-    flex: 1;
   }
   .mf-dashboard-indicators {
     gap: var(--spacing-3);
@@ -475,4 +441,12 @@
       svg { flex-shrink: 0; width: 18px; height: 18px; }
     }
   }
+}
+
+.mf-dashboard-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-3);
+  color: var(--error);
 }

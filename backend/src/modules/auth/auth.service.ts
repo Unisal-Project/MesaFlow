@@ -35,6 +35,31 @@ export class AuthService {
     return this.createAuthResult(publicUser);
   }
 
+  /** Troca a senha do próprio usuário; o id vem sempre do JWT. */
+  async changePassword(
+    userId: bigint,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.userRepository.findById(userId);
+    if (!user?.active) throw new AppError("Usuário inativo", 403);
+    // 400 e não 401: senha errada não deve encerrar a sessão no front.
+    if (
+      !(await this.passwordHasher.compareHasher(
+        currentPassword,
+        user.passwordHash,
+      ))
+    ) {
+      throw new AppError("Senha atual incorreta", 400);
+    }
+    if (currentPassword === newPassword) {
+      throw new AppError("A nova senha deve ser diferente da atual", 400);
+    }
+    await this.userRepository.update(userId, {
+      passwordHash: await this.passwordHasher.createHasher(newPassword),
+    });
+  }
+
   private createAuthResult(user: PublicUser): AuthResult {
     return {
       user,

@@ -89,6 +89,145 @@ for (const [url, expected] of cases) {
   });
 }
 
+test("prévia do cardápio exige login e não mostra a barra do cliente", async () => {
+  const { RequireAuth } = await server.ssrLoadModule(
+    "/src/routers/AppRouter.tsx",
+  );
+  const render = (url, element) =>
+    renderToString(
+      createElement(
+        MemoryRouter,
+        { initialEntries: [url] },
+        createElement(
+          Routes,
+          null,
+          createElement(Route, { path: "/login", element: "tela-login" }),
+          createElement(Route, { path: "/admin/*", element }),
+          createElement(Route, {
+            path: "/*",
+            element: createElement(ClientRoutes),
+          }),
+        ),
+      ),
+    );
+  // Sem sessão o RequireAuth não renderiza nada do admin (redireciona).
+  const guarded = render(
+    "/admin/ver-cardapio",
+    createElement(RequireAuth, null, createElement(AdminRoutes)),
+  );
+  assert.ok(!guarded.includes("client-menu"));
+  const preview = render("/admin/ver-cardapio", createElement(AdminRoutes));
+  assert.ok(preview.includes("Voltar ao painel"));
+  assert.ok(!preview.includes("client-tabbar"));
+  assert.ok(!/prévia/i.test(preview));
+  const client = render("/cardapio", createElement(AdminRoutes));
+  assert.ok(client.includes("client-tabbar"));
+  assert.ok(client.includes("Voltar ao início"));
+});
+
+test("Menu do cliente segue com a barra de abas e abre o detalhe", async () => {
+  const { Menu } = await server.ssrLoadModule("/src/pages/client/Menu/index.tsx");
+  const { CartContext } = await server.ssrLoadModule("/src/contexts/CartContext.ts");
+  const html = renderToString(
+    createElement(
+      CartContext.Provider,
+      { value: { itemCount: 0 } },
+      createElement(Menu, {
+        catalog: {
+          categories: [{ id: "1", name: "Lanches", active: true }],
+          products: [{ id: "7", name: "X-Burger", categoryId: "1", price: "20", finalPrice: "20", available: true, active: true }],
+        },
+        onBack() {},
+        onSelectProduct() {},
+        onOpenCart() {},
+      }),
+    ),
+  );
+  assert.ok(html.includes("client-tabbar"));
+  assert.ok(html.includes("Voltar ao início"));
+  assert.ok(html.includes("Ver item: X-Burger"));
+});
+
+test("formulário de produto só oferece a prévia para produto salvo", async () => {
+  const { ProductFormModal } = await server.ssrLoadModule(
+    "/src/pages/admin/Products/components/ProductFormModal.tsx",
+  );
+  const { emptyPromoForm } = await server.ssrLoadModule("/src/utils/promotion.ts");
+  const render = (editingProductId) =>
+    renderToString(
+      createElement(ProductFormModal, {
+        categories: [{ id: "1", name: "Lanches" }],
+        editingProductId,
+        newProduct: {
+          name: "X-Burger", category: "1", additionalCategoryIds: [], price: "20",
+          quantity: "1", observation: "", imageUrl: "", trackStock: true,
+          available: true, promo: emptyPromoForm,
+        },
+        products: [],
+        setNewProduct() {},
+        onClose() {},
+        onSave() {},
+        onPhotoChange() {},
+        onDelete() {},
+      }),
+    );
+  assert.ok(render("7").includes('href="/admin/ver-cardapio?produto=7&amp;origem=produtos"'));
+  assert.ok(!render(null).includes("/admin/ver-cardapio"));
+});
+
+test("configurações exige login e mostra a conta com o menu do usuário", async () => {
+  const { RequireAuth } = await server.ssrLoadModule(
+    "/src/routers/AppRouter.tsx",
+  );
+  const render = (element) =>
+    renderToString(
+      createElement(
+        MemoryRouter,
+        { initialEntries: ["/admin/configuracoes"] },
+        createElement(
+          Routes,
+          null,
+          createElement(Route, { path: "/admin/*", element }),
+        ),
+      ),
+    );
+  const guarded = render(
+    createElement(RequireAuth, null, createElement(AdminRoutes)),
+  );
+  assert.ok(!guarded.includes("Configurações"));
+  const page = render(createElement(AdminRoutes));
+  assert.ok(page.includes("Mais opções em breve."));
+  // Disclosure: botão controla a lista; sem role=menu/menuitem.
+  assert.match(page, /aria-controls="([^"]+)" aria-expanded="false"/);
+  const menuId = page.match(/aria-controls="([^"]+)"/)[1];
+  assert.ok(page.includes(`id="${menuId}" class="admin-profile-menu" hidden=""`));
+  assert.ok(!/role="menu(item)?"/.test(page));
+  assert.equal(paths.adminPaths.settings, "/admin/configuracoes");
+});
+
+test("Sair limpa a sessão e volta ao login sem histórico", async () => {
+  const { signOut } = await server.ssrLoadModule(
+    "/src/services/auth.service.ts",
+  );
+  const storage = new Map([["mesaflow.session", "{}"]]);
+  const previous = globalThis.localStorage;
+  globalThis.localStorage = {
+    getItem: (key) => storage.get(key) ?? null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: (key) => storage.delete(key),
+  };
+  const replaced = [];
+  window.location.replace = (url) => replaced.push(url);
+  try {
+    signOut();
+  } finally {
+    globalThis.localStorage = previous;
+    delete window.location.replace;
+  }
+  assert.equal(storage.has("mesaflow.session"), false);
+  assert.deepEqual(replaced, ["/login"]);
+});
+
 test("navegação do cliente preserva o token exato do QR em todos os destinos", () => {
   const search = "?mesa=a%2Bb%2Fc&origem=qr";
   for (const pathname of Object.values(paths.clientPaths)) {

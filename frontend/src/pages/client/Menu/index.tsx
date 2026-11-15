@@ -13,10 +13,11 @@ import {
 
 import { useMenu } from "./hooks/useMenu";
 
-import type { Product } from "@/services/menu.service";
+import { isSoldOut, type Product } from "@/services/menu.service";
 import type { MenuProps } from "./types/menu.types";
 
 import { formatPriceMenu } from "@/utils/formatPrice";
+import { promotionLabel } from "@/utils/promotion";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 
 import "./styles.scss";
@@ -55,7 +56,10 @@ export function Menu({ onSelectProduct, onOpenCart, onBack, onNavigate, catalog 
             <div className={section.id === "menu-featured" ? "client-menu-products client-menu-products--carousel" : "client-menu-products"}>
           {section.products.map((product) => <ProductCard key={product.id} name={product.name} description={product.description ?? ""}
             variant={section.id === "menu-featured" ? "featured" : "default"}
-            price={formatPriceMenu(product.price)} available={product.available}
+            price={formatPriceMenu(product.finalPrice)}
+            originalPrice={product.promotion ? formatPriceMenu(product.price) : undefined}
+            badge={product.promotion ? promotionLabel(product.promotion) : undefined} available={product.available && !isSoldOut(product)}
+            unavailableLabel={product.available ? "Esgotado" : undefined}
             image={resolveImageUrl(product.imageUrl) ? <img className="client-menu-photo" src={resolveImageUrl(product.imageUrl)} alt={product.name} loading="lazy" /> : <div className="client-menu-photo" aria-hidden="true" />}
             onSelect={() => handleSelectProduct(product)} />)}
             </div>

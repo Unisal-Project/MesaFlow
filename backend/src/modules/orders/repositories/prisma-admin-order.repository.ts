@@ -2,6 +2,7 @@ import { PrismaConnector } from "../../../database/prisma.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 import { byProductId, moveStock } from "../stock.js";
+import { effectivePrice, promoSelect } from "../../products/promotion.js";
 
 type Tx = Prisma.TransactionClient;
 
@@ -254,7 +255,7 @@ export class PrismaAdminOrderRepository {
     return order;
   }
 
-  /** Valida catálogo e disponibilidade; devolve o preço atual de cada produto. */
+  /** Valida catálogo e disponibilidade; devolve o preço efetivo (com promoção). */
   private async lockProducts(tx: Tx, ids: bigint[]) {
     const prices = new Map<bigint, string>();
     if (ids.length === 0) return prices;
@@ -263,9 +264,9 @@ export class PrismaAdminOrderRepository {
       select: {
         id: true,
         name: true,
-        price: true,
         active: true,
         available: true,
+        ...promoSelect,
       },
     });
     for (const id of ids) {
@@ -276,7 +277,7 @@ export class PrismaAdminOrderRepository {
           409,
         );
       }
-      prices.set(id, product.price.toString());
+      prices.set(id, effectivePrice(product));
     }
     return prices;
   }

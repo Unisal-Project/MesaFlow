@@ -4,7 +4,6 @@ import {
   ClipboardList,
   Check,
   Eye,
-  Search,
   UtensilsCrossed
 } from "lucide-react";
 
@@ -25,8 +24,13 @@ import "./styles.scss";
 
 const indicatorIcons = [ChartNoAxesCombined, ClipboardList, UtensilsCrossed, ArrowUpRight];
 
-export default function Dashboard({ orders, tables, onNavigate, onViewOrders, onViewReports, onViewOrder }: DashboardProps) {
+export default function Dashboard({ orders, tables, loading = false, error = "", onRetry, onNavigate, onViewOrders, onViewReports, onViewOrder }: DashboardProps) {
   const { today, indicators, queue } = useDashboard(orders, tables);
+  // Sem dados confiáveis, "—" em vez de zeros que parecem reais.
+  // Erro de carga = erro sem nenhum dado; erro de ação (salvar pedido/mesa)
+  // chega no mesmo campo e não deve esconder indicadores válidos.
+  const loadFailed = Boolean(error) && !orders.length && !tables.length;
+  const pending = loading || loadFailed;
 
   return (
     <div className="mf-dashboard">
@@ -45,14 +49,6 @@ export default function Dashboard({ orders, tables, onNavigate, onViewOrders, on
             <span>Visão geral</span><strong>/ &nbsp;Dashboard</strong>
           </div>
           <div className="mf-dashboard-tools">
-            <label className="mf-dashboard-search">
-              <Search aria-hidden="true" />
-              <input
-                type="search"
-                aria-label="Buscar pedidos, mesas ou produtos"
-                placeholder="Buscar pedidos, mesas ou produtos"
-              />
-            </label>
             <Notifications />
           </div>
         </header>
@@ -70,13 +66,25 @@ export default function Dashboard({ orders, tables, onNavigate, onViewOrders, on
             </time>
           </section>
 
+          {loadFailed && (
+            <p className="mf-dashboard-error" role="alert">
+              {error}
+              {onRetry && (
+                <Button type="button" variant="secondary" size="small" onClick={onRetry}>
+                  Tentar de novo
+                </Button>
+              )}
+            </p>
+          )}
+          {loading && <p role="status">Carregando indicadores…</p>}
+
           <section
             className="mf-dashboard-indicators"
             aria-label="Indicadores da operação"
           >
             {indicators.map(({ label, value, detail }, index) => {
               const Icon = indicatorIcons[index];
-              return <StatCard key={label} label={label} value={value} trend={detail} icon={<Icon aria-hidden="true" size={24} />} />;
+              return <StatCard key={label} label={label} value={pending ? "—" : value} trend={pending ? "" : detail} icon={<Icon aria-hidden="true" size={24} />} />;
             })}
           </section>
 

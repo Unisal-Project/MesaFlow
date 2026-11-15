@@ -11,6 +11,10 @@ export type DashboardPeriod =
 export type DashboardProps = {
   orders: Order[];
   tables: RestaurantTable[];
+  /** Pedidos ou mesas ainda carregando: indicadores mostram "—". */
+  loading?: boolean;
+  error?: string;
+  onRetry?: () => void;
   onNavigate?: (id: string) => void;
   onViewOrder?: (orderId: number) => void;
   onViewOrders?: () => void;

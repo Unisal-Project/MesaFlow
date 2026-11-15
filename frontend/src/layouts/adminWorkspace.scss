@@ -112,7 +112,7 @@ html.admin-workspace-active {
 // A mesma navegação lateral se transforma em uma barra ao alcance do polegar.
 @include mixins.down(workspace) {
   html.admin-workspace-active {
-    :is(.mf-dashboard, .orders-page, .tables-page, .products-page, .reports-page) {
+    :is(.mf-dashboard, .orders-page, .tables-page, .products-page, .reports-page, .settings-page) {
       grid-template-columns: minmax(0, 1fr);
       padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 
@@ -121,7 +121,9 @@ html.admin-workspace-active {
         z-index: 60;
         inset: auto 12px max(12px, env(safe-area-inset-bottom, 0px));
         display: grid;
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        // Uma coluna por item: navegação, "Ver cardápio" e conta.
+        grid-auto-columns: minmax(0, 1fr);
+        grid-auto-flow: column;
         align-self: auto;
         gap: 2px;
         width: min(calc(100% - 24px), 560px);
@@ -136,8 +138,39 @@ html.admin-workspace-active {
         background: var(--surface);
         box-shadow: 0 6px 24px color-mix(in srgb, var(--text) 12%, transparent);
 
-        .admin-brand, .admin-navigation-label, .profile-area {
+        .admin-brand, .admin-navigation-label {
           display: none;
+        }
+
+        .admin-profile {
+          min-width: 0;
+          margin: 0;
+        }
+
+        .admin-profile > .profile-area {
+          border: 0;
+
+          .admin-profile-avatar, small {
+            display: none;
+          }
+
+          .admin-profile-icon {
+            display: block;
+          }
+
+          strong {
+            max-width: 100%;
+            overflow: hidden;
+            color: inherit;
+            font-size: inherit;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .admin-profile-menu {
+          bottom: calc(100% + 14px);
+          left: auto;
+          width: 200px;
         }
 
         button {

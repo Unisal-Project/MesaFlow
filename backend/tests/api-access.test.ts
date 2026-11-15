@@ -38,6 +38,7 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
         ["GET", "/attendances/:id/open"],
         ["POST", "/attendances/:id/confirm-payment"],
         ["GET", "/users"],
+        ["PATCH", "/auth/password"],
       ] as const)
         api.route({ method, url: path, handler: async () => ({ ok: true }) });
     },
@@ -73,6 +74,7 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
     ["GET", "/attendances/1/open"],
     ["POST", "/attendances/1/confirm-payment"],
     ["GET", "/users"],
+    ["PATCH", "/auth/password"],
   ] as const) {
     assert.equal(
       (await app.inject({ method, url: `/api/v1${path}` })).statusCode,

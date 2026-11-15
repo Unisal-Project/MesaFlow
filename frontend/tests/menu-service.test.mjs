@@ -69,9 +69,19 @@ const productInput = {
   description: null,
   price: 9.9,
   stockQuantity: 10,
+  trackStock: true,
   available: true,
   categoryId: "1",
 };
+
+test("produto sem controle de estoque nunca esgota e limita a 99", () => {
+  const tracked = { trackStock: true, stockQuantity: 0 };
+  const untracked = { trackStock: false, stockQuantity: 0 };
+  assert.equal(menu.isSoldOut(tracked), true);
+  assert.equal(menu.stockLimit({ ...tracked, stockQuantity: 3 }), 3);
+  assert.equal(menu.isSoldOut(untracked), false);
+  assert.equal(menu.stockLimit(untracked), 99);
+});
 
 test("criar produto faz POST /products com preço numérico", async () => {
   globalThis.fetch = async (url, options) => {
@@ -117,4 +127,9 @@ test("imagens relativas apontam para o backend; absolutas ficam como estão", as
   assert.equal(a.imageUrl, "http://localhost:3333/uploads/products/b.png");
   assert.equal(b.imageUrl, "https://cdn.exemplo.com/c.png");
   assert.equal(c.imageUrl, null);
+});
+
+test("unitPrice usa finalPrice do backend e cai para price em carrinho antigo", () => {
+  assert.equal(menu.unitPrice({ price: "10.00", finalPrice: "8.00" }), 8);
+  assert.equal(menu.unitPrice({ price: "10.00" }), 10);
 });

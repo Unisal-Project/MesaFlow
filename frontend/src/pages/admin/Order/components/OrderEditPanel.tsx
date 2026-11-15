@@ -60,6 +60,17 @@ export function OrderEditPanel({
         ),
       })),
   );
+  // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
+  const draft = JSON.stringify({ table, observation, items });
+  const [initialDraft] = useState(draft);
+  const requestClose = () => {
+    if (draft === initialDraft || window.confirm("Descartar alterações?"))
+      onCancel();
+  };
+  const closeRef = useRef(requestClose);
+  useEffect(() => {
+    closeRef.current = requestClose;
+  });
   const [productSearch, setProductSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -91,7 +102,7 @@ export function OrderEditPanel({
     closeButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onCancel();
+        closeRef.current();
         return;
       }
       if (event.key !== "Tab" || !modalRef.current) return;
@@ -117,7 +128,7 @@ export function OrderEditPanel({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [onCancel]);
+  }, []);
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -181,7 +192,7 @@ export function OrderEditPanel({
     <div
       className="order-edit-modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onCancel();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -207,7 +218,7 @@ export function OrderEditPanel({
             type="button"
             className="order-edit-modal-close"
             aria-label="Fechar edição do pedido"
-            onClick={onCancel}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -274,8 +285,9 @@ export function OrderEditPanel({
                         <span>
                           <strong>{product.name}</strong>
                           <small>
-                            {formatCurrency(product.unitPrice)} ·{" "}
-                            {product.stock} em estoque
+                            {formatCurrency(product.unitPrice)}
+                            {product.stock !== null &&
+                              ` · ${product.stock} em estoque`}
                           </small>
                         </span>
                         <Plus aria-hidden="true" />
@@ -407,7 +419,7 @@ export function OrderEditPanel({
             <strong>{formatCurrency(total)}</strong>
           </div>
           <div className="order-edit-actions">
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" onClick={requestClose}>
               Cancelar
             </Button>
             <Button disabled={!isValid} loading={busy} onClick={saveChanges}>

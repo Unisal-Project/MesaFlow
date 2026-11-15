@@ -1,6 +1,7 @@
 import {
   useEffect,
   useRef,
+  useState,
   type Dispatch,
   type FormEvent,
   type SetStateAction,
@@ -34,10 +35,19 @@ export function TableFormModal({
 }: TableFormModalProps) {
   const isEditing = editingTableId !== null;
   const modalRef = useRef<HTMLElement>(null);
-  const closeRef = useRef(onClose);
+  // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
+  const [initialForm] = useState(() => JSON.stringify(tableForm));
+  const requestClose = () => {
+    if (
+      JSON.stringify(tableForm) === initialForm ||
+      window.confirm("Descartar alterações?")
+    )
+      onClose();
+  };
+  const closeRef = useRef(requestClose);
   useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
+    closeRef.current = requestClose;
+  });
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
@@ -84,7 +94,7 @@ export function TableFormModal({
       className="table-modal-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -110,7 +120,7 @@ export function TableFormModal({
             type="button"
             className="table-modal-close"
             aria-label="Fechar"
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -190,7 +200,7 @@ export function TableFormModal({
               </Button>
             )}
             <div className="table-modal-save-actions">
-              <Button type="button" variant="secondary" onClick={onClose}>
+              <Button type="button" variant="secondary" onClick={requestClose}>
                 Cancelar
               </Button>
               <Button type="submit" disabled={busy}>

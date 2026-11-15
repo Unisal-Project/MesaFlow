@@ -229,7 +229,11 @@ export function useOrder(
   const [activityMessage, setActivityMessage] = useState("");
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
   const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  // null = fechado; "" = novo pedido sem mesa; id = mesa pré-selecionada.
+  const [newOrderTableId, setNewOrderTableId] = useState<string | null>(null);
+  const isCreatingOrder = newOrderTableId !== null;
+  const setIsCreatingOrder = (open: boolean, tableId = "") =>
+    setNewOrderTableId(open ? tableId : null);
 
   const reload = useCallback(
     () =>
@@ -273,8 +277,9 @@ export function useOrder(
         .map((product) => ({
           id: product.id,
           name: product.name,
-          unitPrice: product.priceValue,
-          stock: product.quantity,
+          // Estimativa: quem cobra é o backend (preço efetivo com promoção).
+          unitPrice: product.finalPriceValue,
+          stock: product.trackStock ? product.quantity : null,
         })),
     [products],
   );
@@ -410,6 +415,7 @@ export function useOrder(
     selectOrder,
     filteredOrders,
     isCreatingOrder,
+    newOrderTableId,
     activityMessage,
     searchQuery,
     setSearchQuery,

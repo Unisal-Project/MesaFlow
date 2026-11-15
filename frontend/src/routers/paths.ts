@@ -4,6 +4,9 @@ export const adminPaths: Record<string, string> = {
   tables: "/admin/mesas",
   menu: "/admin/cardapio",
   reports: "/admin/relatorios",
+  menuPreview: "/admin/ver-cardapio",
+  menuPreviewProduct: "/admin/ver-cardapio/produto",
+  settings: "/admin/configuracoes",
 };
 
 export const clientPaths: Record<string, string> = {

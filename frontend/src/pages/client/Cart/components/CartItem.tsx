@@ -1,10 +1,11 @@
 import { QuantitySelector, TextAreaField } from "@/components";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { formatPrice } from "@/utils/formatPrice";
+import { unitPrice as priceOf } from "@/services/menu.service";
 import type { CartItemProps } from "../types/cart.types";
 
 export function CartItem({ line, maxQuantity, onUpdateQuantity, onUpdateNotes, onSplitLine, onRemove }: CartItemProps) {
-  const unitPrice = Number(line.product.price);
+  const unitPrice = priceOf(line.product);
   return (
     <li className="cart-line">
       <div className="cart-line-overview">

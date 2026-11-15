@@ -2,6 +2,7 @@ import { AppError } from "../../shared/errors/app-errors.js";
 import { PrismaConnector } from "../../database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { byProductId, moveStock } from "../orders/stock.js";
+import { effectivePrice, promoSelect } from "../products/promotion.js";
 
 export interface QrOrderInput {
   customerName: string;
@@ -198,10 +199,7 @@ export class QrOrderService {
             active: true,
             available: true,
           },
-          select: {
-            id: true,
-            price: true,
-          },
+          select: { id: true, ...promoSelect },
         });
 
         const byId = new Map(
@@ -218,7 +216,7 @@ export class QrOrderService {
           return {
             productId: product.id,
             quantity: item.quantity,
-            unitPrice: product.price,
+            unitPrice: effectivePrice(product),
             notes: item.notes,
           };
         });

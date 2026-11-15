@@ -4,15 +4,28 @@ import {
   fetchCategories,
   removeCategory,
   saveCategory,
+  saveProduct,
   type Category as ApiCategory,
 } from "@/services/menu.service";
 
-import type { Category, CategoryForm } from "../types/category.types";
+import {
+  emptyPromoForm,
+  toPromoForm,
+  toPromoInput,
+} from "@/utils/promotion";
+
+import type {
+  Category,
+  CategoryForm,
+  CategoryProductMove,
+} from "../types/category.types";
+import { toDecimal } from "../../Products/utils/decimal";
 
 const emptyCategoryForm: CategoryForm = {
   name: "",
   description: "",
   active: true,
+  promo: emptyPromoForm,
 };
 
 const message = (error: unknown) =>
@@ -25,6 +38,11 @@ const toCategory = (record: ApiCategory): Category => ({
   description: record.description ?? "",
   active: record.active,
   productCount: 0,
+  promoType: record.promoType ?? null,
+  promoValue: record.promoValue ?? null,
+  promoActive: record.promoActive ?? false,
+  promoStartsAt: record.promoStartsAt ?? null,
+  promoEndsAt: record.promoEndsAt ?? null,
 });
 
 export function useCategories(
@@ -38,6 +56,8 @@ export function useCategories(
   );
   const [categoryForm, setCategoryForm] =
     useState<CategoryForm>(emptyCategoryForm);
+  // Formulário como foi aberto; diferença = alterações não salvas.
+  const [savedForm, setSavedForm] = useState<CategoryForm>(emptyCategoryForm);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null,
   );
@@ -83,17 +103,21 @@ export function useCategories(
   const openNewCategory = () => {
     setEditingCategoryId(null);
     setCategoryForm(emptyCategoryForm);
+    setSavedForm(emptyCategoryForm);
     setError("");
     setIsModalOpen(true);
   };
 
   const openEditCategory = (category: Category) => {
     setEditingCategoryId(category.id);
-    setCategoryForm({
+    const form: CategoryForm = {
       name: category.name,
       description: category.description,
       active: category.active,
-    });
+      promo: toPromoForm(category),
+    };
+    setCategoryForm(form);
+    setSavedForm(form);
     setError("");
     setIsModalOpen(true);
   };
@@ -112,6 +136,10 @@ export function useCategories(
             name: categoryForm.name.trim(),
             description: description || null,
             active: categoryForm.active,
+            ...toPromoInput({
+              ...categoryForm.promo,
+              promoValue: toDecimal(categoryForm.promo.promoValue),
+            }),
           },
           previous?.id,
         ),
@@ -127,6 +155,15 @@ export function useCategories(
     } finally {
       setBusy(false);
     }
+  };
+
+  /** "+ Nova" do formulário de produto: só o nome; o resto na tela própria. */
+  const createCategory = async (name: string) => {
+    const saved = toCategory(
+      await saveCategory({ name: name.trim(), description: null, active: true }),
+    );
+    setCategories((current) => [...current, saved]);
+    return saved;
   };
 
   const updateCategoryStatus = async (categoryId: string, active: boolean) => {
@@ -168,11 +205,30 @@ export function useCategories(
     setError("");
   };
 
-  const confirmCategoryDeletion = async () => {
+  /**
+   * Produtos com destino diferente de moveTo são movidos um a um; o DELETE com
+   * moveTo leva o restante (inclusive inativos, que a tela não mostra).
+   */
+  const confirmCategoryDeletion = async (
+    moveTo?: string,
+    moves: CategoryProductMove[] = [],
+  ) => {
     if (!categoryToDelete) return;
     setBusy(true);
     try {
-      await removeCategory(categoryToDelete.id);
+      for (const { product, categoryId } of moves) {
+        if (categoryId === moveTo) continue;
+        await saveProduct(
+          {
+            categoryId,
+            additionalCategoryIds: product.additionalCategoryIds.filter(
+              (id) => id !== categoryId && id !== categoryToDelete.id,
+            ),
+          },
+          product.id,
+        );
+      }
+      await removeCategory(categoryToDelete.id, moveTo);
       setCategories((current) =>
         current.filter((category) => category.id !== categoryToDelete.id),
       );
@@ -195,6 +251,9 @@ export function useCategories(
     editingCategoryId,
     categoryForm,
     setCategoryForm,
+    hasUnsavedChanges:
+      JSON.stringify(categoryForm) !== JSON.stringify(savedForm),
+    createCategory,
     closeModal,
     openNewCategory,
     openEditCategory,

@@ -45,7 +45,8 @@ export type OrderCatalogProduct = {
   id: string;
   name: string;
   unitPrice: number;
-  stock: number;
+  /** null = produto sem controle de estoque. */
+  stock: number | null;
 };
 
 export type OrderTableOption = { id: string; label: string };

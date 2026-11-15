@@ -1,4 +1,5 @@
 import { useEffect, useRef, type FormEvent } from "react";
+import { PromotionFields } from "../../Products/components/PromotionFields";
 import { Button, TextAreaField, TextField } from "@/components";
 import { X } from "lucide-react";
 
@@ -8,6 +9,7 @@ type CategoryFormModalProps = {
   isOpen: boolean;
   editingCategoryId: string | null;
   form: CategoryForm;
+  hasUnsavedChanges?: boolean;
   error?: string;
   busy?: boolean;
   onFormChange: (form: CategoryForm) => void;
@@ -20,6 +22,7 @@ export function CategoryFormModal({
   isOpen,
   editingCategoryId,
   form,
+  hasUnsavedChanges = false,
   error,
   busy,
   onFormChange,
@@ -27,10 +30,14 @@ export function CategoryFormModal({
   onSubmit,
 }: CategoryFormModalProps) {
   const modalRef = useRef<HTMLElement>(null);
-  const closeRef = useRef(onClose);
+  // Esc, fundo, X e Cancelar passam por aqui: só pergunta se houver alteração.
+  const requestClose = () => {
+    if (!hasUnsavedChanges || window.confirm("Descartar alterações?")) onClose();
+  };
+  const closeRef = useRef(requestClose);
   useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
+    closeRef.current = requestClose;
+  });
   useEffect(() => {
     if (!isOpen) return;
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -75,7 +82,7 @@ export function CategoryFormModal({
       className="category-modal-backdrop"
       role="presentation"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -102,7 +109,7 @@ export function CategoryFormModal({
             type="button"
             className="category-modal-close"
             aria-label="Fechar"
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -124,8 +131,7 @@ export function CategoryFormModal({
           />
 
           <TextAreaField
-            label="Descrição"
-            required
+            label="Descrição (opcional)"
             maxLength={140}
             placeholder="Explique quais produtos fazem parte desta categoria"
             value={form.description}
@@ -137,11 +143,17 @@ export function CategoryFormModal({
             }
           />
 
+          <PromotionFields
+            idPrefix="category"
+            value={form.promo}
+            onChange={(promo) => onFormChange({ ...form, promo })}
+          />
+
           {error && <p className="category-form-error" role="alert">{error}</p>}
 
           <footer className="category-modal-actions">
             <div className="category-modal-save-actions">
-              <Button type="button" variant="ghost" onClick={onClose}>
+              <Button type="button" variant="ghost" onClick={requestClose}>
                 Cancelar
               </Button>
 

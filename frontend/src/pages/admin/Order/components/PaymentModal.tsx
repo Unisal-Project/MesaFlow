@@ -53,7 +53,10 @@ const parseAmount = (value: string) => {
   return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
 };
 
-const toInputAmount = (cents: number) => (cents / 100).toFixed(2);
+const toInputAmount = (cents: number) =>
+  (cents / 100).toFixed(2).replace(".", ",");
+/** Percentual digitado com vírgula ou ponto. */
+const parseRate = (value: string) => Number(value.replace(",", "."));
 
 export function PaymentModal({
   orderId,
@@ -78,6 +81,18 @@ export function PaymentModal({
     },
   ]);
 
+  // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
+  const draft = JSON.stringify({ payments, serviceFeeWaived });
+  const [initialDraft] = useState(draft);
+  const requestClose = () => {
+    if (draft === initialDraft || window.confirm("Descartar alterações?"))
+      onClose();
+  };
+  const closeRef = useRef(requestClose);
+  useEffect(() => {
+    closeRef.current = requestClose;
+  });
+
   const paidCents = useMemo(
     () =>
       payments.reduce((sum, payment) => sum + parseAmount(payment.amount), 0),
@@ -97,9 +112,9 @@ export function PaymentModal({
     payments.every(
       (payment) =>
         payment.method !== "credit" ||
-        (Number.isFinite(Number(payment.feeRate)) &&
-          Number(payment.feeRate) >= 0 &&
-          Number(payment.feeRate) <= 100),
+        (Number.isFinite(parseRate(payment.feeRate)) &&
+          parseRate(payment.feeRate) >= 0 &&
+          parseRate(payment.feeRate) <= 100),
     );
 
   useEffect(() => {
@@ -109,7 +124,7 @@ export function PaymentModal({
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
       if (event.key !== "Tab" || !modalRef.current) return;
 
       const focusableElements = Array.from(
@@ -135,7 +150,7 @@ export function PaymentModal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const updatePayment = (id: number, changes: Partial<PaymentDraft>) => {
     setPayments((current) =>
@@ -183,12 +198,12 @@ export function PaymentModal({
         return {
           method: payment.method,
           amount,
-          ...(payment.method === "credit" && Number(payment.feeRate) > 0
+          ...(payment.method === "credit" && parseRate(payment.feeRate) > 0
             ? {
-                processingFeeRate: Number(payment.feeRate),
+                processingFeeRate: parseRate(payment.feeRate),
                 processingFee:
                   Math.round(
-                    (parseAmount(payment.amount) * Number(payment.feeRate)) /
+                    (parseAmount(payment.amount) * parseRate(payment.feeRate)) /
                       100,
                   ) / 100,
               }
@@ -209,7 +224,7 @@ export function PaymentModal({
     <div
       className="payment-modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -229,7 +244,7 @@ export function PaymentModal({
             type="button"
             className="payment-modal-close"
             aria-label="Fechar pagamento"
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -309,9 +324,7 @@ export function PaymentModal({
                         <div>
                           <span>R$</span>
                           <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             aria-label={`Valor do pagamento ${index + 1}`}
                             value={payment.amount}
@@ -330,9 +343,7 @@ export function PaymentModal({
                           <div>
                             <span>R$</span>
                             <input
-                              type="number"
-                              min={payment.amount || "0"}
-                              step="0.01"
+                              type="text"
                               inputMode="decimal"
                               aria-label={`Valor recebido do pagamento ${index + 1}`}
                               value={payment.receivedAmount}
@@ -351,10 +362,7 @@ export function PaymentModal({
                           <span>Taxa maquininha</span>
                           <div>
                             <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.01"
+                              type="text"
                               inputMode="decimal"
                               aria-label={`Taxa da maquininha do pagamento ${index + 1}`}
                               placeholder="0,00"
@@ -446,13 +454,13 @@ export function PaymentModal({
                     </small>
                   )}
                   {payment.method === "credit" &&
-                    Number(payment.feeRate) > 0 && (
+                    parseRate(payment.feeRate) > 0 && (
                       <small>
                         Taxa informativa:{" "}
                         {formatCurrency(
                           Math.round(
                             (parseAmount(payment.amount) *
-                              Number(payment.feeRate)) /
+                              parseRate(payment.feeRate)) /
                               100,
                           ) / 100,
                         )}
@@ -493,7 +501,7 @@ export function PaymentModal({
         </div>
 
         <footer className="payment-modal-footer">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={requestClose}>
             Voltar
           </Button>
           <Button disabled={!canComplete} onClick={finishOrder}>

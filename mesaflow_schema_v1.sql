@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS categories (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255) NULL,
+    promo_type ENUM('PERCENT', 'AMOUNT') NULL,
+    promo_value DECIMAL(10,2) NULL,
+    promo_active BOOLEAN NOT NULL DEFAULT FALSE,
+    promo_starts_at DATETIME NULL,
+    promo_ends_at DATETIME NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -54,7 +59,13 @@ CREATE TABLE IF NOT EXISTS products (
     description TEXT NULL,
     image_url VARCHAR(2048) NULL,
     price DECIMAL(10,2) NOT NULL,
+    promo_type ENUM('PERCENT', 'AMOUNT') NULL,
+    promo_value DECIMAL(10,2) NULL,
+    promo_active BOOLEAN NOT NULL DEFAULT FALSE,
+    promo_starts_at DATETIME NULL,
+    promo_ends_at DATETIME NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
+    track_stock BOOLEAN NOT NULL DEFAULT TRUE,
     available BOOLEAN NOT NULL DEFAULT TRUE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -82,6 +93,25 @@ CREATE TABLE IF NOT EXISTS products (
 -- quando o database-init reaplica este schema idempotente.
 ALTER TABLE products
     ADD COLUMN IF NOT EXISTS image_url VARCHAR(2048) NULL AFTER description;
+
+-- Produto sem controle de estoque nunca esgota; existentes continuam controlados.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS track_stock BOOLEAN NOT NULL DEFAULT TRUE AFTER stock_quantity;
+
+-- Promoção opcional (regra 8): desligada por padrão; datas nulas = sem limite.
+ALTER TABLE categories
+    ADD COLUMN IF NOT EXISTS promo_type ENUM('PERCENT', 'AMOUNT') NULL AFTER description,
+    ADD COLUMN IF NOT EXISTS promo_value DECIMAL(10,2) NULL AFTER promo_type,
+    ADD COLUMN IF NOT EXISTS promo_active BOOLEAN NOT NULL DEFAULT FALSE AFTER promo_value,
+    ADD COLUMN IF NOT EXISTS promo_starts_at DATETIME NULL AFTER promo_active,
+    ADD COLUMN IF NOT EXISTS promo_ends_at DATETIME NULL AFTER promo_starts_at;
+
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS promo_type ENUM('PERCENT', 'AMOUNT') NULL AFTER price,
+    ADD COLUMN IF NOT EXISTS promo_value DECIMAL(10,2) NULL AFTER promo_type,
+    ADD COLUMN IF NOT EXISTS promo_active BOOLEAN NOT NULL DEFAULT FALSE AFTER promo_value,
+    ADD COLUMN IF NOT EXISTS promo_starts_at DATETIME NULL AFTER promo_active,
+    ADD COLUMN IF NOT EXISTS promo_ends_at DATETIME NULL AFTER promo_starts_at;
 
 
 -- ============================================================

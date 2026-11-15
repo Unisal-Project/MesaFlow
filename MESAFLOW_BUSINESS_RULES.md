@@ -190,6 +190,7 @@ Cada produto possui:
 - descrição;
 - preço atual;
 - quantidade em estoque;
+- `track_stock` (controlar estoque);
 - `available`;
 - `active`.
 
@@ -205,15 +206,27 @@ Indica disponibilidade operacional atual.
 
 Um produto pode continuar cadastrado e ativo, mas estar temporariamente indisponível.
 
+### `track_stock`
+
+Indica se o produto tem controle de estoque. Padrão `true` (produtos existentes continuam controlados).
+
+Com `track_stock = false` (ex.: itens feitos sob demanda):
+
+- o produto nunca esgota; a disponibilidade depende só de `available` e `active`;
+- pedidos não debitam nem repõem estoque e não geram `stock_movements`;
+- a quantidade por pedido fica limitada apenas pelos limites gerais do pedido (QR: até 99 por item e 100 itens por pedido).
+
+Ligar o controle exige informar uma quantidade válida.
+
 ### Estoque zero
 
-Quando:
+Quando o produto controla estoque e:
 
 ```text
 stock_quantity = 0
 ```
 
-o produto deve ser considerado indisponível para novos pedidos.
+o produto deve ser considerado indisponível para novos pedidos e aparece como "Esgotado" no cardápio.
 
 O backend deve impedir a inclusão do produto sem estoque.
 
@@ -226,6 +239,24 @@ O backend deve impedir a inclusão do produto sem estoque.
 `order_items.unit_price` representa o preço cobrado no momento da venda.
 
 Nunca recalcular uma venda antiga usando `products.price`.
+
+### Promoções
+
+Produto e categoria podem ter promoção: tipo `PERCENT` (inteiro de 1 a 90) ou `AMOUNT` (valor em R$), mais `promo_active` (liga/desliga sem perder a configuração) e datas opcionais `promo_starts_at`/`promo_ends_at`.
+
+A promoção vale quando está ligada e dentro da vigência: início vazio ou já passado, e fim vazio ou ainda não alcançado. Sem fim, vale até o administrador desligar.
+
+O preço efetivo de um produto é calculado sempre pelo servidor, no momento do pedido:
+
+- a promoção do produto, se vigente, vence a da categoria;
+- senão vale a promoção da categoria PRINCIPAL; categorias adicionais nunca aplicam promoção;
+- o cálculo é em centavos (percentual arredondado half-up) e o preço final mínimo é R$ 0,01;
+- promoção de produto em R$ maior ou igual ao preço é recusada no cadastro;
+- promoção de categoria em R$ maior ou igual ao preço de um produto é ignorada para aquele produto (ele fica com o preço cheio).
+
+O preço cobrado (`order_items.unit_price`) é o preço efetivo, nos pedidos via QR Code, via funcionário/admin e na inclusão de itens novos ao editar um pedido. Itens que já estavam no pedido mantêm o preço da venda. O cliente nunca envia preço nem desconto.
+
+Conta, fechamento e relatórios usam o `unit_price` gravado, por isso refletem a promoção sem cálculo adicional.
 
 Exemplo:
 
@@ -276,6 +307,8 @@ Se qualquer etapa falhar, toda a operação deve sofrer rollback.
 ## 10. Estoque
 
 O estoque é debitado no momento em que o pedido é confirmado/criado.
+
+As regras desta seção e das seções 11 e 16 valem apenas para produtos com `track_stock = true` (ver seção 7).
 
 Exemplo:
 

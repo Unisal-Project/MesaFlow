@@ -16,7 +16,14 @@ import {
   type Product,
 } from "@/services/menu.service";
 
+import {
+  emptyPromoForm,
+  toPromoForm,
+  toPromoInput,
+} from "@/utils/promotion";
+
 import type { AdminProduct, NewProductForm } from "../types/product.types";
+import { toDecimal } from "../utils/decimal";
 
 export const emptyProductForm: NewProductForm = {
   name: "",
@@ -26,7 +33,9 @@ export const emptyProductForm: NewProductForm = {
   category: "",
   additionalCategoryIds: [],
   imageUrl: "",
+  trackStock: true,
   available: true,
+  promo: emptyPromoForm,
 };
 
 type CategoryRef = { id: string; name: string };
@@ -47,6 +56,8 @@ export function useProducts(categories: CategoryRef[] = []) {
   const [newProduct, setNewProduct] =
     useState<NewProductForm>(emptyProductForm);
   const [photo, setPhoto] = useState<File | null>(null);
+  // Formulário como foi aberto; diferença = alterações não salvas.
+  const [savedForm, setSavedForm] = useState<NewProductForm>(emptyProductForm);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [productToDelete, setProductToDelete] = useState<AdminProduct | null>(
@@ -88,7 +99,11 @@ export function useProducts(categories: CategoryRef[] = []) {
       category: names.get(record.categoryId) ?? "Sem categoria",
       price: formatPrice(record.price),
       priceValue: Number(record.price),
+      finalPrice: formatPrice(record.finalPrice ?? record.price),
+      finalPriceValue: Number(record.finalPrice ?? record.price),
+      promotion: record.promotion ?? null,
       quantity: record.stockQuantity,
+      trackStock: record.trackStock,
       available: record.available,
       observation: record.description ?? undefined,
       imageUrl: record.imageUrl ?? undefined,
@@ -119,7 +134,9 @@ export function useProducts(categories: CategoryRef[] = []) {
       sortOrder === "name"
         ? a.name.localeCompare(b.name, "pt-BR")
         : sortOrder === "stock"
-          ? a.quantity - b.quantity
+          ? // Sem controle de estoque vai para o fim.
+            Number(!a.trackStock) - Number(!b.trackStock) ||
+            a.quantity - b.quantity
           : 0,
     );
 
@@ -185,6 +202,7 @@ export function useProducts(categories: CategoryRef[] = []) {
   const openNewProduct = () => {
     setEditingProductId(null);
     setNewProduct(emptyProductForm);
+    setSavedForm(emptyProductForm);
     setPhoto(null);
     setError("");
     setIsProductModalOpen(true);
@@ -193,16 +211,20 @@ export function useProducts(categories: CategoryRef[] = []) {
   const openEditProduct = (product: AdminProduct) => {
     const record = records.find((entry) => entry.id === product.id);
     setEditingProductId(product.id);
-    setNewProduct({
+    const form: NewProductForm = {
       name: product.name,
       quantity: String(product.quantity),
-      price: record?.price ?? "",
+      price: (record?.price ?? "").replace(".", ","),
       observation: product.observation ?? "",
       category: product.categoryId,
       additionalCategoryIds: product.additionalCategoryIds,
       imageUrl: product.imageUrl ?? "",
+      trackStock: product.trackStock,
       available: product.available,
-    });
+      promo: toPromoForm(record ?? {}),
+    };
+    setNewProduct(form);
+    setSavedForm(form);
     setPhoto(null);
     setError("");
     setIsProductModalOpen(true);
@@ -220,13 +242,16 @@ export function useProducts(categories: CategoryRef[] = []) {
 
   const handleSaveProduct = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const price = Number(newProduct.price);
+    const price = Number(toDecimal(newProduct.price));
     const stockQuantity = Number(newProduct.quantity);
     if (!(price > 0)) {
       setError("Informe um preço maior que zero.");
       return;
     }
-    if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
+    if (
+      newProduct.trackStock &&
+      (!Number.isInteger(stockQuantity) || stockQuantity < 0)
+    ) {
       setError("Informe um estoque válido.");
       return;
     }
@@ -237,14 +262,22 @@ export function useProducts(categories: CategoryRef[] = []) {
           name: newProduct.name.trim(),
           description: newProduct.observation.trim() || null,
           price: Math.round(price * 100) / 100,
-          stockQuantity,
+          // Sem controle a quantidade é ignorada e o saldo salvo fica intacto.
+          ...(newProduct.trackStock && { stockQuantity }),
+          trackStock: newProduct.trackStock,
           available: newProduct.available,
+          ...toPromoInput({
+            ...newProduct.promo,
+            promoValue: toDecimal(newProduct.promo.promoValue),
+          }),
           categoryId: newProduct.category,
           additionalCategoryIds: newProduct.additionalCategoryIds,
         },
         editingProductId ?? undefined,
       );
       setEditingProductId(product.id);
+      // Já está salvo: se o upload falhar, só a foto pendente conta como alteração.
+      setSavedForm({ ...newProduct, imageUrl: product.imageUrl ?? "" });
       setRecords((current) =>
         current.some((entry) => entry.id === product.id)
           ? current.map((entry) => (entry.id === product.id ? product : entry))
@@ -289,6 +322,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     editingProductId,
     newProduct,
     setNewProduct,
+    hasUnsavedChanges: JSON.stringify(newProduct) !== JSON.stringify(savedForm),
     searchQuery,
     setSearchQuery,
     availabilityFilter,

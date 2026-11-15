@@ -7,6 +7,20 @@ import {
   ProductUpdateInput,
 } from "../entity/products.entity.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
+import {
+  effectivePrice,
+  pricing,
+  promoFields,
+  promoIssue,
+  promoSelect,
+  type Promo,
+} from "../promotion.js";
+
+// A promoção da categoria principal entra no preço final (regra 8).
+const include = {
+  additionalCategories: true,
+  category: { select: promoFields },
+} as const;
 
 export class PrismaProductRepository implements ProductsRepository {
   constructor(
@@ -32,7 +46,7 @@ export class PrismaProductRepository implements ProductsRepository {
                 })),
               },
             },
-            include: { additionalCategories: true },
+            include,
           }),
         );
       });
@@ -44,7 +58,7 @@ export class PrismaProductRepository implements ProductsRepository {
   async getProductById(id: bigint): Promise<ProductOutput | null> {
     const product = await this.prismaClient.product.findUnique({
       where: { id },
-      include: { additionalCategories: true },
+      include,
     });
     return product ? this.toProduct(product) : null;
   }
@@ -52,7 +66,7 @@ export class PrismaProductRepository implements ProductsRepository {
   async getAllProducts(): Promise<ProductOutput[]> {
     const products = await this.prismaClient.product.findMany({
       where: { active: true },
-      include: { additionalCategories: true },
+      include,
     });
     return products.map((product) => this.toProduct(product));
   }
@@ -83,6 +97,10 @@ export class PrismaProductRepository implements ProductsRepository {
       data.stockQuantity = productUpdateInput.stockQuantity;
     }
 
+    if (productUpdateInput.trackStock !== undefined) {
+      data.trackStock = productUpdateInput.trackStock;
+    }
+
     if (productUpdateInput.available !== undefined) {
       data.available = productUpdateInput.available;
     }
@@ -95,15 +113,33 @@ export class PrismaProductRepository implements ProductsRepository {
       data.categoryId = productUpdateInput.categoryId;
     }
 
+    for (const key of [
+      "promoType",
+      "promoValue",
+      "promoActive",
+      "promoStartsAt",
+      "promoEndsAt",
+    ] as const) {
+      if (productUpdateInput[key] !== undefined) {
+        Object.assign(data, { [key]: productUpdateInput[key] });
+      }
+    }
+
     try {
       return await this.prismaClient.$transaction(async (tx) => {
         // Serializa mudanças de categorias do mesmo produto.
         await tx.$queryRaw`SELECT id FROM products WHERE id = ${id} FOR UPDATE`;
         const current = await tx.product.findUnique({
           where: { id },
-          include: { additionalCategories: true },
+          include,
         });
         if (!current) throw new AppError("Produto não encontrado", 404);
+        // PATCH parcial: valida a promoção com o estado resultante.
+        const promoMessage = promoIssue(
+          { ...current, ...productUpdateInput },
+          productUpdateInput.price ?? Number(current.price),
+        );
+        if (promoMessage) throw new AppError(promoMessage, 400);
         const categoryId = productUpdateInput.categoryId ?? current.categoryId;
         const additionalIds =
           productUpdateInput.additionalCategoryIds ??
@@ -119,7 +155,7 @@ export class PrismaProductRepository implements ProductsRepository {
           await tx.product.update({
             where: { id },
             data,
-            include: { additionalCategories: true },
+            include,
           }),
         );
       });
@@ -155,11 +191,12 @@ export class PrismaProductRepository implements ProductsRepository {
         active: true,
         available: true,
       },
+      select: { id: true, ...promoSelect },
     });
 
     return products.map((product) => ({
       id: product.id,
-      price: product.price.toString(),
+      price: effectivePrice(product),
     }));
   }
 
@@ -184,12 +221,18 @@ export class PrismaProductRepository implements ProductsRepository {
   }
 
   private toProduct(
-    product: Product & { additionalCategories?: { categoryId: bigint }[] },
+    product: Product & {
+      additionalCategories?: { categoryId: bigint }[];
+      category?: Promo | null;
+    },
   ): ProductOutput {
-    const { additionalCategories, ...data } = product;
+    // Sem spread de category: só o preço final e a promoção aplicada saem.
+    const { additionalCategories, category, ...data } = product;
     return {
       ...data,
       price: product.price.toString(),
+      promoValue: product.promoValue?.toString() ?? null,
+      ...pricing({ ...product, category }),
       additionalCategoryIds: (additionalCategories ?? []).map(
         (item) => item.categoryId,
       ),

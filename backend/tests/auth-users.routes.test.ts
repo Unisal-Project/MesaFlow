@@ -240,3 +240,81 @@ test("login and registration reject excessive requests from one client", async (
   }
   await app.close();
 });
+
+/** App com Ana (token) e Bia; o rate limit é por app, então cada teste cria o seu. */
+async function passwordApp() {
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(fastifyJwt, { secret: "test-secret" });
+  const repository = makeRepository();
+  await app.register(registerAuthRoutes, { repository });
+  const signup = async (email: string) =>
+    (
+      await app.inject({
+        method: "POST",
+        url: "/auth/register",
+        payload: { name: "Ana", email, password: "secret123" },
+      })
+    ).json().accessToken as string;
+  const bearer = `Bearer ${await signup("ana@example.com")}`;
+  await signup("bia@example.com");
+  const change = (payload: object, authorization: string | null = bearer) =>
+    app.inject({
+      method: "PATCH",
+      url: "/auth/password",
+      headers: authorization ? { authorization } : {},
+      payload,
+    });
+  const login = async (email: string, password: string) =>
+    (
+      await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: { email, password },
+      })
+    ).statusCode;
+  return { app, repository, change, login };
+}
+
+test("PATCH /auth/password exige token e valida o corpo", async () => {
+  const { app, change } = await passwordApp();
+  const valid = { currentPassword: "secret123", newPassword: "novaSenha1" };
+  assert.equal((await change(valid, null)).statusCode, 401);
+  assert.equal(
+    (await change({ ...valid, newPassword: "curta" })).statusCode,
+    400,
+  );
+  assert.equal(
+    (await change({ ...valid, newPassword: "secret123" })).statusCode,
+    400,
+  );
+  // O id vem só do token: campo extra no corpo é recusado (strict).
+  assert.equal((await change({ ...valid, id: "2" })).statusCode, 400);
+  await app.close();
+});
+
+test("PATCH /auth/password troca só a senha do usuário do token", async () => {
+  const { app, repository, change, login } = await passwordApp();
+  const wrong = await change({
+    currentPassword: "errada123",
+    newPassword: "novaSenha1",
+  });
+  assert.equal(wrong.statusCode, 400);
+  assert.equal(wrong.json().message, "Senha atual incorreta");
+  assert.equal(
+    (await change({ currentPassword: "secret123", newPassword: "novaSenha1" }))
+      .statusCode,
+    204,
+  );
+  assert.equal(await login("ana@example.com", "novaSenha1"), 200);
+  assert.equal(await login("ana@example.com", "secret123"), 401);
+  assert.equal(await login("bia@example.com", "secret123"), 200);
+
+  await repository.update(1n, { active: false });
+  assert.equal(
+    (await change({ currentPassword: "novaSenha1", newPassword: "outra1234" }))
+      .statusCode,
+    403,
+  );
+  await app.close();
+});
