@@ -36,7 +36,7 @@ export const emptyProductForm: NewProductForm = {
   additionalCategoryIds: [],
   imageUrl: "",
   moreImages: [],
-  trackStock: true,
+  trackStock: false,
   available: true,
   promo: emptyPromoForm,
 };
@@ -130,6 +130,7 @@ export function useProducts(categories: CategoryRef[] = []) {
       available: record.available,
       observation: record.description ?? undefined,
       imageUrl: record.imageUrl ?? undefined,
+      thumbUrl: record.thumbUrls?.[0],
     }));
   }, [records, categories]);
 
@@ -243,6 +244,9 @@ export function useProducts(categories: CategoryRef[] = []) {
       additionalCategoryIds: product.additionalCategoryIds,
       imageUrl: product.imageUrl ?? "",
       moreImages: record ? serverPhotos(record).slice(1) : [],
+      photoThumbs: record
+        ? Object.fromEntries(serverPhotos(record).map((url, index) => [url, record.thumbUrls?.[index] ?? url]))
+        : {},
       trackStock: product.trackStock,
       available: product.available,
       promo: toPromoForm(record ?? {}),

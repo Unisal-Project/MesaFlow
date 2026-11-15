@@ -459,3 +459,107 @@ test("mensagens de aplicação, pausa e retomada usam singular para um item", as
     patchResponse = () => Response.json({ products: 2, categories: 1 });
   }
 });
+
+test("remover confirma apenas promoções próprias e envia todos os campos nulos", async () => {
+  const originalCategories = categories.map((category) => ({ ...category }));
+  const confirm = window.confirm;
+  const confirmed = [];
+  try {
+    Object.assign(categories[0], {
+      promoType: "AMOUNT",
+      promoValue: "2",
+      promoActive: false,
+      promoStartsAt: null,
+      promoEndsAt: "2000-01-01T00:00:00Z",
+    });
+    window.confirm = (message) => {
+      confirmed.push(message);
+      return true;
+    };
+    const hook = run(() => usePromotions());
+    await hook().reload();
+    hook().selectAll(["p:1", "p:2", "c:3"]);
+    requests.length = 0;
+    patchResponse = () => Response.json({ products: 1, categories: 1 });
+    hook().removePromotion();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(confirmed, [
+      "Remover a promoção de 2 itens? Esta ação não pode ser desfeita.",
+    ]);
+    assert.deepEqual(
+      requests.find((request) => request.method === "PATCH").body,
+      {
+        productIds: ["1"],
+        categoryIds: ["3"],
+        promoActive: false,
+        promoType: null,
+        promoValue: null,
+        promoStartsAt: null,
+        promoEndsAt: null,
+      },
+    );
+    assert.equal(hook().notice, "Promoção removida de 2 itens.");
+    assert.deepEqual(hook().selected, []);
+    patchResponse = () => Response.json({ products: 1, categories: 0 });
+    hook().toggle("p:1");
+    hook().removePromotion();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(
+      confirmed[1],
+      "Remover a promoção de 1 item? Esta ação não pode ser desfeita.",
+    );
+    assert.equal(hook().notice, "Promoção removida de 1 item.");
+  } finally {
+    categories.splice(0, categories.length, ...originalCategories);
+    window.confirm = confirm;
+    patchResponse = () => Response.json({ products: 2, categories: 1 });
+  }
+});
+
+test("remoção recusada mantém seleção e não envia PATCH", async () => {
+  const confirm = window.confirm;
+  try {
+    window.confirm = () => false;
+    const hook = run(() => usePromotions());
+    await hook().reload();
+    hook().toggle("p:1");
+    requests.length = 0;
+    hook().removePromotion();
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(requests.length, 0);
+    assert.deepEqual(hook().selected, ["p:1"]);
+    assert.equal(hook().notice, "");
+  } finally {
+    window.confirm = confirm;
+  }
+});
+
+test("seleção sem promoção própria, mesmo herdada, não confirma nem remove", async () => {
+  const original = { ...products[1] };
+  const confirm = window.confirm;
+  let confirmations = 0;
+  try {
+    products[1].promotion = {
+      type: "PERCENT",
+      value: "10",
+      source: "CATEGORY",
+    };
+    window.confirm = () => {
+      confirmations++;
+      return true;
+    };
+    const hook = run(() => usePromotions());
+    await hook().reload();
+    hook().toggle("p:2");
+    assert.equal(hook().replacedCount, 0);
+    requests.length = 0;
+    hook().removePromotion();
+    hook().clearSelection();
+    hook().removePromotion();
+    assert.equal(confirmations, 0);
+    assert.equal(requests.length, 0);
+  } finally {
+    products[1] = original;
+    window.confirm = confirm;
+  }
+});

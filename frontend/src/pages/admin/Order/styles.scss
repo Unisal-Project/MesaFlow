@@ -1545,3 +1545,16 @@
   color: var(--error);
   font-size: var(--font-size-sm);
 }
+
+.payment-settings-loading {
+  padding: var(--spacing-6);
+  margin: auto;
+  max-width: calc(100% - var(--spacing-8));
+  width: calc(var(--spacing-16) * 7);
+  border: 0;
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  color: var(--text-primary);
+  &[open] { display: grid; gap: var(--spacing-4); }
+  &::backdrop { background: var(--overlay); }
+}

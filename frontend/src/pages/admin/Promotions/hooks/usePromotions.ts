@@ -107,7 +107,7 @@ export function usePromotions() {
     try {
       const result = await applyPromotions(body);
       const count = result.products + result.categories;
-      setNotice(`${done} a ${count} ${count === 1 ? "item" : "itens"}.`);
+      setNotice(`${done} ${count} ${count === 1 ? "item" : "itens"}.`);
       setPanelOpen(false);
       setSelected([]);
       await reload();
@@ -148,7 +148,7 @@ export function usePromotions() {
           promoValue: form.promoValue.trim().replace(",", "."),
         }),
       },
-      "Promoção aplicada",
+      "Promoção aplicada a",
     );
   };
 
@@ -158,7 +158,39 @@ export function usePromotions() {
       return setError("Selecione ao menos um produto ou categoria.");
     void send(
       { productIds: ids("p:"), categoryIds: ids("c:"), promoActive: false },
-      "Promoção pausada",
+      "Promoção pausada a",
+    );
+  };
+
+  const removePromotion = () => {
+    if (busy || !replacedCount) return;
+    if (
+      !window.confirm(
+        `Remover a promoção de ${replacedCount} ${replacedCount === 1 ? "item" : "itens"}? Esta ação não pode ser desfeita.`,
+      )
+    )
+      return;
+    void send(
+      {
+        productIds: products
+          .filter(
+            (item) =>
+              selected.includes(`p:${item.id}`) && promotionStatus(item),
+          )
+          .map((item) => item.id),
+        categoryIds: categories
+          .filter(
+            (item) =>
+              selected.includes(`c:${item.id}`) && promotionStatus(item),
+          )
+          .map((item) => item.id),
+        promoActive: false,
+        promoType: null,
+        promoValue: null,
+        promoStartsAt: null,
+        promoEndsAt: null,
+      },
+      "Promoção removida de",
     );
   };
 
@@ -206,7 +238,7 @@ export function usePromotions() {
         promoStartsAt: saved.promoStartsAt ?? null,
         promoEndsAt: saved.promoEndsAt ?? null,
       },
-      "Promoção retomada",
+      "Promoção retomada a",
     );
   };
 
@@ -241,6 +273,7 @@ export function usePromotions() {
     replacedCount,
     apply,
     pause,
+    removePromotion,
     loading,
     busy,
     error,

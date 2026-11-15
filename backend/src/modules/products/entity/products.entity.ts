@@ -47,6 +47,8 @@ export type ProductOutput = {
   imageUrl: string | null;
   /** Fotos do produto (capa primeiro, sem vazios). */
   imageUrls: string[];
+  /** Miniaturas na mesma ordem de imageUrls, derivadas sem coluna no banco. */
+  thumbUrls: string[];
   price: string;
   stockQuantity: number;
   trackStock: boolean;
@@ -73,6 +75,8 @@ export type ProductResponse = {
   imageUrl: string | null;
   /** Fotos do produto (capa primeiro, sem vazios). */
   imageUrls: string[];
+  /** Miniaturas na mesma ordem de imageUrls, derivadas sem coluna no banco. */
+  thumbUrls: string[];
   price: string;
   stockQuantity: number;
   trackStock: boolean;

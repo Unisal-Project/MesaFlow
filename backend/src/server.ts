@@ -17,6 +17,7 @@ import { paymentRoutes } from "./modules/payments/payment.routes.js";
 import { reportRoutes } from "./modules/reports/report.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.router.js";
 import { registerUserRoutes } from "./modules/users/user.router.js";
+import { registerSettingsRoutes } from "./modules/settings/settings.routes.js";
 import { requireApiAuthentication } from "./shared/api-access.js";
 
 export const app = fastify({ logger: true, trustProxy: true });
@@ -61,6 +62,7 @@ app.register(
     await instance.register(tableRoutes);
     await instance.register(paymentRoutes);
     await instance.register(reportRoutes);
+    await instance.register(registerSettingsRoutes);
   },
   { prefix: "/api/v1" },
 );

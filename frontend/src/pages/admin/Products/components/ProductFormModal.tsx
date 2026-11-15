@@ -357,7 +357,13 @@ export function ProductFormModal({
             <ul className="product-photo-list">
               {photos.map((url, index) => (
                 <li key={url} className="product-photo-item">
-                  <img src={url} alt={`Foto ${index + 1} do produto`} />
+                  <img
+                    src={newProduct.photoThumbs?.[url] ?? url}
+                    alt={`Foto ${index + 1} do produto`}
+                    onError={(event) => {
+                      if (event.currentTarget.getAttribute("src") !== url) event.currentTarget.src = url;
+                    }}
+                  />
                   {index === 0 ? (
                     <Badge variant="success">Capa</Badge>
                   ) : (
@@ -381,7 +387,7 @@ export function ProductFormModal({
                 <input
                   type="file"
                   aria-label="Adicionar imagem do produto"
-                  accept="image/png,image/jpeg,image/webp"
+                  accept="image/png,image/jpeg,image/webp,image/avif"
                   onChange={onPhotoChange}
                 />
                 <Plus aria-hidden="true" />

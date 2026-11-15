@@ -55,3 +55,19 @@
     padding: var(--spacing-6) var(--spacing-4);
   }
 }
+
+.settings-restaurant-form {
+  display: grid;
+  gap: var(--spacing-6);
+  section { display: grid; gap: var(--spacing-4); }
+  section h2 { margin-bottom: var(--spacing-0); }
+  p { margin: var(--spacing-0); color: var(--text-secondary); font-size: var(--font-size-sm); }
+}
+.settings-fee-choices {
+  display: flex; flex-wrap: wrap; gap: var(--spacing-4);
+  margin: var(--spacing-0); padding: var(--spacing-3);
+  border: 1px solid var(--border); border-radius: var(--radius-medium);
+  legend { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .radio-control { min-height: var(--spacing-11); }
+}
+.settings-restaurant-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-3); }

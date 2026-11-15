@@ -337,3 +337,15 @@ model WaiterCall {
   @@index([status, createdAt], map: "idx_waiter_calls_status_created")
   @@map("waiter_calls")
 }
+
+// Restaurante único; a linha id=1 é criada pelo SQL incremental.
+model RestaurantSettings {
+  id             Int      @id @default(1) @db.UnsignedTinyInt
+  serviceFeeRate Decimal  @default(10.00) @map("service_fee_rate") @db.Decimal(5, 2)
+  name           String?  @db.VarChar(120)
+  address        String?  @db.VarChar(255)
+  openingHours   String?  @map("opening_hours") @db.VarChar(255)
+  contact        String?  @db.VarChar(120)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  @@map("restaurant_settings")
+}

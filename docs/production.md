@@ -35,7 +35,7 @@ SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 $DC exec -T database sh -c 'exec mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction "$MARIADB_DATABASE"' > backup-$(date +%F-%H%M).sql
 
 # 2. Incrementais antigos (se ainda não aplicados), 3. colunas do painel admin, controle de estoque opcional e promoções, 4. remoção do acompanhamento de preparo
-for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images remove-order-tracking; do
+for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images restaurant-settings remove-order-tracking; do
   $DC exec -T database sh -c "$SQL" < backend/prisma/sql/$f.sql || break
 done
 
@@ -56,3 +56,20 @@ ALTER TABLE orders
 Para voltar exatamente ao estado anterior, restaure o dump: `$DC exec -T database sh -c "$SQL" < backup-<data>.sql`.
 
 A consulta pública de acompanhamento `GET /api/v1/tables/by-token/:token/orders` foi removida. O consumo da conta é consultado em `GET /api/v1/tables/by-token/:token/bill`, sem estados de preparo. O envio de pedidos continua em `POST /api/v1/tables/by-token/:token/orders`. A interface do cliente tem Cardápio, Carrinho e Conta; o chamado ao garçom fica em Conta.
+
+## Fotos e miniaturas após o deploy
+
+O Nginx aceita corpos de até 6 MB (`client_max_body_size 6m`), cobrindo os 5 MB do arquivo multipart no backend. O upload aceita JPG, PNG, WebP e AVIF; HEIC/HEVC não é suportado. A validação de AVIF exige formato HEIF com compressão AV1 no sharp. O servidor grava WebP de até 1200×1200 (quality 82) e uma miniatura de até 400×400 (quality 75), preservando proporção e sem ampliar fotos pequenas.
+
+Depois de publicar esta versão, execute o script **dentro do container do backend**, onde o volume `product_uploads` está montado em `/app/backend/uploads`. Rodar no host não encontra as fotos e imprime `Miniaturas geradas: 0`:
+
+```bash
+$DC exec backend sh -c "cd /app && npm run images:thumbs"
+```
+
+O script usa Node 22 com suporte a `--experimental-strip-types`, sem depender do tsx (que é dependência de desenvolvimento e não existe na imagem de produção). O `Dockerfile.production` copia `backend/scripts` e mantém o `sharp` em produção. Ele percorre `backend/uploads/products`, cria somente os `*-thumb.webp` ausentes e pode ser repetido: não regrava miniaturas existentes nem processa miniaturas como originais. Faça o backup habitual do volume antes da atualização. A saída informa quantas miniaturas foram geradas; aguarde o término antes de validar as imagens antigas no admin.
+
+A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. Exclusão e substituição de uma foto removem as duas variantes. O admin usa miniaturas com fallback para a imagem original se a miniatura ainda não existir. O cardápio do cliente continua usando a imagem original nesta etapa.
+
+
+`restaurant-settings.sql` cria a tabela de configuração única e insere id=1 com taxa padrão de 10% somente se a linha ainda não existir. Reexecutar não sobrescreve dados do restaurante nem a taxa já configurada. Aplique este SQL antes de publicar a versão que lê a taxa do banco; sem a linha, o fechamento retorna configuração indisponível, sem presumir uma taxa. Os atendimentos anteriores preservam `service_fee` já gravado. Não há rollback destrutivo: a versão anterior ignora esta tabela.

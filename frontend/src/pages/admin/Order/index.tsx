@@ -365,7 +365,7 @@ export default function Orders({
                               <span>
                                 {selectedOrder.payment.serviceFeeWaived
                                   ? "Cliente optou por não pagar a taxa de serviço"
-                                  : "Taxa de serviço (10%)"}
+                                  : "Taxa de serviço"}
                               </span>
                               <strong>
                                 {formatCurrency(

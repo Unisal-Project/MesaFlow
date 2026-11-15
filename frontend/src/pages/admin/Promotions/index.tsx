@@ -327,6 +327,14 @@ export default function Promotions({ onNavigate }: PromotionsProps) {
               </Button>
               <Button
                 type="button"
+                variant="danger"
+                disabled={state.busy || !state.replacedCount}
+                onClick={state.removePromotion}
+              >
+                Remover promoção
+              </Button>
+              <Button
+                type="button"
                 disabled={state.busy || !state.selected.length}
                 onClick={state.openPanel}
               >

@@ -18,12 +18,22 @@ export class LocalStorageService implements StorageService {
   async uploadProductImage(file: UploadFile): Promise<string> {
     await mkdir(this.uploadDirectory, { recursive: true });
 
-    const processedImage = await this.processImage(file);
+    const [processedImage, thumbnail] = await this.processImage(file);
     const fileName = `${randomUUID()}.webp`;
 
     const destination = path.join(this.uploadDirectory, fileName);
 
     await writeFile(destination, processedImage, { flag: "wx" });
+    try {
+      await writeFile(
+        destination.replace(/\.webp$/, "-thumb.webp"),
+        thumbnail,
+        { flag: "wx" },
+      );
+    } catch (error) {
+      await this.delete(fileName);
+      throw error;
+    }
 
     return `${productImagePublicPrefix}/${fileName}`;
   }
@@ -31,24 +41,28 @@ export class LocalStorageService implements StorageService {
   async delete(filePath: string): Promise<void> {
     const fileName = path.basename(filePath);
 
-    const fullPath = path.join(this.uploadDirectory, fileName);
-
-    try {
-      await unlink(fullPath);
-    } catch (error: unknown) {
-      const nodeError = error as NodeJS.ErrnoException;
-
-      if (nodeError.code !== "ENOENT") {
-        throw error;
+    for (const name of [fileName, fileName.replace(/\.webp$/, "-thumb.webp")]) {
+      try {
+        await unlink(path.join(this.uploadDirectory, name));
+      } catch (error: unknown) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
     }
   }
 
-  private async processImage(file: UploadFile): Promise<Buffer> {
-    const allowedMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+  private async processImage(file: UploadFile): Promise<[Buffer, Buffer]> {
+    const allowedMimeTypes = new Set([
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/avif",
+    ]);
 
     if (!allowedMimeTypes.has(file.mimeType)) {
-      throw new AppError("Formato de imagem não permitido", 415);
+      throw new AppError(
+        "Formato de imagem não permitido. Use JPG, PNG, WebP ou AVIF",
+        415,
+      );
     }
 
     try {
@@ -58,26 +72,32 @@ export class LocalStorageService implements StorageService {
       });
       const metadata = await image.metadata();
 
-      if (
-        !metadata.format ||
-        !["jpeg", "png", "webp"].includes(metadata.format) ||
-        !metadata.width ||
-        !metadata.height ||
-        (metadata.pages ?? 1) > 1
-      ) {
+      const allowedFormat =
+        ["jpeg", "png", "webp"].includes(metadata.format ?? "") ||
+        (metadata.format === "heif" && metadata.compression === "av1");
+      if (!allowedFormat) {
+        throw new AppError(
+          "Formato de imagem não permitido. Use JPG, PNG, WebP ou AVIF",
+          415,
+        );
+      }
+      if (!metadata.width || !metadata.height || (metadata.pages ?? 1) > 1) {
         throw new AppError("Arquivo de imagem inválido", 415);
       }
 
-      return await image
-        .rotate()
-        .resize({
-          width: 1200,
-          height: 1200,
-          fit: "inside",
-          withoutEnlargement: true,
-        })
-        .webp({ quality: 82 })
-        .toBuffer();
+      const variant = (size: number, quality: number) =>
+        image
+          .clone()
+          .rotate()
+          .resize({
+            width: size,
+            height: size,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .webp({ quality })
+          .toBuffer();
+      return await Promise.all([variant(1200, 82), variant(400, 75)]);
     } catch (error) {
       if (error instanceof AppError) throw error;
       throw new AppError("Não foi possível processar a imagem", 415);

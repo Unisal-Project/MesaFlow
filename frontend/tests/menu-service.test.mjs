@@ -155,3 +155,15 @@ test("applyPromotions faz PATCH /promotions com os ids e a promoção", async ()
     categories: 1,
   });
 });
+
+test("thumbUrls recebem a mesma base de assets, preservando ordem e legado", async () => {
+  globalThis.fetch = async () => Response.json([
+    { id: "1", imageUrl: "/uploads/a.webp", imageUrls: ["/uploads/a.webp", "/uploads/b.webp"], thumbUrls: ["/uploads/a-thumb.webp", "/uploads/b-thumb.webp"] },
+    { id: "2", imageUrl: "/uploads/old.webp" },
+  ]);
+  const [product, old] = await menu.fetchProducts();
+  assert.deepEqual(product.thumbUrls, [
+    product.imageUrls[0].replace(/\.webp$/, "-thumb.webp"), product.imageUrls[1].replace(/\.webp$/, "-thumb.webp"),
+  ]);
+  assert.equal(old.thumbUrls, undefined);
+});

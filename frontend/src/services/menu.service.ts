@@ -17,6 +17,7 @@ export type Product = {
   imageUrl: string | null;
   /** Até 3 fotos, capa primeiro (imageUrl é a capa). */
   imageUrls?: string[];
+  thumbUrls?: string[];
   price: string;
   stockQuantity: number;
   /** false = produto sem controle de estoque: nunca esgota. */
@@ -69,6 +70,7 @@ const withImage = (product: Product): Product => ({
   ...product,
   imageUrl: assetUrl(product.imageUrl),
   imageUrls: product.imageUrls?.map((url) => assetUrl(url) ?? url),
+  thumbUrls: product.thumbUrls?.map((url) => assetUrl(url) ?? url),
 });
 
 export const fetchProducts = (signal?: AbortSignal) =>

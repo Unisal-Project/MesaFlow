@@ -204,3 +204,27 @@ test("formulário de edição detecta alterações não salvas", () => {
   hook = render();
   assert.equal(hook.hasUnsavedChanges, true);
 });
+
+
+test("novo produto inicia sem controlar estoque e envia false; edição preserva o salvo", async () => {
+  let body;
+  globalThis.fetch = async (_url, options = {}) => {
+    if (!options.method) return Response.json([]);
+    body = JSON.parse(options.body);
+    return Response.json({ id: "9", ...body, price: "5.00", imageUrl: null });
+  };
+  const render = createHookRunner(() => useProducts());
+  render().openNewProduct();
+  assert.equal(render().newProduct.trackStock, false);
+  render().setNewProduct({ ...render().newProduct, name: "Água", price: "5", category: "1" });
+  await render().handleSaveProduct({ preventDefault() {} });
+  assert.equal(body.trackStock, false);
+  assert.equal("stockQuantity" in body, false);
+  for (const trackStock of [true, false]) {
+    render().openEditProduct({ id: "9", name: "Água", quantity: 2, categoryId: "1",
+      additionalCategoryIds: [], trackStock, available: true });
+    assert.equal(render().newProduct.trackStock, trackStock);
+  }
+  render().openNewProduct();
+  assert.equal(render().newProduct.trackStock, false);
+});

@@ -29,6 +29,7 @@
     "format": "cd backend && prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "cd backend && prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "preview": "cd frontend && vite preview",
+    "images:thumbs": "cd backend && node --experimental-strip-types scripts/generate-thumbs.ts",
     "test:frontend": "cd frontend && node --test tests/*.test.mjs",
     "check:backend": "npm run lint:backend && npm run test:backend"
   },

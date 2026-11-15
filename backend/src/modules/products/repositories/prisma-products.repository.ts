@@ -237,11 +237,13 @@ export class PrismaProductRepository implements ProductsRepository {
     // Sem spread de category: só o preço final e a promoção aplicada saem.
     const { additionalCategories, category, imageUrl2, imageUrl3, ...data } =
       product;
+    const imageUrls = [product.imageUrl, imageUrl2, imageUrl3].filter(
+      (url): url is string => Boolean(url),
+    );
     return {
       ...data,
-      imageUrls: [product.imageUrl, imageUrl2, imageUrl3].filter(
-        (url): url is string => Boolean(url),
-      ),
+      imageUrls,
+      thumbUrls: imageUrls.map((url) => url.replace(/\.webp$/, "-thumb.webp")),
       price: product.price.toString(),
       promoValue: product.promoValue?.toString() ?? null,
       ...pricing({ ...product, category }),

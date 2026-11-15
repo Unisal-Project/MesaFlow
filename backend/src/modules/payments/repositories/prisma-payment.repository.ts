@@ -8,7 +8,6 @@ import type {
 } from "./payment.repository.js";
 import type { CloseAttendanceDTO } from "../dto/close-attendance.dto.js";
 
-const SERVICE_FEE_RATE = 0.1;
 const cents = (value: { toString(): string } | number) =>
   Math.round(Number(value.toString()) * 100);
 const fromCents = (value: number) => (value / 100).toFixed(2);
@@ -106,9 +105,18 @@ export class PrismaPaymentRepository implements PaymentRepository {
         if (subtotalCents <= 0) {
           throw new AppError("Não é possível fechar uma conta sem itens.", 409);
         }
+        const settings = await tx.restaurantSettings.findUnique({
+          where: { id: 1 },
+          select: { serviceFeeRate: true },
+        });
+        if (!settings)
+          throw new AppError(
+            "Configurações do restaurante indisponíveis.",
+            503,
+          );
         const serviceCents = data.serviceFeeWaived
           ? 0
-          : Math.round(subtotalCents * SERVICE_FEE_RATE);
+          : Math.round((subtotalCents * Number(settings.serviceFeeRate)) / 100);
         const totalCents = subtotalCents + serviceCents;
 
         const paidCents = data.payments.reduce(

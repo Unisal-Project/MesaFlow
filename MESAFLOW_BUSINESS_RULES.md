@@ -615,6 +615,10 @@ CREDIT_CARD: R$50
 
 ## 20. Fechamento do atendimento
 
+A taxa de serviço é configurável pelo administrador: de **0% a 20%**, com até duas casas decimais, padrão **10%**. O sistema possui um restaurante e uma configuração (`restaurant_settings`, id=1). Funcionários podem consultar a taxa, mas não alterá-la.
+
+O backend consulta o percentual do banco dentro da transação de fechamento. Calcula em centavos, arredondando a taxa, e exige que os pagamentos somem consumo + taxa. Taxa 0% ou isenção (`serviceFeeWaived`) cobram só o consumo. O valor efetivamente cobrado é gravado em `attendances.service_fee`; alterações futuras do percentual não mudam contas fechadas, histórico ou relatórios. Informações públicas do restaurante não incluem o percentual.
+
 Antes de fechar um atendimento, validar:
 
 - atendimento não está fechado;

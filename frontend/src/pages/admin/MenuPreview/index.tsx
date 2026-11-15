@@ -105,8 +105,14 @@ export default function MenuPreview({ catalog }: { catalog?: MenuCatalog }) {
                       navigate(`${adminPaths.menuPreviewProduct}/${encodeURIComponent(product.id)}${origin}`)
                     }
                     image={
+                      // Mesma imagem que o cardápio do cliente usa (a original), para a prévia ser fiel.
                       resolveImageUrl(product.imageUrl) ? (
-                        <img className="client-menu-photo" src={resolveImageUrl(product.imageUrl)} alt={product.name} loading="lazy" />
+                        <img
+                          className="client-menu-photo"
+                          src={resolveImageUrl(product.imageUrl)}
+                          alt={product.name}
+                          loading="lazy"
+                        />
                       ) : (
                         <div className="client-menu-photo" aria-hidden="true" />
                       )

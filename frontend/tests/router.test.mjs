@@ -40,7 +40,8 @@ after(async () => {
 
 // Renderiza as definições reais de rota, sem depender de um servidor de API.
 const cases = [
-  ["/admin/dashboard", "Bom dia, equipe!"],
+  // A saudação muda com o horário; usa um título fixo do Dashboard.
+  ["/admin/dashboard", "Operação em andamento"],
   ["/admin/pedidos", "Pedidos registrados"],
   ["/admin/mesas", "Mapa de mesas"],
   ["/admin/cardapio", "Produtos cadastrados"],
@@ -84,7 +85,7 @@ for (const [url, expected] of cases) {
     }
     if (!url.startsWith("/admin")) {
       assert.ok(!html.includes('href="/acompanhar'));
-      assert.ok(!html.includes('>Status<'));
+      assert.ok(!html.includes(">Status<"));
     }
   });
 }
@@ -126,8 +127,12 @@ test("prévia do cardápio exige login e usa a barra de abas do cliente", async 
 });
 
 test("Menu do cliente segue com a barra de abas e abre o detalhe", async () => {
-  const { Menu } = await server.ssrLoadModule("/src/pages/client/Menu/index.tsx");
-  const { CartContext } = await server.ssrLoadModule("/src/contexts/CartContext.ts");
+  const { Menu } = await server.ssrLoadModule(
+    "/src/pages/client/Menu/index.tsx",
+  );
+  const { CartContext } = await server.ssrLoadModule(
+    "/src/contexts/CartContext.ts",
+  );
   const html = renderToString(
     createElement(
       CartContext.Provider,
@@ -135,7 +140,17 @@ test("Menu do cliente segue com a barra de abas e abre o detalhe", async () => {
       createElement(Menu, {
         catalog: {
           categories: [{ id: "1", name: "Lanches", active: true }],
-          products: [{ id: "7", name: "X-Burger", categoryId: "1", price: "20", finalPrice: "20", available: true, active: true }],
+          products: [
+            {
+              id: "7",
+              name: "X-Burger",
+              categoryId: "1",
+              price: "20",
+              finalPrice: "20",
+              available: true,
+              active: true,
+            },
+          ],
         },
         onBack() {},
         onSelectProduct() {},
@@ -152,16 +167,25 @@ test("formulário de produto só oferece a prévia para produto salvo", async ()
   const { ProductFormModal } = await server.ssrLoadModule(
     "/src/pages/admin/Products/components/ProductFormModal.tsx",
   );
-  const { emptyPromoForm } = await server.ssrLoadModule("/src/utils/promotion.ts");
+  const { emptyPromoForm } = await server.ssrLoadModule(
+    "/src/utils/promotion.ts",
+  );
   const render = (editingProductId) =>
     renderToString(
       createElement(ProductFormModal, {
         categories: [{ id: "1", name: "Lanches" }],
         editingProductId,
         newProduct: {
-          name: "X-Burger", category: "1", additionalCategoryIds: [], price: "20",
-          quantity: "1", observation: "", imageUrl: "", trackStock: true,
-          available: true, promo: emptyPromoForm,
+          name: "X-Burger",
+          category: "1",
+          additionalCategoryIds: [],
+          price: "20",
+          quantity: "1",
+          observation: "",
+          imageUrl: "",
+          trackStock: true,
+          available: true,
+          promo: emptyPromoForm,
         },
         products: [],
         setNewProduct() {},
@@ -171,7 +195,11 @@ test("formulário de produto só oferece a prévia para produto salvo", async ()
         onDelete() {},
       }),
     );
-  assert.ok(render("7").includes('href="/admin/ver-cardapio?produto=7&amp;origem=produtos"'));
+  assert.ok(
+    render("7").includes(
+      'href="/admin/ver-cardapio?produto=7&amp;origem=produtos"',
+    ),
+  );
   assert.ok(!render(null).includes("/admin/ver-cardapio"));
 });
 
@@ -196,11 +224,14 @@ test("configurações exige login e mostra a conta com o menu do usuário", asyn
   );
   assert.ok(!guarded.includes("Configurações"));
   const page = render(createElement(AdminRoutes));
-  assert.ok(page.includes("Mais opções em breve."));
+  // A página passou a ter configurações reais (troca de senha, restaurante e taxa).
+  assert.ok(page.includes("Alterar senha"));
   // Disclosure: botão controla a lista; sem role=menu/menuitem.
   assert.match(page, /aria-controls="([^"]+)" aria-expanded="false"/);
   const menuId = page.match(/class="profile-area" aria-controls="([^"]+)"/)[1];
-  assert.ok(page.includes(`id="${menuId}" class="admin-profile-menu" hidden=""`));
+  assert.ok(
+    page.includes(`id="${menuId}" class="admin-profile-menu" hidden=""`),
+  );
   assert.ok(!/role="menu(item)?"/.test(page));
   assert.equal(paths.adminPaths.settings, "/admin/configuracoes");
 });

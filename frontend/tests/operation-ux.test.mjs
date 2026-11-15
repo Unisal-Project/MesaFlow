@@ -136,7 +136,7 @@ test("mesa: fechar com alterações pergunta antes de descartar", async () => {
 test("pagamento: valor aceita vírgula e fechar com alterações pergunta", async () => {
   await assertDiscard({
     render: (onClose) =>
-      mods.payment.PaymentModal({
+      mods.payment.PaymentForm({ serviceFeeRate: 10,
         orderId: 1,
         total: 20,
         onClose,
@@ -149,7 +149,7 @@ test("pagamento: valor aceita vírgula e fechar com alterações pergunta", asyn
       }),
   });
   const run = createHookRunner(() =>
-    mods.payment.PaymentModal({ orderId: 1, total: 20, onClose() {}, onComplete() {} }),
+    mods.payment.PaymentForm({ serviceFeeRate: 10, orderId: 1, total: 20, onClose() {}, onComplete() {} }),
   );
   const input = find(run(), byLabel("Valor do pagamento 1"));
   assert.equal(input.props.type, "text");

@@ -18,6 +18,7 @@ export type AdminProduct = {
   available: boolean;
   observation?: string;
   imageUrl?: string;
+  thumbUrl?: string;
 };
 
 export type NewProductForm = {
@@ -32,6 +33,8 @@ export type NewProductForm = {
   imageUrl: string;
   /** Fotos 2 e 3, na ordem. */
   moreImages: string[];
+  /** URL original → miniatura; blobs novos usam a própria prévia local. */
+  photoThumbs?: Record<string, string>;
   trackStock: boolean;
   available: boolean;
   promo: PromoForm;

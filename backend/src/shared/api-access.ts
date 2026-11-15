@@ -3,6 +3,7 @@ import { authenticate } from "./authenticate.js";
 
 const publicRoutes = new Set([
   "GET /health",
+  "GET /settings/public",
   "POST /auth/login",
   "GET /categories",
   "GET /categories/:id",
@@ -20,6 +21,7 @@ const publicRoutes = new Set([
 // atendimentos, pagamentos) fica liberado para qualquer usuário autenticado.
 const adminRoutes = new Set([
   "POST /auth/register",
+  "PUT /settings",
   "POST /categories",
   "PUT /categories/:id",
   "DELETE /categories/:id",

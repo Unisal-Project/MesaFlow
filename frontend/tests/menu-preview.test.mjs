@@ -372,3 +372,15 @@ test("Continuar no carrinho da prévia avisa e não envia pedido", () => {
     "/admin/ver-cardapio",
   ]);
 });
+
+
+test("prévia do admin usa a mesma imagem original do cardápio do cliente (fiel), mesmo com thumb", async () => {
+  const { default: MenuPreview } = await server.ssrLoadModule("/src/pages/admin/MenuPreview/index.tsx");
+  for (const thumbUrls of [["/uploads/a-thumb.webp"], undefined]) {
+    const html = renderAt("/admin/ver-cardapio", withCart(createElement(MenuPreview, {
+      catalog: { categories: [{ id: "1", name: "Lanches", active: true }], products: [{ ...product, imageUrl: "/uploads/a.webp", thumbUrls }] },
+    })));
+    assert.ok(html.includes('/a.webp"'));
+    assert.ok(!html.includes("a-thumb.webp"));
+  }
+});

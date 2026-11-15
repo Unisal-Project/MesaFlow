@@ -2,16 +2,20 @@ import { AdminSidebar } from "@/components";
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { getSession } from "@/services/auth.service";
 import { ChangePasswordForm } from "./components/ChangePasswordForm";
+import { useRestaurantSettings } from "./hooks/useRestaurantSettings";
+import { RestaurantSettingsForm } from "./components/RestaurantSettingsForm";
 import "./styles.scss";
 
 type SettingsProps = { onNavigate: (id: string) => void };
 
 export default function Settings({ onNavigate }: SettingsProps) {
   const user = getSession()?.user;
+  const editable = user?.role === "ADMIN";
+  const settings = useRestaurantSettings(editable);
   return (
     <div className="settings-page">
       <AdminSidebar activeId="settings" brandSubtitle="GESTÃO DO RESTAURANTE" navigationLabel="MENU PRINCIPAL" showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} />
+        brandImage={<img src={logoAlternativo} alt="" />} onChange={id => { if (settings.confirmDiscard()) onNavigate(id); }} />
       <main className="settings-content">
         <h1>Configurações</h1>
         <section className="settings-card" aria-label="Dados da conta">
@@ -23,7 +27,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
           </dl>
         </section>
         <ChangePasswordForm />
-        <p className="settings-soon">Mais opções em breve.</p>
+        <RestaurantSettingsForm state={settings} editable={editable} />
       </main>
     </div>
   );

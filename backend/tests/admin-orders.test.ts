@@ -70,6 +70,9 @@ function fakeDb() {
   const client: any = {
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async () => undefined,
+    restaurantSettings: {
+      findUnique: async () => ({ serviceFeeRate: "10.00" }),
+    },
     restaurantTable: {
       findUnique: async () => ({ active: true }),
     },

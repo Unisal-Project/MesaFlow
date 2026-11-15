@@ -610,3 +610,24 @@ test("grupo e painel usam item no singular e itens no plural", async () => {
   assert.match(text(), /Promoção para 2 itens/);
   assert.match(text(), /Aplicar a 2 itens/);
 });
+
+test("Remover promoção fica desabilitado sem promoção própria e enquanto ocupado", () => {
+  globalThis.promotionState = state();
+  globalThis.promotionState.selected = ["p:1"];
+  let removed = 0;
+  globalThis.promotionState.removePromotion = () => {
+    removed++;
+  };
+  const render = run(() => Promotions({ onNavigate() {} }));
+  const button = () =>
+    find(render(), (n) => n.props?.children === "Remover promoção");
+  assert.ok(button());
+  assert.equal(button().props.disabled, true);
+  globalThis.promotionState.replacedCount = 1;
+  assert.equal(button().props.disabled, false);
+  assert.equal(button().props.variant, "danger");
+  button().props.onClick();
+  assert.equal(removed, 1);
+  globalThis.promotionState.busy = true;
+  assert.equal(button().props.disabled, true);
+});

@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 import { Badge, Button, Switch, TextField } from "@/components";
 import { promotionLabel } from "@/utils/promotion";
 
 import { Pencil } from "lucide-react";
+
+import { ProductRowPreview } from "./ProductRowPreview";
 
 import type { AdminProduct } from "../types/product.types";
 
@@ -24,6 +26,8 @@ export function ProductRow({
 }: ProductRowProps) {
   // Texto em edição; vazio não é salvo e volta ao valor gravado ao sair do campo.
   const [draft, setDraft] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const closePreview = useCallback(() => setPreviewOpen(false), []);
   const step = (delta: number) => {
     setDraft(null);
     onUpdateQuantity(product.id, Math.max(0, product.quantity + delta));
@@ -33,14 +37,19 @@ export function ProductRow({
       <div className="product-identity">
         <span className="product-initial" aria-hidden="true">
           {product.imageUrl ? (
-            <img src={product.imageUrl} alt="" />
+            <img src={product.thumbUrl ?? product.imageUrl} alt=""
+              onError={(event) => { if (event.currentTarget.getAttribute("src") !== product.imageUrl) event.currentTarget.src = product.imageUrl!; }} />
           ) : (
             product.name.charAt(0)
           )}
         </span>
 
         <div>
-          <h3>{product.name}</h3>
+          <h3>
+            <button type="button" className="product-name-preview" aria-label={`Ver prévia de ${product.name}`}
+              onClick={(event) => { event.currentTarget.focus(); setPreviewOpen(true); }}>{product.name}</button>
+            <span className="product-name-mobile">{product.name}</span>
+          </h3>
           <p>{product.category}</p>
         </div>
       </div>
@@ -131,6 +140,7 @@ export function ProductRow({
           <AnimatedTrash />
         </button>
       </div>
+      {previewOpen && <ProductRowPreview product={product} onClose={closePreview} />}
     </article>
   );
 }

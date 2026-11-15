@@ -98,3 +98,53 @@ test("payment confirmation endpoint accepts a positive attendance id", async () 
     await app.close();
   }
 });
+
+for (const [rate, waived, fee] of [
+  [10, false, 201],
+  [5, false, 101],
+  [0, false, 0],
+  [5, true, 0],
+  [12.34, false, 248],
+] as const) {
+  test(`fechamento consulta ${rate}% na transação; isenção=${waived}`, async () => {
+    let stored: any;
+    let readInTransaction = false;
+    let insideTransaction = false;
+    const client: any = {
+      $transaction: async (callback: (tx: any) => unknown) => {
+        insideTransaction = true;
+        return callback(client);
+      },
+      $queryRaw: async () => undefined,
+      attendance: {
+        findUnique: async () => ({ id: 12n, status: "OPEN" }),
+        updateMany: async ({ data }: any) => {
+          stored = data;
+          return { count: 1 };
+        },
+      },
+      attendanceTotal: { findUnique: async () => ({ total: "20.10" }) },
+      restaurantSettings: {
+        findUnique: async ({ where }: any) => {
+          assert.equal(where.id, 1);
+          readInTransaction = insideTransaction;
+          return { serviceFeeRate: String(rate) };
+        },
+      },
+      payment: { create: async () => ({}) },
+    };
+    // O objeto externo nunca deve ser usado fora da transação para ler a taxa.
+    const result = await new PrismaPaymentRepository(client).closeWithPayments(
+      12n,
+      {
+        serviceFeeWaived: waived,
+        payments: [{ method: "PIX", amount: (2010 + fee) / 100 }],
+      },
+      1n,
+    );
+    assert.equal(readInTransaction, true);
+    assert.equal(result.serviceFee, (fee / 100).toFixed(2));
+    assert.equal(stored.serviceFee, result.serviceFee);
+    assert.equal(stored.closedById, 1n);
+  });
+}

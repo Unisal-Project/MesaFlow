@@ -10,10 +10,11 @@ import { createServer } from "vite";
 const hooked = [
   "/Products/components/ProductFormModal.tsx",
   "/Products/components/ProductRow.tsx",
+  "/Products/components/ProductRowPreview.tsx",
   "/Products/hooks/useProducts.ts",
   "/Categories/hooks/useCategories.ts",
 ];
-let server, run, ProductFormModal, ProductRow, useProducts, useCategories, emptyPromoForm, realModal, PromotionFields;
+let server, run, ProductFormModal, ProductRow, useProducts, useCategories, emptyPromoForm, realModal, PromotionFields, ProductRowPreview;
 const previous = { window: globalThis.window, localStorage: globalThis.localStorage, fetch: globalThis.fetch };
 const confirms = [];
 let confirmAnswer = true;
@@ -32,8 +33,12 @@ before(async () => {
       name: "controlled-cardapio-hooks",
       enforce: "pre",
       transform(code, id) {
-        if (hooked.some((path) => id.endsWith(path)) && !id.includes("?real"))
-          return code.replace('from "react"', 'from "/tests/helpers/hook-runtime.mjs"');
+        if (hooked.some((path) => id.endsWith(path)) && !id.includes("?real")) {
+          const transformed = code.replace('from "react"', 'from "/tests/helpers/hook-runtime.mjs"');
+          if (id.endsWith("/ProductRowPreview.tsx"))
+            return transformed.replace("useEffect, ", "") + '\nconst useEffect = fn => globalThis.productPreviewEffects?.push(fn);';
+          return transformed;
+        }
       },
     }],
   });
@@ -403,4 +408,107 @@ test("fotos: libera blobs removidos, salvos e descartados; não revoga URLs do s
     assert.equal(products().isProductModalOpen, false);
     assert.deepEqual(revoked, ["blob:cleanup-1", "blob:cleanup-2", "blob:cleanup-3"]);
   } finally { URL.revokeObjectURL = previousRevoke; }
+});
+
+
+test("nome do produto abre só o cartão de prévia e o X fecha", async () => {
+  const product = { id: "9", name: "Suco", category: "Bebidas", price: "R$ 10,00",
+    finalPrice: "R$ 8,00", promotion: { type: "PERCENT", value: "20", source: "PRODUCT" },
+    imageUrl: "/uploads/suco.webp", observation: "Suco natural", quantity: 4, trackStock: true, available: true };
+  const render = run(() => ProductRow({ product, onUpdateQuantity() {}, onUpdateAvailability() {}, onEdit() {}, onDelete() {} }));
+  const button = find(render(), n => n.props?.["aria-label"] === "Ver prévia de Suco");
+  assert.ok(button, "nome precisa abrir a prévia no desktop/tablet");
+  assert.ok(find(render(), n => n.props?.className === "product-name-mobile" && n.props.children === "Suco"));
+  let nameFocused = false;
+  button.props.onClick({ currentTarget: { focus() { nameFocused = true; } } });
+  assert.ok(nameFocused, "nome recebe foco antes do dialog para ser restaurado também no clique");
+  const preview = find(render(), n => n.props?.product === product && n.props?.onClose);
+  assert.ok(preview, "clicar no nome monta o pop-up");
+  ({ ProductRowPreview } = await server.ssrLoadModule("/src/pages/admin/Products/components/ProductRowPreview.tsx"));
+  const dialog = run(() => ProductRowPreview(preview.props))();
+  const card = find(dialog, n => n.props?.description === product.observation);
+  assert.equal(card.props.price, product.finalPrice);
+  assert.equal(card.props.originalPrice, product.price);
+  assert.equal(card.props.badge, "-20%");
+  assert.equal(card.props.image.props.src, product.imageUrl);
+  assert.equal(card.props.onSelect, undefined, "só cartão, sem abrir detalhe");
+  const html = renderToStaticMarkup(createElement(card.type, card.props));
+  assert.match(html, /Suco natural/);
+  assert.match(html, /product-card-old-price/);
+  find(dialog, n => n.props?.["aria-label"] === "Fechar prévia").props.onClick();
+  assert.equal(find(render(), n => n.props?.product === product && n.props?.onClose), undefined);
+  for (const [available, trackStock, quantity, expectedAvailable, unavailableLabel] of [
+    [true, true, 0, false, "Esgotado"], [false, true, 4, false, "Indisponível"], [true, false, 0, true, "Esgotado"],
+  ]) {
+    const state = run(() => ProductRowPreview({ product: { ...product, available, trackStock, quantity }, onClose() {} }))();
+    const previewCard = find(state, n => n.props?.description === product.observation);
+    assert.equal(previewCard.props.available, expectedAvailable);
+    assert.equal(previewCard.props.unavailableLabel, unavailableLabel);
+  }
+});
+
+test("prévia gerencia foco/rolagem, fecha por Esc/fundo e ao entrar no celular", async () => {
+  ({ ProductRowPreview } = await server.ssrLoadModule("/src/pages/admin/Products/components/ProductRowPreview.tsx"));
+  const previousDocument = globalThis.document;
+  const previousMatchMedia = globalThis.window.matchMedia;
+  const media = { matches: false, addEventListener(_event, fn) { this.changed = fn; }, removeEventListener() { this.changed = null; } };
+  let returned = 0, focused = 0, opened = 0, closed = 0, requests = 0;
+  globalThis.window.matchMedia = () => media;
+  globalThis.document = { activeElement: { focus() { returned++; } }, body: { style: { overflow: "auto" } } };
+  globalThis.productPreviewEffects = [];
+  try {
+    const dialog = run(() => ProductRowPreview({ product: { name: "Suco" }, onClose() { requests++; } }))();
+    dialog.props.ref.current = { showModal() { opened++; }, close() { closed++; }, focus() { focused++; } };
+    const cleanup = globalThis.productPreviewEffects[0]();
+    assert.equal(opened, 1); assert.equal(focused, 1);
+    assert.equal(document.body.style.overflow, "hidden");
+    let prevented = false;
+    dialog.props.onCancel({ preventDefault() { prevented = true; } });
+    assert.ok(prevented); assert.equal(requests, 1);
+    dialog.props.onClick({ target: 1, currentTarget: 2 });
+    assert.equal(requests, 1, "clique no cartão não fecha");
+    dialog.props.onClick({ target: 1, currentTarget: 1 });
+    assert.equal(requests, 2);
+    media.matches = true; media.changed();
+    assert.equal(requests, 3);
+    cleanup();
+    assert.equal(returned, 1); assert.equal(closed, 1);
+    assert.equal(document.body.style.overflow, "auto");
+    assert.equal(media.changed, null);
+  } finally {
+    globalThis.document = previousDocument;
+    globalThis.window.matchMedia = previousMatchMedia;
+    delete globalThis.productPreviewEffects;
+  }
+});
+
+test("foto admin aceita AVIF e avatar usa thumb com fallback para capa", () => {
+  const html = renderToStaticMarkup(createElement(realModal, {
+    categories: [], editingProductId: null, newProduct: form(), products: [],
+    setNewProduct() {}, onClose() {}, onSave() {}, onPhotoChange() {}, onDelete() {},
+  }));
+  assert.match(html, /accept="[^"]*image\/avif/);
+  const product = { id: "1", name: "Suco", imageUrl: "/uploads/a.webp", thumbUrl: "/uploads/a-thumb.webp" };
+  const render = run(() => ProductRow({ product }));
+  const image = find(render(), n => n.type === "img");
+  assert.equal(image.props.src, product.thumbUrl);
+  const element = { src: product.thumbUrl, getAttribute() { return this.src; } };
+  image.props.onError({ currentTarget: element });
+  assert.equal(element.src, product.imageUrl);
+  const fallback = run(() => ProductRow({ product: { ...product, thumbUrl: undefined } }))();
+  assert.equal(find(fallback, n => n.type === "img").props.src, product.imageUrl);
+});
+
+
+test("miniaturas do formulário usam thumb, mantendo URL original para envio e fallback", () => {
+  const original = "/uploads/a.webp", thumb = "/uploads/a-thumb.webp";
+  const state = modal({ newProduct: form({ imageUrl: original, photoThumbs: { [original]: thumb } }) });
+  const image = find(state.render(), n => n.type === "img" && n.props.alt === "Foto 1 do produto");
+  assert.equal(image.props.src, thumb);
+  assert.equal(state.form().imageUrl, original);
+  const element = { src: thumb, getAttribute() { return this.src; } };
+  image.props.onError({ currentTarget: element });
+  assert.equal(element.src, original);
+  image.props.onError({ currentTarget: element });
+  assert.equal(element.src, original);
 });
