@@ -65,6 +65,8 @@ export default function Products({
     openNewProduct,
     openEditProduct,
     handlePhotoChange,
+    removePhoto,
+    setCoverPhoto,
     handleSaveProduct,
     requestProductDeletion,
     confirmProductDeletion,
@@ -339,6 +341,8 @@ export default function Products({
           onClose={closeProductModal}
           onSave={handleSaveProduct}
           onPhotoChange={handlePhotoChange}
+          onRemovePhoto={removePhoto}
+          onSetCoverPhoto={setCoverPhoto}
           onDelete={requestProductDeletion}
           onCreateCategory={categoryState.createCategory}
           error={productError}

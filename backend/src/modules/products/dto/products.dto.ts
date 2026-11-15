@@ -79,5 +79,35 @@ export const ProductCategoryUpdateSchema = z
   })
   .strict();
 
+const IdListSchema = z
+  .array(ProductCategoryIdSchema)
+  .max(500)
+  .refine((ids) => new Set(ids).size === ids.length, "IDs duplicados")
+  .default([]);
+
+/**
+ * PATCH /promotions: a mesma promoção para vários produtos/categorias.
+ * Só os campos enviados são gravados; pausar = { promoActive: false }.
+ */
+export const PromotionsBatchSchema = z
+  .object({
+    productIds: IdListSchema,
+    categoryIds: IdListSchema,
+    ...promoSchemaFields,
+    promoActive: z.boolean(),
+  })
+  .strict()
+  .refine((batch) => batch.productIds.length + batch.categoryIds.length > 0, {
+    message: "Selecione pelo menos um produto ou categoria",
+  })
+  .superRefine((batch, ctx) => {
+    const message = promoIssue(batch);
+    if (message) ctx.addIssue({ code: "custom", message });
+  });
+
+export type PromotionsBatchDTO = z.infer<typeof PromotionsBatchSchema>;
 export type ProductDTO = z.infer<typeof ProductSchema>;
 export type ProductUpdateDTO = z.infer<typeof ProductUpdateSchema>;
+
+/** Posição da foto: 1 = capa, 2 e 3 = extras. */
+export const ProductImageSlotSchema = z.coerce.number().int().min(1).max(3);

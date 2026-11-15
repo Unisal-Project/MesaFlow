@@ -28,7 +28,10 @@ export type NewProductForm = {
   /** Guarda o id da categoria selecionada. */
   category: string;
   additionalCategoryIds: string[];
+  /** Capa (vai para os cards e a prévia). */
   imageUrl: string;
+  /** Fotos 2 e 3, na ordem. */
+  moreImages: string[];
   trackStock: boolean;
   available: boolean;
   promo: PromoForm;

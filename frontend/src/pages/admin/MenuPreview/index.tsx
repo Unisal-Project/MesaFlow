@@ -4,20 +4,21 @@ import { ChevronLeft } from "lucide-react";
 
 import { CategoryTabs, ProductCard } from "@/components";
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
+import { ClientTabBar } from "@/components/layout/ClientTabBar";
 import { useMenu } from "@/pages/client/Menu/hooks/useMenu";
 import { isSoldOut, type MenuCatalog } from "@/services/menu.service";
 import { formatPriceMenu } from "@/utils/formatPrice";
 import { promotionLabel } from "@/utils/promotion";
 import { resolveImageUrl } from "@/utils/resolveImageUrl";
 import { adminPaths } from "@/routers/paths";
-import { previewBack, resetPreviewCart } from "./preview";
+import { previewBack, previewTarget } from "./preview";
 
 import "@/pages/client/Menu/styles.scss";
 
 // Seções especiais do cardápio (Destaque/Promoções) usam ids com este prefixo.
 const isSpecialSection = (id: string) => id.startsWith("menu-");
 
-/** Cardápio como o cliente vê, sem abas nem carrinho; o card abre o detalhe da prévia. */
+/** Cardápio como o cliente vê (com a barra de abas); o card abre o detalhe da prévia. */
 export default function MenuPreview({ catalog }: { catalog?: MenuCatalog }) {
   const { sections, activeCategory, setActiveCategory, tabs, isLoading, error } = useMenu(catalog);
   const sectionRefs = useRef(new Map<string, HTMLElement>());
@@ -27,8 +28,6 @@ export default function MenuPreview({ catalog }: { catalog?: MenuCatalog }) {
   // A origem segue para o detalhe e volta com ele.
   const origin = searchParams.get("origem") ? `?origem=${encodeURIComponent(searchParams.get("origem") ?? "")}` : "";
 
-  // Cada entrada na prévia começa com o carrinho isolado vazio.
-  useEffect(resetPreviewCart, []);
   const productId = searchParams.get("produto");
 
   // ?produto=<id>: rola até o card na seção da categoria do produto.
@@ -125,6 +124,11 @@ export default function MenuPreview({ catalog }: { catalog?: MenuCatalog }) {
           )}
         </div>
       </main>
+      <ClientTabBar
+        onMenu={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onOrder={() => navigate(previewTarget("order", searchParams))}
+        onNavigate={(destination) => navigate(previewTarget(destination, searchParams))}
+      />
     </div>
   );
 }

@@ -13,7 +13,7 @@ const hooked = [
   "/Products/hooks/useProducts.ts",
   "/Categories/hooks/useCategories.ts",
 ];
-let server, run, ProductFormModal, ProductRow, useProducts, useCategories, emptyPromoForm, realModal;
+let server, run, ProductFormModal, ProductRow, useProducts, useCategories, emptyPromoForm, realModal, PromotionFields;
 const previous = { window: globalThis.window, localStorage: globalThis.localStorage, fetch: globalThis.fetch };
 const confirms = [];
 let confirmAnswer = true;
@@ -44,6 +44,7 @@ before(async () => {
   ({ useProducts } = await load("/src/pages/admin/Products/hooks/useProducts.ts"));
   ({ useCategories } = await load("/src/pages/admin/Categories/hooks/useCategories.ts"));
   ({ emptyPromoForm } = await load("/src/utils/promotion.ts"));
+  ({ PromotionFields } = await load("/src/pages/admin/Products/components/PromotionFields.tsx"));
   // Versão normal (React de verdade) para renderizar o HTML.
   ({ ProductFormModal: realModal } = await load("/src/pages/admin/Products/components/ProductFormModal.tsx?real"));
 });
@@ -271,4 +272,135 @@ test("produto salvo com falha na imagem: só a foto pendente conta como alteraç
   assert.equal(hook.hasUnsavedChanges, true, "a foto ainda não foi enviada");
   hook.setNewProduct({ ...hook.newProduct, imageUrl: "" });
   assert.equal(products().hasUnsavedChanges, false, "o resto já está salvo");
+});
+
+test("fotos: salvar remove as que saíram, envia as novas e define a capa", async () => {
+  // Servidor simulado com as 3 colunas de foto.
+  let server = ["/uploads/a.webp", "/uploads/b.webp"];
+  const calls = [];
+  const product = () => ({
+    id: "8", name: "Suco", price: "12.00", stockQuantity: 1, categoryId: "1", trackStock: true,
+    available: true, imageUrl: server[0] ?? null, imageUrls: server,
+  });
+  globalThis.fetch = async (url, options = {}) => {
+    const path = new URL(String(url)).pathname.replace(/^\/api\/v1/, "") + new URL(String(url)).search;
+    calls.push(`${options.method ?? "GET"} ${path}`);
+    const slot = Number(path.match(/image\/(\d)/)?.[1]);
+    if (options.method === "DELETE") server = server.filter((_, index) => index !== slot - 1);
+    if (path.endsWith("/cover")) [server[0], server[slot - 1]] = [server[slot - 1], server[0]];
+    if (options.method === "POST") server = [...server, "/uploads/new.webp"];
+    return Response.json(options.method ? product() : [product()]);
+  };
+  globalThis.URL.createObjectURL = () => "blob:nova";
+  const products = run(() => useProducts([{ id: "1", name: "Lanches" }]));
+  await products().reload();
+  const [record] = products().products;
+  products().openEditProduct(record);
+  let hook = products();
+  assert.equal(hook.newProduct.moreImages.length, 1, "a 2ª foto do servidor entra no formulário");
+  hook.removePhoto(hook.newProduct.imageUrl);
+  products().handlePhotoChange({ target: { files: [new File(["x"], "nova.png", { type: "image/png" })] } });
+  products().setCoverPhoto("blob:nova");
+  hook = products();
+  assert.equal(hook.newProduct.imageUrl, "blob:nova");
+  calls.length = 0;
+  await hook.handleSaveProduct({ preventDefault() {} });
+  assert.deepEqual(calls, [
+    "PATCH /products/8",
+    "DELETE /products/8/image/1",
+    "POST /products/8/image?slot=2",
+    "PATCH /products/8/image/2/cover",
+  ]);
+  assert.deepEqual(server, ["/uploads/new.webp", "/uploads/b.webp"]);
+  assert.equal(products().isProductModalOpen, false);
+});
+
+test("fotos: no máximo 3; a 4ª é ignorada e o formulário mostra capa e ações", () => {
+  let next = 0;
+  globalThis.URL.createObjectURL = () => `blob:${++next}`;
+  const products = run(() => useProducts([{ id: "1", name: "Lanches" }]));
+  products().openNewProduct();
+  for (let index = 0; index < 4; index++)
+    products().handlePhotoChange({ target: { files: [new File(["x"], `${index}.png`)] } });
+  const { newProduct } = products();
+  assert.equal(newProduct.imageUrl, "blob:1");
+  assert.deepEqual(newProduct.moreImages, ["blob:2", "blob:3"]);
+
+  const html = renderToStaticMarkup(createElement(realModal, {
+    categories: [{ id: "1", name: "Lanches" }], editingProductId: null, newProduct, products: [],
+    setNewProduct() {}, onClose() {}, onSave() {}, onPhotoChange() {}, onDelete() {},
+    onRemovePhoto() {}, onSetCoverPhoto() {},
+  }));
+  assert.equal((html.match(/>Capa</g) ?? []).length, 1);
+  assert.equal((html.match(/Definir como capa/g) ?? []).length, 2);
+  assert.equal((html.match(/Remover foto/g) ?? []).length, 3);
+  assert.doesNotMatch(html, /Adicionar imagem do produto/, "sem caixa de envio com 3 fotos");
+});
+
+
+test("PromotionFields sem recolhimento mostra os campos sem switch; padrão continua recolhido", () => {
+  const render = (props = {}) => renderToStaticMarkup(createElement(PromotionFields, {
+    idPrefix: "test", value: emptyPromoForm, onChange() {}, ...props,
+  }));
+  assert.match(render(), /Tem promoção\?/);
+  assert.doesNotMatch(render(), /Desconto/);
+  const expanded = render({ collapsible: false });
+  assert.doesNotMatch(expanded, /Tem promoção\?/);
+  assert.match(expanded, /Desconto/);
+});
+
+test("fotos: nova capa preserva exatamente a ordem [C nova, A, B]", async () => {
+  let photos = ["/uploads/a.webp", "/uploads/b.webp"];
+  const product = () => ({ id: "8", name: "Suco", price: "12.00", stockQuantity: 1,
+    categoryId: "1", trackStock: true, available: true, imageUrl: photos[0], imageUrls: [...photos] });
+  globalThis.fetch = async (url, options = {}) => {
+    const path = new URL(url).pathname;
+    if (options.method === "POST") photos.push("/uploads/c.webp");
+    if (path.endsWith("/cover")) {
+      const index = Number(path.match(/image\/(\d)/)[1]) - 1;
+      [photos[0], photos[index]] = [photos[index], photos[0]];
+    }
+    return Response.json(options.method ? product() : [product()]);
+  };
+  globalThis.URL.createObjectURL = () => "blob:c";
+  const products = run(() => useProducts());
+  await products().reload();
+  products().openEditProduct(products().products[0]);
+  products().handlePhotoChange({ target: { files: [new File(["c"], "c.png")] } });
+  // Estado solicitado, que também pode resultar de outras escolhas de capa.
+  const originalPhotos = [products().newProduct.imageUrl, ...products().newProduct.moreImages].filter(url => url !== "blob:c");
+  products().setNewProduct({ ...products().newProduct, imageUrl: "blob:c", moreImages: originalPhotos });
+  await products().handleSaveProduct({ preventDefault() {} });
+  assert.deepEqual(photos, ["/uploads/c.webp", "/uploads/a.webp", "/uploads/b.webp"]);
+});
+
+test("fotos: libera blobs removidos, salvos e descartados; não revoga URLs do servidor", async () => {
+  let next = 0;
+  const revoked = [];
+  const previousRevoke = URL.revokeObjectURL;
+  globalThis.URL.createObjectURL = () => `blob:cleanup-${++next}`;
+  globalThis.URL.revokeObjectURL = url => revoked.push(url);
+  globalThis.fetch = async (url, options = {}) => {
+    const photo = String(url).includes("/image") ? "/uploads/saved.webp" : null;
+    const product = { id: "8", name: "Suco", price: "12.00", stockQuantity: 1, categoryId: "1",
+      trackStock: true, available: true, imageUrl: photo, imageUrls: photo ? [photo] : [] };
+    return Response.json(options.method ? product : []);
+  };
+  const products = run(() => useProducts());
+  const add = () => products().handlePhotoChange({ target: { files: [new File(["x"], "x.png")] } });
+  try {
+    products().openNewProduct();
+    add(); products().removePhoto(products().newProduct.imageUrl);
+    assert.deepEqual(revoked, ["blob:cleanup-1"]);
+    products().removePhoto("/uploads/old.webp");
+    assert.equal(revoked.length, 1);
+    add(); products().closeProductModal();
+    assert.deepEqual(revoked, ["blob:cleanup-1", "blob:cleanup-2"]);
+    products().openNewProduct();
+    products().setNewProduct(form());
+    add();
+    await products().handleSaveProduct({ preventDefault() {} });
+    assert.equal(products().isProductModalOpen, false);
+    assert.deepEqual(revoked, ["blob:cleanup-1", "blob:cleanup-2", "blob:cleanup-3"]);
+  } finally { URL.revokeObjectURL = previousRevoke; }
 });

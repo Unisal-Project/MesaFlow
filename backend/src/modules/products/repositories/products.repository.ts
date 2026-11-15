@@ -3,6 +3,7 @@ import {
   ProductOutput,
   ProductUpdateInput,
 } from "../entity/products.entity.js";
+import type { PromotionsBatchDTO } from "../dto/products.dto.js";
 
 export default interface ProductsRepository {
   createProduct(productInput: ProductInput): Promise<ProductOutput>;
@@ -19,4 +20,8 @@ export default interface ProductsRepository {
   deactivateProduct(id: bigint): Promise<void>;
 
   switchCategory(id: bigint, newCategoryId: bigint): Promise<ProductOutput>;
+
+  applyPromotions(
+    batch: PromotionsBatchDTO,
+  ): Promise<{ products: number; categories: number }>;
 }

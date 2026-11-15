@@ -13,6 +13,7 @@ import { TableOverview } from "./components/TableOverview";
 import { KitchenQueue } from "./components/KitchenQueue";
 
 import { useDashboard } from "./hooks/useDashboard";
+import { dashboardGreeting } from "./utils/dashboard.utils";
 
 import type {
   DashboardProps
@@ -56,7 +57,7 @@ export default function Dashboard({ orders, tables, loading = false, error = "",
         <div className="mf-dashboard-body">
           <section className="mf-dashboard-intro" aria-labelledby="dashboard-title">
             <div>
-              <h1 id="dashboard-title">Bom dia, equipe!</h1>
+              <h1 id="dashboard-title">{dashboardGreeting(new Date())}</h1>
               <p>Veja o que está acontecendo no seu restaurante hoje.</p>
             </div>
             <time dateTime={today}>

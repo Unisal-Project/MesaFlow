@@ -1,42 +1,40 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router";
 
-import { CartProvider } from "@/contexts/CartProvider";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { adminPaths } from "@/routers/paths";
 import { fetchCategories, fetchProductsById, type Product } from "@/services/menu.service";
-import { PREVIEW_CART_KEY } from "./preview";
+import { previewTarget } from "./preview";
 
 type ProductPreviewViewProps = {
   product: Product;
   categoryName: string;
   onBack: () => void;
-  onExit: () => void;
+  onNavigate: (destination: string) => void;
 };
 
 /**
- * Detalhe do cliente com carrinho isolado: "Adicionar ao pedido" só grava
- * na chave da prévia e volta; nada é enviado à API.
+ * Detalhe do cliente dentro do carrinho isolado da prévia (PreviewLayout):
+ * "Adicionar ao pedido" só grava no carrinho da prévia e volta; nada vai à API.
  */
-export function ProductPreviewView({ product, categoryName, onBack, onExit }: ProductPreviewViewProps) {
+export function ProductPreviewView({ product, categoryName, onBack, onNavigate }: ProductPreviewViewProps) {
   return (
-    <CartProvider storageKey={PREVIEW_CART_KEY}>
-      <ProductDetail
-        product={product}
-        categoryName={categoryName}
-        onBack={onBack}
-        onAdded={onBack}
-        onGoToCart={onExit}
-        onNavigate={onExit}
-      />
-    </CartProvider>
+    <ProductDetail
+      product={product}
+      categoryName={categoryName}
+      onBack={onBack}
+      onAdded={onBack}
+      onGoToCart={() => onNavigate("order")}
+      onNavigate={onNavigate}
+    />
   );
 }
 
 export default function ProductPreview() {
   const { productId = "" } = useParams();
   const navigate = useNavigate();
-  const origin = useSearchParams()[0].get("origem");
+  const [searchParams] = useSearchParams();
+  const origin = searchParams.get("origem");
   const originParam = origin ? `&origem=${encodeURIComponent(origin)}` : "";
   const [loaded, setLoaded] = useState<{ id: string; product: Product; categoryName: string } | null>(null);
   const [error, setError] = useState<{ id: string; message: string } | null>(null);
@@ -59,7 +57,7 @@ export default function ProductPreview() {
   }, [productId]);
 
   const onBack = () => navigate(`${adminPaths.menuPreview}?produto=${encodeURIComponent(productId)}${originParam}`);
-  const onExit = () => navigate(`${adminPaths.menuPreview}${originParam.replace("&", "?")}`);
+  const onNavigate = (destination: string) => navigate(previewTarget(destination, searchParams));
 
   if (error?.id === productId) {
     return (
@@ -70,5 +68,5 @@ export default function ProductPreview() {
     );
   }
   if (loaded?.id !== productId) return <p role="status">Carregando produto...</p>;
-  return <ProductPreviewView product={loaded.product} categoryName={loaded.categoryName} onBack={onBack} onExit={onExit} />;
+  return <ProductPreviewView product={loaded.product} categoryName={loaded.categoryName} onBack={onBack} onNavigate={onNavigate} />;
 }

@@ -11,7 +11,9 @@ import {
 import {
   fetchProducts,
   removeProduct,
+  removeProductImage,
   saveProduct,
+  setProductCover,
   uploadProductImage,
   type Product,
 } from "@/services/menu.service";
@@ -33,6 +35,7 @@ export const emptyProductForm: NewProductForm = {
   category: "",
   additionalCategoryIds: [],
   imageUrl: "",
+  moreImages: [],
   trackStock: true,
   available: true,
   promo: emptyPromoForm,
@@ -42,6 +45,18 @@ type CategoryRef = { id: string; name: string };
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "Não foi possível acessar o servidor";
+
+const MAX_PHOTOS = 3;
+/** Fotos do formulário, capa primeiro. */
+const photosOf = (form: NewProductForm) =>
+  [form.imageUrl, ...(form.moreImages ?? [])].filter(Boolean);
+const withPhotos = (form: NewProductForm, photos: string[]) => ({
+  ...form,
+  imageUrl: photos[0] ?? "",
+  moreImages: photos.slice(1),
+});
+const serverPhotos = (product: Product) =>
+  product.imageUrls ?? (product.imageUrl ? [product.imageUrl] : []);
 
 const formatPrice = (value: string) =>
   Number(value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -55,7 +70,12 @@ export function useProducts(categories: CategoryRef[] = []) {
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [newProduct, setNewProduct] =
     useState<NewProductForm>(emptyProductForm);
-  const [photo, setPhoto] = useState<File | null>(null);
+  // Fotos novas ainda não enviadas: URL local (blob) → arquivo.
+  const pendingPhotos = useRef(new Map<string, File>());
+  const clearPendingPhotos = useCallback(() => {
+    for (const url of pendingPhotos.current.keys()) URL.revokeObjectURL(url);
+    pendingPhotos.current.clear();
+  }, []);
   // Formulário como foi aberto; diferença = alterações não salvas.
   const [savedForm, setSavedForm] = useState<NewProductForm>(emptyProductForm);
   const [searchQuery, setSearchQuery] = useState("");
@@ -85,8 +105,11 @@ export function useProducts(categories: CategoryRef[] = []) {
   useEffect(() => {
     void reload();
     const timers = stockTimers.current;
-    return () => timers.forEach(clearTimeout);
-  }, [reload]);
+    return () => {
+      timers.forEach(clearTimeout);
+      clearPendingPhotos();
+    };
+  }, [reload, clearPendingPhotos]);
 
   // O nome da categoria vem da lista de categorias; renomear reflete na hora.
   const products = useMemo<AdminProduct[]>(() => {
@@ -195,7 +218,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     setIsProductModalOpen(false);
     setEditingProductId(null);
     setNewProduct(emptyProductForm);
-    setPhoto(null);
+    clearPendingPhotos();
     setError("");
   };
 
@@ -203,7 +226,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     setEditingProductId(null);
     setNewProduct(emptyProductForm);
     setSavedForm(emptyProductForm);
-    setPhoto(null);
+    clearPendingPhotos();
     setError("");
     setIsProductModalOpen(true);
   };
@@ -219,25 +242,75 @@ export function useProducts(categories: CategoryRef[] = []) {
       category: product.categoryId,
       additionalCategoryIds: product.additionalCategoryIds,
       imageUrl: product.imageUrl ?? "",
+      moreImages: record ? serverPhotos(record).slice(1) : [],
       trackStock: product.trackStock,
       available: product.available,
       promo: toPromoForm(record ?? {}),
     };
     setNewProduct(form);
     setSavedForm(form);
-    setPhoto(null);
+    clearPendingPhotos();
     setError("");
     setIsProductModalOpen(true);
   };
 
-  // A imagem só é enviada ao salvar; até lá fica apenas a prévia local.
+  // As fotos só são enviadas ao salvar; até lá ficam como prévia local.
   const handlePhotoChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    setPhoto(file);
-    setNewProduct((current) => ({
-      ...current,
-      imageUrl: file ? URL.createObjectURL(file) : "",
-    }));
+    const file = event.target.files?.[0];
+    if (!file || photosOf(newProduct).length >= MAX_PHOTOS) return;
+    const url = URL.createObjectURL(file);
+    pendingPhotos.current.set(url, file);
+    setNewProduct((current) => withPhotos(current, [...photosOf(current), url]));
+    // Permite escolher o mesmo arquivo de novo depois de remover.
+    if ("value" in event.target) event.target.value = "";
+  };
+
+  /** Tira a foto do formulário; sem a capa, a próxima vira capa. */
+  const removePhoto = (url: string) => {
+    if (pendingPhotos.current.delete(url)) URL.revokeObjectURL(url);
+    setNewProduct((current) =>
+      withPhotos(current, photosOf(current).filter((item) => item !== url)),
+    );
+  };
+
+  /** Troca a foto com a capa (mesma regra do backend). */
+  const setCoverPhoto = (url: string) =>
+    setNewProduct((current) => {
+      const photos = photosOf(current);
+      const index = photos.indexOf(url);
+      if (index > 0) [photos[0], photos[index]] = [photos[index], photos[0]];
+      return withPhotos(current, photos);
+    });
+
+  /**
+   * Deixa as fotos do servidor iguais às do formulário: remove as que saíram
+   * (do fim para o começo, para os slots não mudarem), envia as novas e
+   * ordena todas as posições usando a troca com a capa.
+   */
+  const syncPhotos = async (product: Product) => {
+    const wanted = photosOf(newProduct);
+    let current = product;
+    const photos = () => serverPhotos(current);
+    for (let index = photos().length - 1; index >= 0; index--) {
+      if (!wanted.includes(photos()[index]))
+        current = await removeProductImage(product.id, index + 1);
+    }
+    const uploaded = new Map<string, string>();
+    for (const url of wanted) {
+      const file = pendingPhotos.current.get(url);
+      if (!file) continue;
+      current = await uploadProductImage(product.id, file, photos().length + 1);
+      uploaded.set(url, photos().at(-1) ?? "");
+    }
+    const ordered = wanted.map((url) => uploaded.get(url) ?? url);
+    // Fixa as extras do fim para o começo; a capa funciona como posição auxiliar.
+    for (let index = ordered.length - 1; index > 0; index--) {
+      const source = photos().indexOf(ordered[index]);
+      if (source === index) continue;
+      if (source > 0) current = await setProductCover(product.id, source + 1);
+      current = await setProductCover(product.id, index + 1);
+    }
+    return current;
   };
 
   const handleSaveProduct = async (event: FormEvent<HTMLFormElement>) => {
@@ -277,13 +350,13 @@ export function useProducts(categories: CategoryRef[] = []) {
       );
       setEditingProductId(product.id);
       // Já está salvo: se o upload falhar, só a foto pendente conta como alteração.
-      setSavedForm({ ...newProduct, imageUrl: product.imageUrl ?? "" });
+      setSavedForm(withPhotos(newProduct, serverPhotos(product)));
       setRecords((current) =>
         current.some((entry) => entry.id === product.id)
           ? current.map((entry) => (entry.id === product.id ? product : entry))
           : [...current, product],
       );
-      if (photo) replaceRecord(await uploadProductImage(product.id, photo));
+      replaceRecord(await syncPhotos(product));
       closeProductModal();
     } catch (err) {
       // O produto pode ter sido salvo antes de a imagem falhar.
@@ -344,6 +417,8 @@ export function useProducts(categories: CategoryRef[] = []) {
     openNewProduct,
     openEditProduct,
     handlePhotoChange,
+    removePhoto,
+    setCoverPhoto,
     handleSaveProduct,
     requestProductDeletion,
     confirmProductDeletion,

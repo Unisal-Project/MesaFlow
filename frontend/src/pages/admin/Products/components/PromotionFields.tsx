@@ -6,6 +6,8 @@ import { MONEY_PATTERN } from "../utils/decimal";
 type PromotionFieldsProps = {
   /** Prefixo dos ids (product/category) para não repetir no DOM. */
   idPrefix: string;
+  collapsible?: boolean;
+  showActive?: boolean;
   value: PromoForm;
   onChange: (value: PromoForm) => void;
 };
@@ -14,29 +16,45 @@ type PromotionFieldsProps = {
  * Bloco "Promoção" compartilhado pelos formulários de produto e categoria.
  * Fica recolhido atrás de "Tem promoção?"; desligar remove a promoção.
  */
-export function PromotionFields({ idPrefix, value, onChange }: PromotionFieldsProps) {
-  const [open, setOpen] = useState(() => value.promoActive || value.promoValue !== "");
+export function PromotionFields({
+  idPrefix,
+  value,
+  onChange,
+  collapsible = true,
+  showActive = true,
+}: PromotionFieldsProps) {
+  const [open, setOpen] = useState(
+    () => value.promoActive || value.promoValue !== "",
+  );
   const set = (patch: Partial<PromoForm>) => onChange({ ...value, ...patch });
   const percent = value.promoType === "PERCENT";
   return (
     <>
-      <Switch
-        className="promotion-fields-toggle"
-        label="Tem promoção?"
-        checked={open}
-        onChange={(event) => {
-          setOpen(event.target.checked);
-          onChange(event.target.checked ? { ...value, promoActive: true } : emptyPromoForm);
-        }}
-      />
-      {open && (
+      {collapsible && (
+        <Switch
+          className="promotion-fields-toggle"
+          label="Tem promoção?"
+          checked={open}
+          onChange={(event) => {
+            setOpen(event.target.checked);
+            onChange(
+              event.target.checked
+                ? { ...value, promoActive: true }
+                : emptyPromoForm,
+            );
+          }}
+        />
+      )}
+      {(!collapsible || open) && (
         <fieldset className="promotion-fields">
           <legend>Promoção</legend>
           <SelectField
             label="Tipo"
             id={`${idPrefix}-promo-type`}
             value={value.promoType}
-            onChange={(event) => set({ promoType: event.target.value as PromoForm["promoType"] })}
+            onChange={(event) =>
+              set({ promoType: event.target.value as PromoForm["promoType"] })
+            }
           >
             <option value="PERCENT">Percentual (%)</option>
             <option value="AMOUNT">Valor (R$)</option>
@@ -84,12 +102,14 @@ export function PromotionFields({ idPrefix, value, onChange }: PromotionFieldsPr
             value={value.promoEndsAt}
             onChange={(event) => set({ promoEndsAt: event.target.value })}
           />
-          <Switch
-            className="promotion-fields-active"
-            label="Promoção ativa"
-            checked={value.promoActive}
-            onChange={(event) => set({ promoActive: event.target.checked })}
-          />
+          {showActive && (
+            <Switch
+              className="promotion-fields-active"
+              label="Promoção ativa"
+              checked={value.promoActive}
+              onChange={(event) => set({ promoActive: event.target.checked })}
+            />
+          )}
         </fieldset>
       )}
     </>

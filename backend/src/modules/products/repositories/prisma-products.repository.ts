@@ -6,6 +6,7 @@ import {
   ProductOutput,
   ProductUpdateInput,
 } from "../entity/products.entity.js";
+import type { PromotionsBatchDTO } from "../dto/products.dto.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 import {
   effectivePrice,
@@ -87,6 +88,13 @@ export class PrismaProductRepository implements ProductsRepository {
 
     if (productUpdateInput.imageUrl !== undefined) {
       data.imageUrl = productUpdateInput.imageUrl;
+    }
+
+    if (productUpdateInput.imageUrls !== undefined) {
+      const [first, second, third] = productUpdateInput.imageUrls;
+      data.imageUrl = first ?? null;
+      data.imageUrl2 = second ?? null;
+      data.imageUrl3 = third ?? null;
     }
 
     if (productUpdateInput.price !== undefined) {
@@ -227,9 +235,13 @@ export class PrismaProductRepository implements ProductsRepository {
     },
   ): ProductOutput {
     // Sem spread de category: só o preço final e a promoção aplicada saem.
-    const { additionalCategories, category, ...data } = product;
+    const { additionalCategories, category, imageUrl2, imageUrl3, ...data } =
+      product;
     return {
       ...data,
+      imageUrls: [product.imageUrl, imageUrl2, imageUrl3].filter(
+        (url): url is string => Boolean(url),
+      ),
       price: product.price.toString(),
       promoValue: product.promoValue?.toString() ?? null,
       ...pricing({ ...product, category }),
@@ -237,6 +249,51 @@ export class PrismaProductRepository implements ProductsRepository {
         (item) => item.categoryId,
       ),
     };
+  }
+
+  /** Tudo ou nada: valida R$ contra cada preço e grava produtos e categorias. */
+  async applyPromotions(batch: PromotionsBatchDTO) {
+    const { productIds, categoryIds, ...data } = batch;
+    return this.prismaClient.$transaction(async (tx) => {
+      if (data.promoType === "AMOUNT" && data.promoValue != null) {
+        const value = data.promoValue;
+        const tooCheap = (
+          await tx.product.findMany({
+            where: { id: { in: productIds } },
+            select: { name: true, price: true },
+          })
+        ).filter((product) => Number(product.price) <= value);
+        if (tooCheap.length) {
+          throw new AppError(
+            `O desconto em R$ deve ser menor que o preço de: ${tooCheap
+              .map((product) => product.name)
+              .join(", ")}`,
+            400,
+          );
+        }
+      }
+      const products = productIds.length
+        ? (
+            await tx.product.updateMany({
+              where: { id: { in: productIds } },
+              data,
+            })
+          ).count
+        : 0;
+      const categories = categoryIds.length
+        ? (
+            await tx.category.updateMany({
+              where: { id: { in: categoryIds } },
+              data,
+            })
+          ).count
+        : 0;
+      if (products !== productIds.length)
+        throw new AppError("Produto não encontrado", 404);
+      if (categories !== categoryIds.length)
+        throw new AppError("Categoria não encontrada", 404);
+      return { products, categories };
+    });
   }
 
   private handlePrismaError(error: unknown): never {

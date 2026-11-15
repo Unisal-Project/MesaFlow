@@ -58,6 +58,8 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(150) NOT NULL,
     description TEXT NULL,
     image_url VARCHAR(2048) NULL,
+    image_url_2 VARCHAR(2048) NULL,
+    image_url_3 VARCHAR(2048) NULL,
     price DECIMAL(10,2) NOT NULL,
     promo_type ENUM('PERCENT', 'AMOUNT') NULL,
     promo_value DECIMAL(10,2) NULL,
@@ -93,6 +95,11 @@ CREATE TABLE IF NOT EXISTS products (
 -- quando o database-init reaplica este schema idempotente.
 ALTER TABLE products
     ADD COLUMN IF NOT EXISTS image_url VARCHAR(2048) NULL AFTER description;
+
+-- Até 3 fotos por produto; image_url continua sendo a capa.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS image_url_2 VARCHAR(2048) NULL AFTER image_url,
+    ADD COLUMN IF NOT EXISTS image_url_3 VARCHAR(2048) NULL AFTER image_url_2;
 
 -- Produto sem controle de estoque nunca esgota; existentes continuam controlados.
 ALTER TABLE products

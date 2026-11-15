@@ -11,8 +11,14 @@ import { AdminWorkspace } from "@/layouts/AdminWorkspace";
 import { ClientWorkspace } from "@/layouts/ClientWorkspace";
 import MenuPreview from "@/pages/admin/MenuPreview";
 import ProductPreview from "@/pages/admin/MenuPreview/ProductPreview";
+import {
+  BillPreview,
+  CartPreview,
+  PreviewLayout,
+} from "@/pages/admin/MenuPreview/PreviewPages";
 import Dashboard from "@/pages/admin/Dashboard";
 import Reports from "@/pages/admin/Reports";
+import Promotions from "@/pages/admin/Promotions";
 import Settings from "@/pages/admin/Settings";
 import Products from "@/pages/admin/Products";
 import Tables from "@/pages/admin/Table";
@@ -87,14 +93,12 @@ export function AdminRoutes() {
       <Routes>
         {/* Prévia do cardápio como o cliente vê: página cheia, sem sidebar. */}
         <Route element={<ClientWorkspace />}>
-          <Route
-            path="ver-cardapio"
-            element={<MenuPreview />}
-          />
-          <Route
-            path="ver-cardapio/produto/:productId"
-            element={<ProductPreview />}
-          />
+          <Route path="ver-cardapio" element={<PreviewLayout />}>
+            <Route index element={<MenuPreview />} />
+            <Route path="produto/:productId" element={<ProductPreview />} />
+            <Route path="carrinho" element={<CartPreview />} />
+            <Route path="conta" element={<BillPreview />} />
+          </Route>
         </Route>
         <Route element={<AdminWorkspace />}>
           <Route index element={<Navigate to="dashboard" replace />} />
@@ -172,6 +176,10 @@ export function AdminRoutes() {
             }
           />
           <Route path="relatorios" element={<Reports onNavigate={goTo} />} />
+          <Route
+            path="promocoes"
+            element={<Promotions onNavigate={goTo} />}
+          />
           <Route
             path="configuracoes"
             element={<Settings onNavigate={goTo} />}

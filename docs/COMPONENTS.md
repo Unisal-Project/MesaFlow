@@ -57,7 +57,9 @@ Ao editar estilos, preserve as classes e a ordem da cascata. Consulte `SCSS-REFA
 
 ## Admin no celular
 
-Até 820px, a própria `AdminSidebar` vira uma barra inferior com as cinco seções. As regras ficam em `layouts/adminWorkspace.scss`; o espaço inferior reservado evita que ela cubra o fim das páginas. Acima desse limite, permanece a navegação lateral.
+Até 820px, o botão ☰ de `AdminSidebar` fica alinhado ao título no cabeçalho fixo, sem faixa vazia acima da página. Ele abre uma gaveta lateral à esquerda, com os itens de navegação e "Ver cardápio"; o bloco do usuário com Configurações/Sair fica no rodapé da gaveta. As regras compartilhadas ficam em `layouts/adminWorkspace.scss`; buscas de cabeçalho ocupam a linha seguinte no celular. Acima desse limite, permanece a sidebar fixa do desktop.
+
+A gaveta desliza e o fundo escurecido faz fade em 220ms, respeitando `prefers-reduced-motion` sem transição. O X de "Fechar menu" tem alvo mínimo de 44px e fica encostado na borda direita do painel. Fundo, X, Esc e escolha de navegação fecham a gaveta; foco e Tab ficam dentro dela enquanto aberta e o foco volta ao ☰ ao fechar. A rolagem do body é travada e restaurada; fechada, a gaveta fica `inert`, sem receber foco ou leitura assistiva. O botão informa `aria-expanded` e `aria-controls`.
 
 Na tela de Mesas, a busca principal acompanha o cabeçalho fixo. A segunda busca é ocultada no celular e os filtros de status permitem rolagem horizontal. Os ajustes específicos ficam em `pages/admin/Table/styles.scss`.
 

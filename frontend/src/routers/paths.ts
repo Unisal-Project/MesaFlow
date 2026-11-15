@@ -4,8 +4,11 @@ export const adminPaths: Record<string, string> = {
   tables: "/admin/mesas",
   menu: "/admin/cardapio",
   reports: "/admin/relatorios",
+  promotions: "/admin/promocoes",
   menuPreview: "/admin/ver-cardapio",
   menuPreviewProduct: "/admin/ver-cardapio/produto",
+  menuPreviewCart: "/admin/ver-cardapio/carrinho",
+  menuPreviewBill: "/admin/ver-cardapio/conta",
   settings: "/admin/configuracoes",
 };
 

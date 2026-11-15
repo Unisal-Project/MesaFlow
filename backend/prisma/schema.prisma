@@ -116,6 +116,8 @@ model Product {
   name                 String            @db.VarChar(150)
   description          String?           @db.Text
   imageUrl             String?           @map("image_url") @db.VarChar(2048)
+  imageUrl2            String?           @map("image_url_2") @db.VarChar(2048)
+  imageUrl3            String?           @map("image_url_3") @db.VarChar(2048)
   price                Decimal           @db.Decimal(10, 2)
   promoType            PromoType?        @map("promo_type")
   promoValue           Decimal?          @map("promo_value") @db.Decimal(10, 2)

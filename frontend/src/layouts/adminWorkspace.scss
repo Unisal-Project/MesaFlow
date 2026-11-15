@@ -109,108 +109,133 @@ html.admin-workspace-active {
   }
 }
 
-// A mesma navegação lateral se transforma em uma barra ao alcance do polegar.
+// No celular, o botão fixo ocupa a primeira coluna do cabeçalho.
 @include mixins.down(workspace) {
   html.admin-workspace-active {
-    :is(.mf-dashboard, .orders-page, .tables-page, .products-page, .reports-page, .settings-page) {
+    body { min-width: 0; }
+    :is(.mf-dashboard, .orders-page, .tables-page, .products-page, .promotions-page, .reports-page, .settings-page) {
       grid-template-columns: minmax(0, 1fr);
-      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
 
       > .admin-sidebar {
         position: fixed;
-        z-index: 60;
-        inset: auto 12px max(12px, env(safe-area-inset-bottom, 0px));
-        display: grid;
-        // Uma coluna por item: navegação, "Ver cardápio" e conta.
-        grid-auto-columns: minmax(0, 1fr);
-        grid-auto-flow: column;
-        align-self: auto;
-        gap: 2px;
-        width: min(calc(100% - 24px), 560px);
-        height: auto;
-        min-height: 68px;
-        max-height: none;
-        margin-inline: auto;
-        padding: 6px;
-        overflow: visible;
-        border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--surface));
-        border-radius: 32px;
-        background: var(--surface);
-        box-shadow: 0 6px 24px color-mix(in srgb, var(--text) 12%, transparent);
-
-        .admin-brand, .admin-navigation-label {
-          display: none;
+        z-index: 81;
+        inset: 0 auto 0 0;
+        display: flex;
+        visibility: hidden;
+        transform: translateX(-100%);
+        pointer-events: none;
+        transition: transform 220ms ease-out, visibility 0s linear 220ms;
+        width: min(320px, calc(100vw - 32px));
+        height: 100dvh;
+        padding: max(16px, env(safe-area-inset-top, 0px)) 20px max(16px, env(safe-area-inset-bottom, 0px));
+        &.is-open {
+          visibility: visible;
+          transform: translateX(0);
+          pointer-events: auto;
+          transition-delay: 0s;
         }
-
-        .admin-profile {
-          min-width: 0;
-          margin: 0;
-        }
-
-        .admin-profile > .profile-area {
-          border: 0;
-
-          .admin-profile-avatar, small {
-            display: none;
-          }
-
-          .admin-profile-icon {
-            display: block;
-          }
-
-          strong {
-            max-width: 100%;
-            overflow: hidden;
-            color: inherit;
-            font-size: inherit;
-            text-overflow: ellipsis;
-          }
-        }
-
-        .admin-profile-menu {
-          bottom: calc(100% + 14px);
-          left: auto;
-          width: 200px;
-        }
-
-        button {
+        @media (prefers-reduced-motion: reduce) { transition: none; }
+        .admin-menu-close {
           display: flex;
-          flex-direction: column;
-          align-items: center;
+          align-self: flex-end;
           justify-content: center;
-          gap: 4px;
-          min-width: 0;
-          min-height: 54px;
-          margin: 0;
-          padding: 4px 0;
-          color: var(--text-secondary);
-          font-size: 10px;
-          line-height: 1.2;
-          white-space: nowrap;
-          background: transparent;
-
-          svg {
-            flex-shrink: 0;
-            width: 20px;
-            height: 20px;
-          }
-
-          &.active, &:hover {
-            background: var(--selected-background);
-            color: var(--primary);
-            box-shadow: none;
-          }
+          min-width: 44px;
+          min-height: 44px;
+          margin: 0 -20px 8px 0;
+          padding: 10px;
         }
+        .admin-profile .admin-profile-menu > .admin-profile-menu-item { min-height: 44px; }
       }
     }
-
-    :is(.mf-dashboard-main, .orders-content, .tables-content, .products-content, .reports-content) {
+    .admin-menu-trigger {
+      position: fixed;
+      z-index: 60;
+      top: calc(12px + env(safe-area-inset-top, 0px));
+      left: 16px;
+      display: grid;
+      place-items: center;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-card);
+      background: var(--surface);
+      color: var(--primary);
+      box-shadow: var(--shadow-soft);
+    }
+    .admin-sidebar-backdrop {
+      display: block;
+      position: fixed;
+      z-index: 80;
+      inset: 0;
+      background: rgb(0 0 0 / 50%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 220ms ease-out, visibility 0s linear 220ms;
+      &.is-open {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transition-delay: 0s;
+      }
+      @media (prefers-reduced-motion: reduce) { transition: none; }
+    }
+    :is(.mf-dashboard-main, .orders-content, .tables-content, .products-content, .promotions-content, .reports-content) {
       min-width: 0;
     }
+    :is(.orders-content, .tables-content) { padding: 0; }
 
-    :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .reports-topbar) {
+    :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .promotions-topbar, .reports-topbar) {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr) 44px;
+      grid-auto-rows: minmax(44px, auto);
+      align-items: center;
+      top: 0;
+      min-height: calc(68px + env(safe-area-inset-top, 0px));
       gap: var(--spacing-3);
-      padding-block: var(--spacing-3);
+      padding: calc(var(--spacing-3) + env(safe-area-inset-top, 0px)) var(--spacing-4) var(--spacing-3);
+
+      :is(.mf-dashboard-breadcrumb, .orders-breadcrumb, .tables-breadcrumb, .products-breadcrumb, .promotions-breadcrumb, .reports-breadcrumb) {
+        display: block;
+        grid-column: 2;
+        grid-row: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        > span { display: none; }
+      }
+      :is(.mf-dashboard-tools, .orders-topbar-actions, .tables-topbar-actions, .products-topbar-actions, .reports-topbar-actions) {
+        display: contents;
+      }
+      .notifications-container {
+        grid-column: 3;
+        grid-row: 1;
+      }
+      .notifications-button { width: 44px; height: 44px; }
+      :is(.order-search, .reports-search) {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        min-width: 0;
+        width: 100%;
+        min-height: 44px;
+      }
+    }
+    // Configurações usa o próprio h1 como cabeçalho, sem mudar o componente.
+    .settings-content {
+      padding: 0 var(--spacing-4) var(--spacing-10);
+      > h1 {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        min-height: calc(68px + env(safe-area-inset-top, 0px));
+        margin: 0 calc(-1 * var(--spacing-4)) var(--spacing-6);
+        padding: calc(var(--spacing-3) + env(safe-area-inset-top, 0px)) var(--spacing-4) var(--spacing-3) 72px;
+        background: var(--surface);
+        font-size: var(--font-size-lg);
+        overflow-wrap: anywhere;
+      }
     }
   }
 }

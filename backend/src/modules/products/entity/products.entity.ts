@@ -24,6 +24,8 @@ export type ProductUpdateInput = {
   name?: string;
   description?: string | null;
   imageUrl?: string | null;
+  /** Até 3 fotos, capa primeiro; grava as colunas image_url/_2/_3. */
+  imageUrls?: string[];
   price?: number;
   stockQuantity?: number;
   trackStock?: boolean;
@@ -43,6 +45,8 @@ export type ProductOutput = {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  /** Fotos do produto (capa primeiro, sem vazios). */
+  imageUrls: string[];
   price: string;
   stockQuantity: number;
   trackStock: boolean;
@@ -67,6 +71,8 @@ export type ProductResponse = {
   name: string;
   description: string | null;
   imageUrl: string | null;
+  /** Fotos do produto (capa primeiro, sem vazios). */
+  imageUrls: string[];
   price: string;
   stockQuantity: number;
   trackStock: boolean;

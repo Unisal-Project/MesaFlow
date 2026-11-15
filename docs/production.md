@@ -35,7 +35,7 @@ SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 $DC exec -T database sh -c 'exec mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction "$MARIADB_DATABASE"' > backup-$(date +%F-%H%M).sql
 
 # 2. Incrementais antigos (se ainda não aplicados), 3. colunas do painel admin, controle de estoque opcional e promoções, 4. remoção do acompanhamento de preparo
-for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions remove-order-tracking; do
+for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images remove-order-tracking; do
   $DC exec -T database sh -c "$SQL" < backend/prisma/sql/$f.sql || break
 done
 
@@ -44,7 +44,7 @@ $DC up --build -d
 curl -fsS http://localhost/api/v1/health   # {"status":"ok"}
 ```
 
-`admin-panel-columns.sql` só adiciona colunas (`seats`, `service_fee` e detalhes de pagamento), `product-track-stock.sql` só adiciona `products.track_stock` (padrão `TRUE`, produtos existentes continuam com estoque controlado) e `promotions.sql` só adiciona as colunas `promo_*` em `products` e `categories` (promoção desligada por padrão); a versão anterior do backend as ignora. `remove-order-tracking.sql` preserva pedidos e cancelamentos e converte os antigos estados de preparo (`PREPARING`, `READY`, `DELIVERED`) para `PENDING`; essa conversão só é desfeita restaurando o backup.
+`admin-panel-columns.sql` só adiciona colunas (`seats`, `service_fee` e detalhes de pagamento), `product-track-stock.sql` só adiciona `products.track_stock` (padrão `TRUE`, produtos existentes continuam com estoque controlado) `promotions.sql` só adiciona as colunas `promo_*` em `products` e `categories` (promoção desligada por padrão) e `product-images.sql` só adiciona `image_url_2`/`image_url_3` em `products` (fotos extras; `image_url` segue como capa); a versão anterior do backend as ignora. `remove-order-tracking.sql` preserva pedidos e cancelamentos e converte os antigos estados de preparo (`PREPARING`, `READY`, `DELIVERED`) para `PENDING`; essa conversão só é desfeita restaurando o backup.
 
 Rollback: a versão anterior do backend funciona com o banco já atualizado. Para devolver o enum de pedidos ao formato antigo (sem recuperar os estados convertidos):
 

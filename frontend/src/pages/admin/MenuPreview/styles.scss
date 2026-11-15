@@ -1,0 +1,15 @@
+/* Aviso do carrinho da prévia, acima da barra de abas do cliente. */
+.menu-preview-notice {
+  position: fixed;
+  z-index: 70;
+  right: var(--spacing-4);
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+  left: var(--spacing-4);
+  max-width: 480px;
+  margin-inline: auto;
+  .message {
+    background: var(--surface);
+    box-shadow: 0 6px 24px color-mix(in srgb, var(--text) 14%, transparent);
+    text-align: center;
+  }
+}

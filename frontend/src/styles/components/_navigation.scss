@@ -168,6 +168,7 @@ html.admin-workspace-active body {
 .tables-page,
 .products-page,
 .reports-page,
+.promotions-page,
 .settings-page {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
@@ -193,7 +194,8 @@ html.admin-workspace-active body {
   .orders-topbar,
   .tables-topbar,
   .products-topbar,
-  .reports-topbar {
+  .reports-topbar,
+  .promotions-topbar {
     position: sticky;
     top: 0;
     z-index: 20;
@@ -202,7 +204,8 @@ html.admin-workspace-active body {
   .orders-body,
   .tables-body,
   .products-body,
-  .reports-body {
+  .reports-body,
+  .promotions-body {
     animation: admin-page-enter 420ms cubic-bezier(.22, .61, .36, 1);
   }
   .admin-brand {
@@ -354,4 +357,10 @@ html.admin-workspace-active body {
     background: var(--selected-background);
     color: var(--primary);
   }
+}
+
+.admin-menu-trigger,
+.admin-sidebar button.admin-menu-close,
+.admin-sidebar-backdrop {
+  display: none;
 }

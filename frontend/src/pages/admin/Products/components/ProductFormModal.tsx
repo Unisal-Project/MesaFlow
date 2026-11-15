@@ -1,4 +1,5 @@
 import {
+  Badge,
   Button,
   ProductCard,
   SelectField,
@@ -38,6 +39,8 @@ type ProductFormModalProps = {
   onClose: () => void;
   onSave: (event: FormEvent<HTMLFormElement>) => void;
   onPhotoChange: (event: ChangeEvent<HTMLInputElement>) => void;
+  onRemovePhoto?: (url: string) => void;
+  onSetCoverPhoto?: (url: string) => void;
   onDelete: (product: AdminProduct) => void;
   /** "+ Nova" categoria sem sair do formulário; devolve a categoria criada. */
   onCreateCategory?: (name: string) => Promise<{ id: string }>;
@@ -53,6 +56,8 @@ export function ProductFormModal({
   onClose,
   onSave,
   onPhotoChange,
+  onRemovePhoto,
+  onSetCoverPhoto,
   onDelete,
   onCreateCategory,
   error,
@@ -60,6 +65,7 @@ export function ProductFormModal({
 }: ProductFormModalProps) {
   const modalRef = useRef<HTMLElement>(null);
   const category = categories.find((item) => item.id === newProduct.category);
+  const photos = [newProduct.imageUrl, ...(newProduct.moreImages ?? [])].filter(Boolean);
   const preview = previewPrice(
     toDecimal(newProduct.price),
     { ...newProduct.promo, promoValue: toDecimal(newProduct.promo.promoValue) },
@@ -347,22 +353,43 @@ export function ProductFormModal({
             />
           )}
           <div className="new-product-photo">
-            <span>Imagem do produto</span>
-            <label className="product-photo-upload">
-              <input
-                type="file"
-                aria-label="Adicionar imagem do produto"
-                accept="image/png,image/jpeg,image/webp"
-                onChange={onPhotoChange}
-              />
-              <Plus aria-hidden="true" />
-              {newProduct.imageUrl
-                ? "Alterar imagem"
-                : "Adicionar imagem (opcional)"}
-              {newProduct.imageUrl && (
-                <img src={newProduct.imageUrl} alt="Prévia do produto" />
-              )}
-            </label>
+            <span>Imagem do produto (até 3 fotos; a capa aparece no cardápio)</span>
+            <ul className="product-photo-list">
+              {photos.map((url, index) => (
+                <li key={url} className="product-photo-item">
+                  <img src={url} alt={`Foto ${index + 1} do produto`} />
+                  {index === 0 ? (
+                    <Badge variant="success">Capa</Badge>
+                  ) : (
+                    onSetCoverPhoto && (
+                      <Button type="button" variant="secondary" size="small" onClick={() => onSetCoverPhoto(url)}>
+                        Definir como capa
+                      </Button>
+                    )
+                  )}
+                  {onRemovePhoto && (
+                    <Button type="button" variant="ghost" size="small" aria-label={`Remover foto ${index + 1}`} onClick={() => onRemovePhoto(url)}>
+                      <Trash aria-hidden="true" />
+                      Remover
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+            {photos.length < 3 && (
+              <label className="product-photo-upload">
+                <input
+                  type="file"
+                  aria-label="Adicionar imagem do produto"
+                  accept="image/png,image/jpeg,image/webp"
+                  onChange={onPhotoChange}
+                />
+                <Plus aria-hidden="true" />
+                {photos.length
+                  ? `Adicionar foto (${photos.length}/3)`
+                  : "Adicionar imagem (opcional)"}
+              </label>
+            )}
           </div>
           <TextAreaField
             className="new-product-observation"

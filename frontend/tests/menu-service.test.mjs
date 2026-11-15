@@ -133,3 +133,25 @@ test("unitPrice usa finalPrice do backend e cai para price em carrinho antigo", 
   assert.equal(menu.unitPrice({ price: "10.00", finalPrice: "8.00" }), 8);
   assert.equal(menu.unitPrice({ price: "10.00" }), 10);
 });
+
+test("applyPromotions faz PATCH /promotions com os ids e a promoção", async () => {
+  const body = {
+    productIds: ["1"],
+    categoryIds: ["5"],
+    promoType: "PERCENT",
+    promoValue: 10,
+    promoActive: true,
+    promoStartsAt: null,
+    promoEndsAt: null,
+  };
+  globalThis.fetch = async (url, options) => {
+    assert.match(url, /\/api\/v1\/promotions$/);
+    assert.equal(options.method, "PATCH");
+    assert.deepEqual(JSON.parse(options.body), body);
+    return Response.json({ products: 1, categories: 1 });
+  };
+  assert.deepEqual(await menu.applyPromotions(body), {
+    products: 1,
+    categories: 1,
+  });
+});

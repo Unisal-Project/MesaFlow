@@ -89,7 +89,7 @@ for (const [url, expected] of cases) {
   });
 }
 
-test("prévia do cardápio exige login e não mostra a barra do cliente", async () => {
+test("prévia do cardápio exige login e usa a barra de abas do cliente", async () => {
   const { RequireAuth } = await server.ssrLoadModule(
     "/src/routers/AppRouter.tsx",
   );
@@ -118,7 +118,7 @@ test("prévia do cardápio exige login e não mostra a barra do cliente", async 
   assert.ok(!guarded.includes("client-menu"));
   const preview = render("/admin/ver-cardapio", createElement(AdminRoutes));
   assert.ok(preview.includes("Voltar ao painel"));
-  assert.ok(!preview.includes("client-tabbar"));
+  assert.ok(preview.includes("client-tabbar"));
   assert.ok(!/prévia/i.test(preview));
   const client = render("/cardapio", createElement(AdminRoutes));
   assert.ok(client.includes("client-tabbar"));
@@ -199,7 +199,7 @@ test("configurações exige login e mostra a conta com o menu do usuário", asyn
   assert.ok(page.includes("Mais opções em breve."));
   // Disclosure: botão controla a lista; sem role=menu/menuitem.
   assert.match(page, /aria-controls="([^"]+)" aria-expanded="false"/);
-  const menuId = page.match(/aria-controls="([^"]+)"/)[1];
+  const menuId = page.match(/class="profile-area" aria-controls="([^"]+)"/)[1];
   assert.ok(page.includes(`id="${menuId}" class="admin-profile-menu" hidden=""`));
   assert.ok(!/role="menu(item)?"/.test(page));
   assert.equal(paths.adminPaths.settings, "/admin/configuracoes");

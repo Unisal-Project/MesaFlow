@@ -5,7 +5,7 @@ import { createServer } from "vite";
 import { createElement } from "react";
 import { renderToString } from "react-dom/server";
 
-let server, hook, Dashboard;
+let server, hook, Dashboard, greetingPeriod, dashboardGreeting;
 const previousWindow = globalThis.window;
 const previousStorage = globalThis.localStorage;
 
@@ -24,6 +24,7 @@ before(async () => {
     optimizeDeps: { noDiscovery: true },
   });
   hook = await server.ssrLoadModule("/src/pages/admin/Dashboard/hooks/useDashboard.ts");
+  ({ greetingPeriod, dashboardGreeting } = await server.ssrLoadModule("/src/pages/admin/Dashboard/utils/dashboard.utils.ts"));
   Dashboard = (await server.ssrLoadModule("/src/pages/admin/Dashboard/index.tsx")).default;
 });
 after(async () => {
@@ -105,4 +106,41 @@ test("dashboard vazio não quebra e explica o estado", () => {
   assert.match(html, /Nenhum pedido em aberto agora/);
   assert.match(html, /Nenhuma mesa cadastrada/);
   assert.match(html, /Sem vendas ontem/);
+});
+
+
+test("saudação usa os limites dos períodos na hora local", () => {
+  for (const [hour, minute, period, prefix] of [
+    [4, 59, "night", "Boa noite"], [5, 0, "morning", "Bom dia"],
+    [11, 59, "morning", "Bom dia"], [12, 0, "afternoon", "Boa tarde"],
+    [17, 59, "afternoon", "Boa tarde"], [18, 0, "night", "Boa noite"],
+  ]) {
+    const date = new Date(2026, 10, 15, hour, minute);
+    assert.equal(greetingPeriod(date), period);
+    assert.ok(dashboardGreeting(date).startsWith(prefix));
+  }
+});
+
+test("saudação é estável por data/período e varia por dia usando só a data local", () => {
+  for (const hour of [5, 12, 18]) {
+    const day = new Date(2026, 10, 15, hour);
+    assert.equal(dashboardGreeting(day), dashboardGreeting(new Date(day)));
+    assert.equal(dashboardGreeting(day), dashboardGreeting(new Date(2026, 10, 15, hour + 1, 59)));
+    assert.notEqual(dashboardGreeting(day), dashboardGreeting(new Date(2026, 10, 16, hour)));
+  }
+  // Mesma noite local, mesmo quando a data UTC pode virar no fim do dia.
+  assert.equal(dashboardGreeting(new Date(2026, 10, 15, 18)), dashboardGreeting(new Date(2026, 10, 15, 23, 59)));
+  for (const [year, month, day] of [[2026, 11, 31], [2028, 1, 29]]) {
+    const date = new Date(year, month, day, 12);
+    const tomorrow = new Date(year, month, day + 1, 12);
+    assert.notEqual(dashboardGreeting(date), dashboardGreeting(tomorrow));
+  }
+});
+
+test("cada período tem três frases e sempre usa a saudação correta", () => {
+  for (const [hour, prefix] of [[9, "Bom dia"], [15, "Boa tarde"], [23, "Boa noite"]]) {
+    const phrases = new Set(Array.from({ length: 9 }, (_, day) => dashboardGreeting(new Date(2026, 10, day + 1, hour))));
+    assert.equal(phrases.size, 3);
+    for (const phrase of phrases) assert.ok(phrase.startsWith(prefix));
+  }
 });

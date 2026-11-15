@@ -1011,3 +1011,33 @@ label.field.money-field input {
     margin-top: var(--spacing-2);
   }
 }
+
+/* Até 3 fotos: miniaturas com capa, "Definir como capa" e remover. */
+.product-photo-list {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  &:empty {
+    display: none;
+  }
+}
+.product-photo-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  border-radius: var(--radius-medium);
+  background: var(--background);
+  img {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-small);
+    object-fit: cover;
+  }
+  .btn {
+    min-height: 44px;
+  }
+}
