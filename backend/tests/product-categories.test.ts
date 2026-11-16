@@ -74,7 +74,7 @@ function setup(existingIds = [1n, 2n, 3n], orphan = false) {
       return callback(tx);
     },
   } as unknown as typeof PrismaConnector;
-  return { repository: new PrismaProductRepository(prisma), calls };
+  return { repository: new PrismaProductRepository(prisma), calls, tx };
 }
 
 test("DTOs accept legacy inputs and distinguish omitted associations from []", () => {
@@ -434,4 +434,31 @@ test("HTTP: órfão não pode ser criado/editado/reativado nem exposto ao públi
   } finally {
     await app.close();
   }
+});
+
+test("ajuste de estoque usa delta do saldo sob lock e audita; sem controle ignora", async () => {
+  const { repository, tx, calls } = setup();
+  const movements: any[] = [];
+  const row = { ...stored, stockQuantity: 8, trackStock: true };
+  tx.product.findUnique = async () => row;
+  (tx.product as any).updateMany = async ({ data }: any) => {
+    row.stockQuantity += data.stockQuantity.increment;
+    return { count: 1 };
+  };
+  (tx as any).stockMovement = {
+    create: async ({ data }: any) => movements.push(data),
+  };
+  await repository.updateProduct(10n, { stockQuantity: 10 });
+  assert.equal(row.stockQuantity, 10);
+  assert.equal(movements[0].quantity, 2);
+  assert.equal(movements[0].type, "ADJUSTMENT");
+  assert.equal(
+    calls.filter((c) => c.operation === "update").at(-1)?.args.data
+      .stockQuantity,
+    undefined,
+  );
+  row.trackStock = false;
+  await repository.updateProduct(10n, { stockQuantity: 50 });
+  assert.equal(row.stockQuantity, 10);
+  assert.equal(movements.length, 1);
 });

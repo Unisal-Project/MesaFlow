@@ -3,7 +3,7 @@ import { AppError } from "../../shared/errors/app-errors.js";
 
 export type StockMovementInput = {
   type: "SALE" | "ADJUSTMENT" | "CANCELLATION";
-  orderId: bigint;
+  orderId?: bigint;
   orderItemId?: bigint;
   userId: bigint | null;
 };
@@ -46,7 +46,7 @@ export async function moveStock(
       productId,
       quantity: change,
       type: movement.type,
-      orderId: movement.orderId,
+      orderId: movement.orderId ?? null,
       orderItemId: movement.orderItemId ?? null,
       userId: movement.userId,
     },

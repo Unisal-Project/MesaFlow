@@ -94,7 +94,7 @@ test("conta fechada mostra os pagamentos só no primeiro pedido", () => {
   assert.deepEqual(first.payment.entries.map((entry) => entry.method), ["pix", "cash"]);
   assert.equal(first.payment.entries[1].change, 20);
   assert.equal(first.payment.serviceFee, 6);
-  assert.equal(first.payment.serviceFeeWaived, false);
+  assert.equal(first.payment.serviceFeeWaived, undefined);
   assert.deepEqual(second.payment.entries, []);
   assert.deepEqual(first.payment.orderIds.sort(), [10, 12]);
 });
@@ -191,4 +191,10 @@ test("nota 18: aviso de reabrir soma os pagamentos da conta inteira", () => {
   // Selecionando o 2º pedido da conta (sem pagamentos nele) o total continua 66.
   const second = list.find((order) => order.id === 12);
   assert.equal(hook.accountPaidTotal(list, second), 66);
+});
+
+test("taxa zero não é inferida como isenção no histórico", () => {
+ const [order]=hook.toOrders([response({attendance:{id:"50",status:"CLOSED",closedAt:"2026-11-08T16:00:00Z",serviceFee:"0.00",payments:[]}})]);
+ assert.equal(order.payment.serviceFee,0);
+ assert.equal("serviceFeeWaived" in order.payment,false);
 });

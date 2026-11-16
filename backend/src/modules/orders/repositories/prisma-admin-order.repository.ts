@@ -91,6 +91,15 @@ export class PrismaAdminOrderRepository {
         current?.id ??
         (await tx.attendance.create({ data: { tableId, status: "OPEN" } })).id;
 
+      const [locked] = await tx.$queryRaw<
+        { status: string }[]
+      >`SELECT status FROM attendances WHERE id = ${attendanceId} FOR UPDATE`;
+      if (locked?.status !== "OPEN")
+        throw new AppError(
+          "A conta desta mesa já foi solicitada; não aceita novos pedidos",
+          409,
+        );
+
       const prices = await this.lockProducts(
         tx,
         items.map((item) => item.productId),
@@ -127,14 +136,20 @@ export class PrismaAdminOrderRepository {
     });
   }
 
-  replaceItems(
+  async replaceItems(
     orderId: bigint,
     items: AdminOrderItemInput[],
     notes: string | null | undefined,
     actor: Actor,
   ): Promise<AdminOrderRecord> {
+    const reference = await this.findOrderReference(orderId);
     return this.prismaClient.$transaction(async (tx) => {
-      const order = await this.lockEditableOrder(tx, orderId);
+      const order = await this.lockEditableOrder(
+        tx,
+        orderId,
+        reference.attendance.tableId,
+        reference.attendanceId,
+      );
 
       // Regra 12: o estoque movimenta só a diferença por produto.
       const quantities = (list: { productId: bigint; quantity: number }[]) =>
@@ -198,15 +213,21 @@ export class PrismaAdminOrderRepository {
     });
   }
 
-  cancel(
+  async cancel(
     orderId: bigint,
     reason: string,
     restoreStock: boolean,
     actor: Actor,
   ): Promise<AdminOrderRecord> {
+    const reference = await this.findOrderReference(orderId);
     return this.prismaClient.$transaction(async (tx) => {
       // Regra 17: o bloqueio impede cancelar duas vezes e repor em dobro.
-      const order = await this.lockEditableOrder(tx, orderId);
+      const order = await this.lockEditableOrder(
+        tx,
+        orderId,
+        reference.attendance.tableId,
+        reference.attendanceId,
+      );
       await tx.order.update({
         where: { id: orderId },
         data: {
@@ -235,7 +256,24 @@ export class PrismaAdminOrderRepository {
     });
   }
 
-  private async lockEditableOrder(tx: Tx, orderId: bigint) {
+  private async findOrderReference(orderId: bigint) {
+    // Descoberta fora do snapshot da transação: a leitura dos itens só ocorre após os locks.
+    const reference = await this.prismaClient.order.findUnique({
+      where: { id: orderId },
+      select: { attendanceId: true, attendance: { select: { tableId: true } } },
+    });
+    if (!reference) throw new AppError("Pedido não encontrado", 404);
+    return reference;
+  }
+
+  private async lockEditableOrder(
+    tx: Tx,
+    orderId: bigint,
+    tableId: bigint,
+    attendanceId: bigint,
+  ) {
+    await tx.$queryRaw`SELECT id FROM restaurant_tables WHERE id = ${tableId} FOR UPDATE`;
+    await tx.$queryRaw`SELECT id FROM attendances WHERE id = ${attendanceId} FOR UPDATE`;
     await tx.$queryRaw`SELECT id FROM orders WHERE id = ${orderId} FOR UPDATE`;
     const order = await tx.order.findUnique({
       where: { id: orderId },

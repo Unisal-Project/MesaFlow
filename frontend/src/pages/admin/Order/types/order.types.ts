@@ -35,7 +35,6 @@ export type Order = OrderSummary & {
     /** Dia do fechamento (AAAA-MM-DD), base dos indicadores de vendas. */
     closedOn?: string;
     serviceFee?: number;
-    serviceFeeWaived?: boolean;
     orderIds?: number[];
   };
 };

@@ -13,6 +13,10 @@ docker compose --env-file production.env -f docker-compose.production.yml ps
 
 Para teste local, use `FRONTEND_URL=http://localhost` e acesse `http://localhost`. O endpoint `http://localhost/api/v1/health` verifica o encaminhamento até o backend.
 
+## Valkey (limite de tentativas de login)
+
+O backend usa o Valkey do Compose (`VALKEY_URL=redis://valkey:6379`, já definido em `docker-compose.production.yml` e `docker-compose.yml`) para contar as tentativas em `/auth/login`, `/auth/register`, `/auth/password` e `/auth/me`: 5 por minuto por IP e rota, com chaves `mf:v1:ratelimit:<rota>:<ip>`. Assim o limite vale para todas as instâncias e sobrevive a reinícios do backend. `VALKEY_URL` é opcional (se definida, precisa ser `redis://` ou `rediss://`). Sem ela, ou com o Valkey fora do ar, o backend não cai: o limite passa a ser contado em memória, por processo, e um aviso aparece no log no máximo 1 vez por minuto. O Valkey não publica porta: só a rede interna do Compose o acessa.
+
 ## Como o proxy funciona
 
 O navegador chama a mesma origem para página e API. Nginx escolhe a regra pela parte inicial do caminho. Em `/api/v1/`, `proxy_pass http://backend:3333` preserva a URL original e a encaminha pelo DNS interno do Docker. Em `/`, `try_files` busca o arquivo estático; quando a URL é uma rota do React, devolve `index.html`. O backend permite CORS apenas para a origem definida em `FRONTEND_URL`. Como o navegador usa a mesma origem neste deploy, as chamadas normais não dependem de CORS.
@@ -76,3 +80,22 @@ A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. E
 
 
 `product-category-nullable.sql` deve ser executado por último, antes de publicar a versão que exclui categorias com produtos inativos. Apenas permite NULL em `products.category_id`, mantendo a FK RESTRICT. Pode ser reexecutado; não remove produtos nem pedidos. O backend continua exigindo categoria para criar, editar ou reativar produtos. Depois que houver históricos sem categoria, não reverta a coluna para NOT NULL sem primeiro atribuir uma categoria a esses inativos.
+
+
+## Build da API na mesma origem
+
+O estágio frontend de `nginx/Dockerfile` define `ARG VITE_API_URL=/api/v1` e exporta a variável antes do build. Vite incorpora essa configuração no bundle; mudar só o ambiente do container Nginx depois do build não a altera. `frontend/src/api/client.ts` concatena `/api/v1` com os endpoints; `assetUrl` resolve `/uploads/...` contra `window.location.origin`, sem porta externa 3333. URLs absolutas de imagens são preservadas.
+
+## Ativar HTTPS
+
+Esta configuração está **preparada, mas desligada**: o arquivo ativo continua `nginx/default.conf` HTTP. Não publique sem escolher domínio e obter certificado válido.
+
+1. Aponte os registros DNS A/AAAA do domínio para o servidor (remova AAAA se não houver IPv6 funcional). Libere TCP 80 e 443. Ajuste `FRONTEND_URL` para `https://SEU_DOMINIO` e reconstrua/reinicie o backend para atualizar CORS.
+2. Instale Certbot pelo gerenciador oficial do sistema. Crie `/var/www/certbot` no host e exponha esse diretório no Nginx como somente leitura. No servidor HTTP ativo, adicione `location /.well-known/acme-challenge/ { root /var/www/certbot; }` e monte o mesmo caminho no container. Verifique pelo domínio um arquivo de teste nesse diretório antes de solicitar o certificado.
+3. No host, emita com Let's Encrypt: `sudo certbot certonly --webroot -w /var/www/certbot -d SEU_DOMINIO`. Não ative o bloco 443 antes de existirem `fullchain.pem` e `privkey.pem`.
+4. Copie `nginx/default.ssl.conf.example` para uma configuração própria. Substitua **todas** as ocorrências de `mesaflow.example.com` pelo domínio real. Monte `/etc/letsencrypt` inteiro como somente leitura (os certificados em live são links para archive), monte `/var/www/certbot` e publique a porta 443 no serviço nginx do Compose. Substitua o arquivo ativo pela configuração preparada só nesta etapa. Mantenha os proxies `/api/v1/` e `/uploads/` e o fallback SPA do exemplo.
+5. Valide antes de recarregar: `nginx -t` no ambiente que tem os certificados e o DNS interno backend disponíveis. Depois recarregue Nginx. Verifique HTTP→HTTPS, certificado/cadeia, `/api/v1/health`, login e imagens `/uploads/`. O redirect usa domínio fixo, sem confiar no Host recebido.
+6. O exemplo envia HSTS (um ano, sem includeSubDomains/preload), CSP mesma origem, nosniff, Referrer-Policy e X-Frame-Options. Só habilite HSTS quando HTTPS estiver funcional; navegadores podem mantê-lo mesmo depois de rollback. A CSP permite estilos inline usados pelo app e imagens locais/data/blob. Se o restaurante usar imagens de CDN externa, autorize explicitamente o domínio em img-src após teste; não abra todos os domínios.
+7. Ative o timer de renovação do Certbot no host. Teste `sudo certbot renew --dry-run`; configure um deploy-hook que valide e recarregue o Nginx do serviço após a renovação. O caminho ACME na porta 80 precisa continuar acessível. Monitore a expiração; faça backup protegido das chaves e limite acesso aos certificados. Nunca copie chaves privadas para o repositório ou para a imagem.
+
+Os comandos de emissão/renovação e mudanças de portas/montagens são passos futuros do operador; não foram executados nesta tarefa. Sem domínio, não há certificado nem TLS ativo.

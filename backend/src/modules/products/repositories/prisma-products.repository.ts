@@ -1,3 +1,4 @@
+import { moveStock } from "../../orders/stock.js";
 import { PrismaConnector } from "../../../database/prisma.js";
 import { Prisma, type Product } from "../../../generated/prisma/client.js";
 import type ProductsRepository from "./products.repository.js";
@@ -101,10 +102,6 @@ export class PrismaProductRepository implements ProductsRepository {
       data.price = productUpdateInput.price;
     }
 
-    if (productUpdateInput.stockQuantity !== undefined) {
-      data.stockQuantity = productUpdateInput.stockQuantity;
-    }
-
     if (productUpdateInput.trackStock !== undefined) {
       data.trackStock = productUpdateInput.trackStock;
     }
@@ -164,6 +161,25 @@ export class PrismaProductRepository implements ProductsRepository {
             deleteMany: {},
             create: additionalIds.map((categoryId) => ({ categoryId })),
           };
+        }
+        if (
+          productUpdateInput.stockQuantity !== undefined &&
+          (productUpdateInput.trackStock ?? current.trackStock)
+        ) {
+          const delta =
+            productUpdateInput.stockQuantity - current.stockQuantity;
+          // Atualiza o modo antes do movimento, caso o PATCH também habilite o controle.
+          if (!current.trackStock && productUpdateInput.trackStock === true) {
+            await tx.product.update({
+              where: { id },
+              data: { trackStock: true },
+            });
+          }
+          if (delta !== 0)
+            await moveStock(tx, id, delta, {
+              type: "ADJUSTMENT",
+              userId: null,
+            });
         }
         return this.toProduct(
           await tx.product.update({

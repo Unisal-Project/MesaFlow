@@ -8,9 +8,20 @@ const getEnv = (name: string): string => {
   return value;
 };
 
+// Opcional: só valida o formato quando definida.
+const optionalRedisUrl = (name: string) => {
+  const value = process.env[name];
+  if (!value) return undefined;
+  if (!/^rediss?:\/\/[^\s]+$/.test(value) || !URL.canParse(value)) {
+    throw new Error(`Environment variable ${name} must be a redis:// URL.`);
+  }
+  return value;
+};
+
 export const env = {
   PORT: Number(process.env.PORT ?? 3333),
   JWT_SECRET: getEnv("JWT_SECRET"),
   FRONTEND_URL: getEnv("FRONTEND_URL"),
   DATABASE_URL: getEnv("DATABASE_URL"),
+  VALKEY_URL: optionalRedisUrl("VALKEY_URL"),
 };

@@ -173,3 +173,35 @@ test("taxa decimal usa centésimos de percentual antes de arredondar centavos", 
   );
   assert.equal(result.serviceFee, "0.35");
 });
+
+test("fechar trava mesa antes do atendimento e revalida CLOSED antes de cobrar", async () => {
+  const locks: string[] = [];
+  let status = "OPEN";
+  let charged = false;
+  const client: any = {
+    $transaction: async (fn: any) => fn(client),
+    $queryRaw: async (parts: TemplateStringsArray) => {
+      const sql = parts.join("?");
+      locks.push(sql);
+      if (sql.includes("FROM attendances")) status = "CLOSED";
+      return [];
+    },
+    attendance: { findUnique: async () => ({ id: 1n, tableId: 7n, status }) },
+    payment: {
+      create: async () => {
+        charged = true;
+      },
+    },
+  };
+  await assert.rejects(
+    new PrismaPaymentRepository(client).closeWithPayments(
+      1n,
+      { serviceFeeWaived: false, payments: [{ method: "PIX", amount: 10 }] },
+      1n,
+    ),
+    /encerrada/,
+  );
+  assert.match(locks[0], /restaurant_tables/);
+  assert.match(locks[1], /attendances/);
+  assert.equal(charged, false);
+});

@@ -154,7 +154,6 @@ export function toOrder(
             ? toDateKey(new Date(attendance.closedAt))
             : undefined,
           serviceFee: firstOfAttendance ? Number(attendance.serviceFee ?? 0) : 0,
-          serviceFeeWaived: Number(attendance.serviceFee ?? 0) === 0,
           orderIds: attendanceOrderIds,
         }
       : undefined,

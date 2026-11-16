@@ -82,8 +82,15 @@ export class PrismaPaymentRepository implements PaymentRepository {
     data: CloseAttendanceDTO,
     closedById: bigint | null,
   ): Promise<ClosedAttendance> {
+    // Apenas identifica a mesa, antes do snapshot que vai ler o consumo.
+    const reference = await this.prismaClient.attendance.findUnique({
+      where: { id: attendanceId },
+      select: { tableId: true },
+    });
+    if (!reference) throw new AppError("Atendimento não encontrado.", 404);
     return this.prismaClient.$transaction(
       async (tx: Prisma.TransactionClient) => {
+        await tx.$queryRaw`SELECT id FROM restaurant_tables WHERE id = ${reference.tableId} FOR UPDATE`;
         await tx.$queryRaw`SELECT id FROM attendances WHERE id = ${attendanceId} FOR UPDATE`;
 
         const attendance = await tx.attendance.findUnique({

@@ -69,7 +69,10 @@ function fakeDb() {
 
   const client: any = {
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
-    $queryRaw: async () => undefined,
+    $queryRaw: async (parts: TemplateStringsArray, id: bigint) =>
+      parts.join("?").includes("SELECT status FROM attendances")
+        ? attendances.filter((a) => a.id === id)
+        : [],
     restaurantSettings: {
       findUnique: async () => ({ serviceFeeRate: "10.00" }),
     },
@@ -448,4 +451,72 @@ test("pedido admin cobra a promoção vigente; itens já vendidos mantêm o pre�
     edited.items.find((i: any) => i.productId === id)!.unitPrice;
   assert.equal(price(2n), "5.00"); // snapshot da venda
   assert.equal(price(1n), "20.00"); // novo item: 30 - 10
+});
+
+test("escritas serializam mesa, atendimento e pedido; CLOSED recusa edição/cancelamento", async () => {
+  const db = fakeDb();
+  const repo = new PrismaAdminOrderRepository(db.client);
+  const order = await repo.createForTable(
+    7n,
+    [{ productId: 1n, quantity: 1 }],
+    null,
+    admin,
+  );
+  const locks: string[] = [];
+  let inside = false;
+  const transaction = db.client.$transaction;
+  db.client.$transaction = async (fn: any) => {
+    inside = true;
+    try {
+      return await transaction(fn);
+    } finally {
+      inside = false;
+    }
+  };
+  const find = db.client.order.findUnique;
+  db.client.order.findUnique = async (args: any) => {
+    if (args.select?.attendanceId)
+      assert.equal(
+        inside,
+        false,
+        "descoberta não reserva outra conexão dentro da transação",
+      );
+    return find(args);
+  };
+  db.client.$queryRaw = async (parts: TemplateStringsArray) => {
+    locks.push(parts.join("?"));
+    return [];
+  };
+  await repo.replaceItems(
+    order.id,
+    [{ productId: 1n, quantity: 1 }],
+    null,
+    admin,
+  );
+  assert.match(locks[0], /restaurant_tables/);
+  assert.match(locks[1], /attendances/);
+  assert.match(locks[2], /orders/);
+  db.attendances[0].status = "CLOSED";
+  await assert.rejects(
+    repo.replaceItems(order.id, [{ productId: 1n, quantity: 1 }], null, admin),
+    /fechada/,
+  );
+  await assert.rejects(repo.cancel(order.id, "motivo", true, admin), /fechada/);
+});
+
+test("novo pedido revalida atendimento após adquirir lock", async () => {
+  const db = fakeDb();
+  const repo = new PrismaAdminOrderRepository(db.client);
+  await repo.createForTable(7n, [{ productId: 1n, quantity: 1 }], null, admin);
+  const raw = db.client.$queryRaw;
+  db.client.$queryRaw = async (parts: TemplateStringsArray, id: bigint) => {
+    if (parts.join("?").includes("SELECT status FROM attendances"))
+      db.attendances[0].status = "CLOSED";
+    return raw(parts, id);
+  };
+  await assert.rejects(
+    repo.createForTable(7n, [{ productId: 1n, quantity: 1 }], null, admin),
+    /solicitada/,
+  );
+  assert.equal(db.movements.length, 1);
 });

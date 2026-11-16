@@ -13,10 +13,23 @@ export const currency = (value: number): string =>
     minimumFractionDigits: 2,
   });
 
+// Motivadoras, mas sérias; curtas para caber no título do painel.
 const greetingPhrases = {
-  morning: ["Bom dia, equipe!", "Bom dia! Que o salão encha hoje.", "Bom dia! Café passado, mesas prontas."],
-  afternoon: ["Boa tarde, equipe!", "Boa tarde! Bora para o próximo turno.", "Boa tarde! Casa cheia é casa feliz."],
-  night: ["Boa noite, equipe!", "Boa noite! Hora do movimento.", "Boa noite! Bom serviço a todos."],
+  morning: [
+    "Bom dia! Um bom serviço começa na preparação.",
+    "Bom dia, equipe! Organização agora, tranquilidade no pico.",
+    "Bom dia! Hoje é dia de fazer o cliente querer voltar.",
+  ],
+  afternoon: [
+    "Boa tarde! Atenção aos detalhes faz a diferença.",
+    "Boa tarde, equipe! Ritmo firme até o fim do turno.",
+    "Boa tarde! Cada pedido é uma chance de surpreender.",
+  ],
+  night: [
+    "Boa noite! Hora de mostrar o melhor do nosso serviço.",
+    "Boa noite, equipe! Casa cheia, cabeça fria.",
+    "Boa noite! Capricho em cada prato, cuidado em cada mesa.",
+  ],
 };
 
 export function greetingPeriod(date: Date): keyof typeof greetingPhrases {

@@ -75,10 +75,10 @@ Pode:
 
 - visualizar pedidos;
 - visualizar mesa de origem;
-- atualizar status dos pedidos;
+- consultar pedidos pendentes e cancelados;
 - alterar quantidade ou itens quando necessário;
 - personalizar pedidos;
-- cancelar pedidos;
+- solicitar ao administrador cancelamento/exclusão de pedidos;
 - visualizar comandas;
 - finalizar atendimentos;
 - registrar pagamentos;
@@ -89,6 +89,7 @@ Pode:
 
 Possui as permissões de funcionário e também pode:
 
+- cancelar/excluir pedidos com motivo opcional e devolução opcional ao estoque;
 - cadastrar e editar produtos;
 - cadastrar categorias;
 - cadastrar mesas;
@@ -167,6 +168,12 @@ CANCELLED
 - funcionário deve realizar fechamento/pagamento;
 - não deve ser tratado como atendimento encerrado.
 
+### AWAITING_PAYMENT
+
+- conta aguardando recebimento;
+- atendimento ainda não está encerrado e a mesa não está livre;
+- novos pedidos não são permitidos.
+
 ### CLOSED
 
 - atendimento finalizado;
@@ -219,6 +226,12 @@ Com `track_stock = false` (ex.: itens feitos sob demanda):
 - a quantidade por pedido fica limitada apenas pelos limites gerais do pedido (QR: até 99 por item e 100 itens por pedido).
 
 Ligar o controle exige informar uma quantidade válida.
+
+Limitação conhecida: trocar "Controlar estoque" com pedidos abertos não reconcilia retroativamente o estoque. Cancelamentos/edições seguem o modo atual do produto; evite essa troca até finalizar os pedidos envolvidos.
+
+### Destaques
+
+`products.featured` é um booleano, padrão false, escolhido pelo administrador. Destaque organiza a seção do cardápio; não altera preço, promoção, disponibilidade ou estoque.
 
 ### Estoque zero
 
@@ -474,19 +487,11 @@ Pedido cancelado nunca deve ser excluído fisicamente.
 
 ---
 
-## 15. Cancelamento por funcionário ou administrador
+## 15. Cancelamento e exclusão administrativa
 
-Funcionário e administrador podem cancelar pedidos depois dos 5 minutos.
+Somente ADMIN cancela ou exclui pedidos pelo painel (`backend/src/shared/api-access.ts`). O motivo é opcional para o operador: a ação Excluir usa o padrão **"Excluído pelo administrador"**; o DTO recebe um motivo válido (3–500 caracteres). A devolução ao estoque é opcional e depende da confirmação de que os itens não foram usados. Funcionários não têm essa permissão.
 
-O cancelamento deve registrar:
-
-- `cancelled_at`;
-- `cancelled_by`;
-- `cancellation_source`;
-- `cancellation_reason`;
-- `restore_stock`.
-
-Para funcionário/admin, o motivo deve ser obrigatório na regra de negócio.
+Cancelamento preserva os registros históricos e grava `cancelled_at`, `cancelled_by`, `cancellation_source`, `cancellation_reason` e `restore_stock`. Não é uma exclusão física de itens vendidos.
 
 ---
 
@@ -543,31 +548,7 @@ A regra deve ser validada antes de qualquer movimentação.
 
 ## 18. Status de pedidos
 
-Status da V1:
-
-```text
-PENDING
-PREPARING
-READY
-DELIVERED
-CANCELLED
-```
-
-Fluxo esperado:
-
-```text
-PENDING
-   ↓
-PREPARING
-   ↓
-READY
-   ↓
-DELIVERED
-```
-
-`CANCELLED` representa saída excepcional do fluxo.
-
-Mudanças inválidas de estado devem ser rejeitadas pelo Service.
+Os únicos estados atuais são `PENDING` e `CANCELLED` (`backend/prisma/schema.prisma`, enum OrderStatus). Não existe fluxo de preparo ou entrega no sistema atual. O pedido pendente integra o consumo; o cancelado permanece no histórico e não integra o consumo cobrado. O fechamento pertence ao atendimento, não muda o pedido para um estado de preparo/entrega.
 
 ---
 
@@ -636,6 +617,10 @@ closed_by = funcionário/admin
 ```
 
 A mesa automaticamente passa a ser considerada livre.
+
+### Reabrir uma conta
+
+A reabertura administrativa preserva o histórico: pagamentos PAID passam a CANCELLED (estorno lógico, não transferência financeira), o atendimento volta a OPEN e a mesa volta a ocupada. Os relatórios contabilizam somente pagamentos PAID. O fluxo segue lock mesa → atendimento (`prisma-admin-order.repository.ts`, reopen).
 
 ---
 
