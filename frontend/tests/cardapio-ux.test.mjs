@@ -512,3 +512,70 @@ test("miniaturas do formulário usam thumb, mantendo URL original para envio e f
   image.props.onError({ currentTarget: element });
   assert.equal(element.src, original);
 });
+
+
+test("estrela salva PATCH, reflete aria-pressed e permite remover destaque", async () => {
+  let record = { id: "30", name: "Suco", price: "10", categoryId: "1", trackStock: false, stockQuantity: 0, available: true, active: true, featured: false };
+  const requests = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (!options.method) return Response.json([record]);
+    const body = JSON.parse(options.body);
+    requests.push([options.method, new URL(url).pathname, body]);
+    record = { ...record, ...body };
+    return Response.json(record);
+  };
+  const products = run(() => useProducts());
+  await products().reload();
+  const row = run(() => ProductRow({ product: products().products[0], onUpdateFeatured: products().updateFeatured }));
+  let star = find(row(), n => n.props?.["aria-label"] === "Destacar Suco");
+  assert.ok(star);
+  assert.equal(star.props["aria-pressed"], false);
+  star.props.onClick();
+  assert.equal(products().products[0].featured, true, "reflete otimisticamente");
+  await new Promise(resolve => setImmediate(resolve));
+  star = find(row(), n => n.props?.["aria-label"] === "Remover destaque de Suco");
+  assert.equal(star.props["aria-pressed"], true);
+  products().openEditProduct(products().products[0]);
+  assert.equal(products().newProduct.featured, true);
+  star.props.onClick();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(products().products[0].featured, false);
+  assert.deepEqual(requests, [["PATCH", "/api/v1/products/30", { featured: true }], ["PATCH", "/api/v1/products/30", { featured: false }]]);
+});
+
+test("falha ao destacar desfaz estrela e expõe erro", async () => {
+  globalThis.fetch = async (_url, options = {}) => options.method
+    ? Response.json({ message: "Não foi possível destacar" }, { status: 400 })
+    : Response.json([{ id: "30", name: "Suco", price: "10", featured: false }]);
+  const products = run(() => useProducts());
+  await products().reload();
+  products().updateFeatured("30", true);
+  assert.equal(products().products[0].featured, true);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(products().products[0].featured, false);
+  assert.match(products().error, /Não foi possível destacar/);
+});
+
+test("formulário começa sem destaque, switch altera e envia featured ao criar/editar", async () => {
+  const requests = [];
+  globalThis.fetch = async (_url, options = {}) => {
+    if (!options.method) return Response.json([]);
+    const body = JSON.parse(options.body);
+    requests.push([options.method, body.featured]);
+    return Response.json({ id: "31", ...body, price: "10", imageUrl: null });
+  };
+  const products = run(() => useProducts());
+  products().openNewProduct();
+  assert.equal(products().newProduct.featured, false);
+  products().setNewProduct({ ...products().newProduct, name: "Suco", category: "1", price: "10" });
+  const render = run(() => ProductFormModal({ newProduct: products().newProduct, setNewProduct: products().setNewProduct, categories: [], products: [] }));
+  const field = find(render(), n => n.props?.label === "Destaque no cardápio");
+  assert.ok(field);
+  field.props.onChange({ target: { checked: true } });
+  await products().handleSaveProduct({ preventDefault() {} });
+  products().openEditProduct(products().products[0]);
+  assert.equal(products().newProduct.featured, true);
+  products().setNewProduct({ ...products().newProduct, featured: false });
+  await products().handleSaveProduct({ preventDefault() {} });
+  assert.deepEqual(requests, [["POST", true], ["PATCH", false]]);
+});

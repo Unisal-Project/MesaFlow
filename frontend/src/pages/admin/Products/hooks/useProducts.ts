@@ -37,6 +37,7 @@ export const emptyProductForm: NewProductForm = {
   imageUrl: "",
   moreImages: [],
   trackStock: false,
+  featured: false,
   available: true,
   promo: emptyPromoForm,
 };
@@ -127,6 +128,7 @@ export function useProducts(categories: CategoryRef[] = []) {
       promotion: record.promotion ?? null,
       quantity: record.stockQuantity,
       trackStock: record.trackStock,
+      featured: record.featured ?? false,
       available: record.available,
       observation: record.description ?? undefined,
       imageUrl: record.imageUrl ?? undefined,
@@ -167,7 +169,7 @@ export function useProducts(categories: CategoryRef[] = []) {
   // Mudanças rápidas da lista: atualiza na hora e desfaz se o backend recusar.
   const patchProduct = async (
     productId: string,
-    data: Partial<Pick<Product, "available" | "stockQuantity">>,
+    data: Partial<Pick<Product, "available" | "stockQuantity" | "featured">>,
   ) => {
     const previous = records.find((entry) => entry.id === productId);
     if (!previous) return;
@@ -187,6 +189,15 @@ export function useProducts(categories: CategoryRef[] = []) {
       ),
     );
     void patchProduct(productId, { available });
+  };
+
+  const updateFeatured = (productId: string, featured: boolean) => {
+    setRecords((current) =>
+      current.map((entry) =>
+        entry.id === productId ? { ...entry, featured } : entry,
+      ),
+    );
+    void patchProduct(productId, { featured });
   };
 
   const updateQuantity = (productId: string, quantity: number) => {
@@ -248,6 +259,7 @@ export function useProducts(categories: CategoryRef[] = []) {
         ? Object.fromEntries(serverPhotos(record).map((url, index) => [url, record.thumbUrls?.[index] ?? url]))
         : {},
       trackStock: product.trackStock,
+      featured: product.featured ?? false,
       available: product.available,
       promo: toPromoForm(record ?? {}),
     };
@@ -342,6 +354,7 @@ export function useProducts(categories: CategoryRef[] = []) {
           // Sem controle a quantidade é ignorada e o saldo salvo fica intacto.
           ...(newProduct.trackStock && { stockQuantity }),
           trackStock: newProduct.trackStock,
+          featured: newProduct.featured,
           available: newProduct.available,
           ...toPromoInput({
             ...newProduct.promo,
@@ -393,7 +406,35 @@ export function useProducts(categories: CategoryRef[] = []) {
     }
   };
 
+  /** Exclusão em massa: um DELETE por vez; devolve os ids que falharam. */
+  const deleteProducts = async (ids: string[]) => {
+    setBusy(true);
+    const failed: string[] = [];
+    let lastError = "";
+    try {
+      for (const id of ids) {
+        try {
+          await removeProduct(id);
+        } catch (err) {
+          failed.push(id);
+          lastError = message(err);
+        }
+      }
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+    if (failed.length) {
+      const done = ids.length - failed.length;
+      setError(
+        `${done} de ${ids.length} ${ids.length === 1 ? "produto excluído" : "produtos excluídos"}. ${lastError}`,
+      );
+    }
+    return failed;
+  };
+
   return {
+    deleteProducts,
     products,
     isProductModalOpen,
     editingProductId,
@@ -416,6 +457,7 @@ export function useProducts(categories: CategoryRef[] = []) {
     normalizedSearch,
     filteredProducts,
     updateAvailability,
+    updateFeatured,
     updateQuantity,
     closeProductModal,
     openNewProduct,

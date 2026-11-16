@@ -15,6 +15,7 @@ export type AdminProduct = {
   promotion: AppliedPromotion | null;
   quantity: number;
   trackStock: boolean;
+  featured: boolean;
   available: boolean;
   observation?: string;
   imageUrl?: string;
@@ -36,6 +37,7 @@ export type NewProductForm = {
   /** URL original → miniatura; blobs novos usam a própria prévia local. */
   photoThumbs?: Record<string, string>;
   trackStock: boolean;
+  featured: boolean;
   available: boolean;
   promo: PromoForm;
 };
@@ -46,10 +48,10 @@ export type ProductsProps = {
   categoryState: ReturnType<
     typeof import("../../Categories/hooks/useCategories").useCategories
   >;
-  activeTab: "products" | "categories";
+  activeTab: "products" | "categories" | "promotions";
   showAllProducts: boolean;
   showAllCategories: boolean;
-  onSwitchTab: (tab: "products" | "categories") => void;
+  onSwitchTab: (tab: "products" | "categories" | "promotions") => void;
   onShowAllProducts: () => void;
   onShowAllCategories: () => void;
   onBackToMenu: () => void;

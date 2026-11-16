@@ -28,7 +28,11 @@ export default class CategoryService {
     return this.categoryRepository.update(id, categoryDto);
   }
 
-  async deleteCategory(id: bigint, moveTo?: bigint): Promise<void> {
-    await this.categoryRepository.delete(id, moveTo);
+  async deleteCategory(
+    id: bigint,
+    moveTo?: bigint,
+    deleteProducts = false,
+  ): Promise<void> {
+    await this.categoryRepository.delete(id, moveTo, deleteProducts);
   }
 }

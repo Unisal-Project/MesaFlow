@@ -32,5 +32,5 @@ export interface CategoryRepository {
   update(id: bigint, data: UpdateCategoryData): Promise<CategoryEntity>;
 
   /** Com moveTo, move todos os produtos (ativos e inativos) antes de excluir. */
-  delete(id: bigint, moveTo?: bigint): Promise<void>;
+  delete(id: bigint, moveTo?: bigint, deleteProducts?: boolean): Promise<void>;
 }

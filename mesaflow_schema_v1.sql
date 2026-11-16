@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    category_id BIGINT UNSIGNED NOT NULL,
+    category_id BIGINT UNSIGNED NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT NULL,
     image_url VARCHAR(2048) NULL,
@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS products (
     promo_ends_at DATETIME NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
     track_stock BOOLEAN NOT NULL DEFAULT TRUE,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
     available BOOLEAN NOT NULL DEFAULT TRUE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -104,6 +105,15 @@ ALTER TABLE products
 -- Produto sem controle de estoque nunca esgota; existentes continuam controlados.
 ALTER TABLE products
     ADD COLUMN IF NOT EXISTS track_stock BOOLEAN NOT NULL DEFAULT TRUE AFTER stock_quantity;
+
+-- Destaque escolhido pelo admin, desligado para produtos existentes.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Produto INATIVO pode ficar sem categoria (categoria excluída); ativo sempre tem.
+-- Idempotente: bancos de dev existentes também recebem a coluna anulável.
+ALTER TABLE products
+    MODIFY category_id BIGINT UNSIGNED NULL;
 
 -- Promoção opcional (regra 8): desligada por padrão; datas nulas = sem limite.
 ALTER TABLE categories

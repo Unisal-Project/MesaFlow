@@ -18,7 +18,6 @@ import {
 } from "@/pages/admin/MenuPreview/PreviewPages";
 import Dashboard from "@/pages/admin/Dashboard";
 import Reports from "@/pages/admin/Reports";
-import Promotions from "@/pages/admin/Promotions";
 import Settings from "@/pages/admin/Settings";
 import Products from "@/pages/admin/Products";
 import Tables from "@/pages/admin/Table";
@@ -118,6 +117,12 @@ export function AdminRoutes() {
                 onViewOrders={() => showOrder()}
                 onViewOrder={showOrder}
                 onViewReports={() => goTo("reports")}
+                onOpenTable={(table) => {
+                  // Estado de seleção é compartilhado com a tela Mesas: ela abre já com os detalhes.
+                  tableState.setSelectedTable(table);
+                  tableState.setSelectedDetail(null);
+                  goTo("tables");
+                }}
               />
             }
           />
@@ -147,7 +152,7 @@ export function AdminRoutes() {
                 onNavigate={goTo}
                 productState={productState}
                 categoryState={categoryState}
-                activeTab={isCategories ? "categories" : "products"}
+                activeTab={location.pathname === adminPaths.promotions ? "promotions" : isCategories ? "categories" : "products"}
                 showAllProducts={
                   location.pathname === "/admin/cardapio/produtos"
                 }
@@ -156,7 +161,7 @@ export function AdminRoutes() {
                 }
                 onSwitchTab={(tab) =>
                   navigate(
-                    tab === "categories"
+                    tab === "promotions" ? adminPaths.promotions : tab === "categories"
                       ? "/admin/cardapio/categorias"
                       : "/admin/cardapio",
                   )
@@ -178,7 +183,7 @@ export function AdminRoutes() {
           <Route path="relatorios" element={<Reports onNavigate={goTo} />} />
           <Route
             path="promocoes"
-            element={<Promotions onNavigate={goTo} />}
+            element={<Navigate to={adminPaths.promotions} replace />}
           />
           <Route
             path="configuracoes"

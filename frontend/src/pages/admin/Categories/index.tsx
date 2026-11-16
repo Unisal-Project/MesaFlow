@@ -9,6 +9,8 @@ import type { AdminProduct } from "../Products/types/product.types";
 import "./styles.scss";
 
 type CategoriesProps = {
+  hideTabs?: boolean;
+  onPromote?: (categoryId: string) => void;
   showAll: boolean;
   onShowAll: () => void;
   state: ReturnType<typeof useCategories>;
@@ -18,7 +20,7 @@ type CategoriesProps = {
   onProductsChanged?: () => void;
 };
 
-export default function Categories({ state, products, onShowProducts, onProductsChanged, showAll, onShowAll }: CategoriesProps) {
+export default function Categories({ hideTabs, onPromote, state, products, onShowProducts, onProductsChanged, showAll, onShowAll }: CategoriesProps) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
@@ -71,7 +73,7 @@ export default function Categories({ state, products, onShowProducts, onProducts
           </select>
         </label>
       </div>
-      {!showAll && <nav className="products-tabs" aria-label="Seções do cardápio">
+      {!hideTabs && !showAll && <nav className="products-tabs" aria-label="Seções do cardápio">
         <button type="button" onClick={onShowProducts}>Produtos</button>
         <button type="button" className="active" aria-current="page">Categorias</button>
       </nav>}
@@ -90,7 +92,7 @@ export default function Categories({ state, products, onShowProducts, onProducts
         <div className="categories-list-body">
           {visible.map((category) => (
             <CategoryRow key={category.id} category={category} onStatusChange={state.updateCategoryStatus}
-              onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
+              onPromote={onPromote} onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
           ))}
           {!state.loading && state.categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria ainda.</p>
             <Button size="small" onClick={state.openNewCategory}><Plus aria-hidden="true" />Cadastrar primeira categoria</Button></div>}
@@ -106,7 +108,7 @@ export default function Categories({ state, products, onShowProducts, onProducts
       <DeleteCategoryModal key={state.categoryToDelete?.id} category={state.categoryToDelete} categories={state.categories}
         products={products.filter((product) => product.categoryId === state.categoryToDelete?.id)}
         onClose={state.cancelCategoryDeletion}
-        onConfirm={(moveTo, moves) => void state.confirmCategoryDeletion(moveTo, moves).finally(onProductsChanged)}
+        onConfirm={(moveTo, moves, deleteProducts) => void state.confirmCategoryDeletion(moveTo, moves, deleteProducts).finally(onProductsChanged)}
         error={state.error} busy={state.busy} />
     </div>
   );

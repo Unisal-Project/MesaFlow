@@ -25,7 +25,7 @@ import "./styles.scss";
 
 const indicatorIcons = [ChartNoAxesCombined, ClipboardList, UtensilsCrossed, ArrowUpRight];
 
-export default function Dashboard({ orders, tables, loading = false, error = "", onRetry, onNavigate, onViewOrders, onViewReports, onViewOrder }: DashboardProps) {
+export default function Dashboard({ orders, tables, loading = false, error = "", onRetry, onNavigate, onViewOrders, onViewReports, onViewOrder, onOpenTable }: DashboardProps) {
   const { today, indicators, queue } = useDashboard(orders, tables);
   // Sem dados confiáveis, "—" em vez de zeros que parecem reais.
   // Erro de carga = erro sem nenhum dado; erro de ação (salvar pedido/mesa)
@@ -95,6 +95,7 @@ export default function Dashboard({ orders, tables, loading = false, error = "",
             <TableOverview
               tables={tables}
               onViewTables={() => onNavigate?.("tables")}
+              onOpenTable={onOpenTable}
             />
           </div>
 

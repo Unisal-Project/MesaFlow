@@ -5,6 +5,7 @@ import type {
   ClosedAttendance,
   ConfirmedPayment,
   PaymentRepository,
+  ReopenedAttendance,
 } from "./payment.repository.js";
 import type { CloseAttendanceDTO } from "../dto/close-attendance.dto.js";
 
@@ -114,9 +115,12 @@ export class PrismaPaymentRepository implements PaymentRepository {
             "Configurações do restaurante indisponíveis.",
             503,
           );
+        const rateBasisPoints = Math.round(
+          Number(settings.serviceFeeRate) * 100,
+        );
         const serviceCents = data.serviceFeeWaived
           ? 0
-          : Math.round((subtotalCents * Number(settings.serviceFeeRate)) / 100);
+          : Math.round((subtotalCents * rateBasisPoints) / 10_000);
         const totalCents = subtotalCents + serviceCents;
 
         const paidCents = data.payments.reduce(
@@ -189,6 +193,53 @@ export class PrismaPaymentRepository implements PaymentRepository {
           total: fromCents(totalCents),
           closedAt,
         };
+      },
+    );
+  }
+
+  /**
+   * Reabre uma conta fechada (ADMIN): estorna os pagamentos (PAID → CANCELLED,
+   * sem apagar) e devolve o atendimento a OPEN; a mesa volta a ficar ocupada.
+   */
+  async reopen(attendanceId: bigint): Promise<ReopenedAttendance> {
+    return this.prismaClient.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const attendance = await tx.attendance.findUnique({
+          where: { id: attendanceId },
+          select: { tableId: true },
+        });
+        if (!attendance) throw new AppError("Atendimento não encontrado.", 404);
+        // Ordem de lock padrão: mesa → atendimento.
+        await tx.$queryRaw`SELECT id FROM restaurant_tables WHERE id = ${attendance.tableId} FOR UPDATE`;
+        const [locked] = await tx.$queryRaw<{ status: string }[]>`
+          SELECT status FROM attendances WHERE id = ${attendanceId} FOR UPDATE`;
+        if (locked?.status !== "CLOSED")
+          throw new AppError("Só contas fechadas podem ser reabertas.", 409);
+
+        const other = await tx.attendance.findFirst({
+          where: {
+            tableId: attendance.tableId,
+            status: { in: ["OPEN", "CLOSING_REQUESTED", "AWAITING_PAYMENT"] },
+          },
+          select: { id: true },
+        });
+        if (other) throw new AppError("A mesa já tem outra conta aberta.", 409);
+
+        const refunded = await tx.payment.updateMany({
+          where: { attendanceId, status: "PAID" },
+          data: { status: "CANCELLED" },
+        });
+        await tx.attendance.update({
+          where: { id: attendanceId },
+          data: {
+            status: "OPEN",
+            closedAt: null,
+            closedById: null,
+            closingRequestedAt: null,
+            serviceFee: "0.00",
+          },
+        });
+        return { attendanceId, refundedPayments: refunded.count };
       },
     );
   }

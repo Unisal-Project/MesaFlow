@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/buttons/Button";
 import { attendWaiterCall } from "@/services/waiter-calls.service";
 import { BellIcon, BellRing } from "lucide-react";
-import { useAttendanceNotifications } from "@/hooks/useAttendanceNotifications";
+import {
+  dismissNotifications,
+  markNotificationsRead,
+  markOrderSeen,
+  notificationKey,
+  unreadNotifications,
+  useAttendanceNotifications,
+  visibleNotifications,
+} from "@/hooks/useAttendanceNotifications";
 import { useEffect, useId, useRef, useState } from "react";
 import "./style.scss";
 
@@ -61,17 +69,35 @@ export function Notifications({ items }: NotificationsProps = {}) {
     };
   }, [notificationsOpen]);
 
-  const notifications = [
+  // Lidas/limpas vivem no storage; o contador só força o novo render após gravar.
+  const [, refreshStored] = useState(0);
+  // Não lidas no momento em que o sino abriu: seguem destacadas enquanto ele está aberto.
+  const [freshKeys, setFreshKeys] = useState<Set<string>>(() => new Set());
+  const allNotifications = [
     ...(items ?? attendanceNotifications),
-  ].filter((item) => item.status !== "WAITER_CALL" || !attendedIds.has(item.id)).sort(
+  ].filter((item) => item.status !== "WAITER_CALL" || !attendedIds.has(item.id));
+  const notifications = visibleNotifications(allNotifications).sort(
     (a, b) =>
       new Date(b.closingRequestedAt).getTime() -
       new Date(a.closingRequestedAt).getTime(),
   );
 
   const notificationKeys = JSON.stringify(notifications.map((item) => `${item.status}-${item.id}-${item.closingRequestedAt}`));
-  const hasNotifications = notifications.length > 0;
+  const unread = new Set(unreadNotifications(notifications).map(notificationKey));
+  const hasNotifications = unread.size > 0;
   const Bell = hasNotifications ? BellRing : BellIcon;
+  const toggleNotifications = () => {
+    if (!notificationsOpen) {
+      setFreshKeys(unread);
+      markNotificationsRead(notifications);
+      refreshStored((value) => value + 1);
+    }
+    setNotificationsOpen(!notificationsOpen);
+  };
+  const clearNotifications = () => {
+    dismissNotifications(allNotifications);
+    refreshStored((value) => value + 1);
+  };
 
   useEffect(() => {
     const keys: string[] = JSON.parse(notificationKeys);
@@ -101,14 +127,14 @@ export function Notifications({ items }: NotificationsProps = {}) {
         ref={buttonRef}
         type="button"
         className="notifications-button"
-        onClick={() => setNotificationsOpen((open) => !open)}
+        onClick={toggleNotifications}
         aria-controls={panelId}
         aria-expanded={notificationsOpen}
-        aria-label={hasNotifications ? `Notificações, ${notifications.length} pendentes` : "Notificações"}
+        aria-label={hasNotifications ? `Notificações, ${unread.size} não lidas` : "Notificações"}
       >
         <Bell ref={bellRef} size={24} aria-hidden="true" />
-        {notifications.length > 0 && (
-          <span className="notification-badge">{notifications.length}</span>
+        {hasNotifications && (
+          <span className="notification-badge">{unread.size}</span>
         )}
       </button>
       {notificationsOpen && (
@@ -118,7 +144,12 @@ export function Notifications({ items }: NotificationsProps = {}) {
           role="region"
           aria-label="Notificações"
         >
-          <h3>Notificações</h3>
+          <div className="notifications-panel-header">
+            <h3>Notificações</h3>
+            <button type="button" onClick={clearNotifications} disabled={notifications.length === 0}>
+              Limpar notificações
+            </button>
+          </div>
           {attendError && <p role="alert">{attendError}</p>}
           {notifications.length === 0 ? (
             <p>Nenhuma notificação no momento.</p>
@@ -127,13 +158,14 @@ export function Notifications({ items }: NotificationsProps = {}) {
               {notifications.map((request) => (
                 <li
                   key={`${request.status}-${request.id}`}
-                  className={`notification-item ${request.status === "WAITER_CALL" ? "notification-item--waiter" : request.status === "CANCELLED" ? "notification-item--cancelled" : "notification-item--closing"}`}
+                  className={`notification-item${unread.has(notificationKey(request)) || freshKeys.has(notificationKey(request)) ? "" : " notification-item--read"} ${request.status === "WAITER_CALL" ? "notification-item--waiter" : request.status === "CANCELLED" ? "notification-item--cancelled" : "notification-item--closing"}`}
                 >
                   <span className="notification-type">
-                    {request.status === "WAITER_CALL" ? "Chamada de garçom" : request.status === "CANCELLED"
+                    {request.status === "NEW_ORDER" ? "Novo pedido" : request.status === "WAITER_CALL" ? "Chamada de garçom" : request.status === "CANCELLED"
                       ? "Solicitação cancelada"
                       : "Fechamento solicitado"}
                   </span>
+                  {request.status === "NEW_ORDER" && <a href={`/admin/pedidos/${encodeURIComponent(request.id)}`} onClick={() => markOrderSeen(request.id)}>Mesa {request.table.number} fez um pedido</a>}
                   <strong>{request.status === "WAITER_CALL" ? `Mesa ${String(request.table.number).padStart(2, "0")} solicitou um garçom` : `Mesa ${request.table.number}`}</strong>
                   <time dateTime={request.closingRequestedAt}>
                     {new Date(request.closingRequestedAt).toLocaleString(

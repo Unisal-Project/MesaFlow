@@ -236,3 +236,28 @@ test("util de promoção: selo, envio e prévia com produto vencendo categoria",
     "CATEGORY",
   );
 });
+
+
+test("Destaque une featured e categoria legada, filtra ativos e não duplica", () => {
+  const marked = { ...product, id: "20", featured: true, additionalCategoryIds: [] };
+  const both = { ...product, featured: true };
+  const extraActive = { ...marked, id: "21", categoryId: "4", additionalCategoryIds: ["1"] };
+  const hidden = { ...marked, id: "22", categoryId: "4" };
+  const sections = buildMenuSections(categories, [marked, both, both, extraActive, hidden, { ...marked, id: "23", active: false }, { ...product, id: "24" }]);
+  assert.deepEqual(sections.find(s => s.id === "menu-featured").products.map(p => p.id), ["20", "10", "21", "24"]);
+  assert.deepEqual(buildMenuSections(categories, [hidden]).find(s => s.id === "menu-featured").products, []);
+  assert.deepEqual(buildMenuSections([], [marked]).find(s => s.id === "menu-featured").products, []);
+});
+
+
+test("sem destaque, saída preserva exatamente o contrato do commit 9be5811", () => {
+  const plain = { ...product, additionalCategoryIds: [] };
+  // Saída original conferida no commit 9be5811, inclusive seções especiais vazias.
+  for (const products of [[], [plain], [{ ...plain, featured: false }]]) {
+    assert.deepEqual(buildMenuSections(categories, products), [
+      { id: "menu-featured", name: "Destaque", products: [] },
+      { id: "menu-promotions", name: "Promoções", products: [] },
+      { id: "1", name: "Lanches", products },
+    ]);
+  }
+});

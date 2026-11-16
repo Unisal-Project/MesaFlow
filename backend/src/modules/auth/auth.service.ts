@@ -3,7 +3,7 @@ import type { UserService } from "../users/user.service.js";
 import type { UserRepository } from "../users/repository/user.repository.js";
 import type { PasswordHasher } from "../../config/hash/password-hasher.js";
 import type { AuthTokenSigner, AuthResult } from "./entity/auth.entity.js";
-import type { RegisterDTO } from "./dto/auth.dto.js";
+import type { UpdateProfileDTO, RegisterDTO } from "./dto/auth.dto.js";
 import type { PublicUser } from "../users/entity/user.entity.js";
 export class AuthService {
   constructor(
@@ -58,6 +58,34 @@ export class AuthService {
     await this.userRepository.update(userId, {
       passwordHash: await this.passwordHasher.createHasher(newPassword),
     });
+  }
+
+  async updateProfile(
+    userId: bigint,
+    data: UpdateProfileDTO,
+  ): Promise<PublicUser> {
+    const user = await this.userRepository.findById(userId);
+    if (!user?.active) throw new AppError("Usuário inativo", 403);
+    if (data.email !== undefined && data.email !== user.email) {
+      if (
+        !data.currentPassword ||
+        !(await this.passwordHasher.compareHasher(
+          data.currentPassword,
+          user.passwordHash,
+        ))
+      ) {
+        throw new AppError("Senha atual incorreta", 400);
+      }
+      const existing = await this.userRepository.findByEmail(data.email);
+      if (existing && existing.id !== userId)
+        throw new AppError("E-mail já cadastrado", 409);
+    }
+    const updated = await this.userRepository.update(userId, {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.email !== undefined && { email: data.email }),
+    });
+    const { passwordHash: _passwordHash, ...publicUser } = updated;
+    return publicUser;
   }
 
   private createAuthResult(user: PublicUser): AuthResult {

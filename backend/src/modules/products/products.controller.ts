@@ -194,7 +194,7 @@ export default class ProductsController {
     return {
       ...product,
       id: product.id.toString(),
-      categoryId: product.categoryId.toString(),
+      categoryId: product.categoryId?.toString() ?? null,
       additionalCategoryIds: (product.additionalCategoryIds ?? []).map(String),
       price: product.price.toString(),
     };

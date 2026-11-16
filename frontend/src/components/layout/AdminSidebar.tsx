@@ -7,8 +7,6 @@ import {
   NotebookPen,
   Armchair,
   NotepadText,
-  ExternalLink,
-  BadgePercent,
   LogOut,
   Settings,
   UserRound,
@@ -38,11 +36,6 @@ const adminSidebarItems: SidebarItem[] = [
     id: "menu",
     label: "Cardápio",
     icon: <NotebookPen size={20} />,
-  },
-  {
-    id: "promotions",
-    label: "Promoções",
-    icon: <BadgePercent size={20} />,
   },
   {
     id: "reports",
@@ -192,11 +185,6 @@ export function AdminSidebar({
           <span>{item.label}</span>
         </button>
       ))}
-      {/* Prévia do cardápio na mesma aba; o "Voltar" dela retorna ao painel. */}
-      <button type="button" onClick={() => navigate("menuPreview")}>
-        <ExternalLink size={20} />
-        <span>Ver cardápio</span>
-      </button>
       {/* Disclosure (não menu ARIA): Tab percorre os itens e, ao sair, fecha. */}
       <div
         className="admin-profile"

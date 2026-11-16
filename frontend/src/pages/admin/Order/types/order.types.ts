@@ -75,7 +75,7 @@ export type OrderFilter = "all" | OrderStatus;
 
 export type OrderSort = "newest" | "oldest";
 
-export type OrderPeriod = "today" | "7days" | "30days" | "all" | "specific";
+export type OrderPeriod = "today" | "yesterday" | "7days" | "30days" | "all" | "specific";
 
 export type OrderSummary = {
   id: number;

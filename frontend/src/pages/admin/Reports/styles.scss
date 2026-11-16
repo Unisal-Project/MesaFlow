@@ -52,7 +52,7 @@
     font-size: var(--font-size-sm);
   }
   &:focus-within {
-    box-shadow: var(--focus-ring);
+    box-shadow: none; // sem anel verde de foco (pedido do usuário)
   }
 }
 .reports-body {

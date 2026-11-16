@@ -49,9 +49,16 @@ export function buildMenuSections(categories: Category[], products: Product[]) {
     {
       id: "menu-featured",
       name: "Destaque",
-      products: uniqueActiveProducts(
-        featured.flatMap((section) => section.products),
-      ),
+      products: uniqueActiveProducts([
+        ...products.filter(
+          (product) =>
+            product.featured === true &&
+            [product.categoryId, ...(product.additionalCategoryIds ?? [])].some(
+              (id) => categoryIds.has(id),
+            ),
+        ),
+        ...featured.flatMap((section) => section.products),
+      ]),
     },
     {
       id: "menu-promotions",

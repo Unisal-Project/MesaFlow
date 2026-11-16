@@ -318,3 +318,77 @@ test("PATCH /auth/password troca só a senha do usuário do token", async () => 
   );
   await app.close();
 });
+
+test("perfil próprio valida senha e identidade", async (t) => {
+  t.mock.timers.enable({ apis: ["Date"], now: Date.now() });
+  const { app, repository } = await passwordApp();
+  const token = (
+    await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "ana@example.com", password: "secret123" },
+    })
+  ).json().accessToken;
+  const patch = (payload: object, auth = true) => (
+    t.mock.timers.tick(60_001),
+    app.inject({
+      method: "PATCH",
+      url: "/auth/me",
+      payload,
+      headers: auth ? { authorization: `Bearer ${token}` } : {},
+    })
+  );
+  try {
+    assert.equal((await patch({ name: "Nova" }, false)).statusCode, 401);
+    const renamed = await patch({ name: "Nova" });
+    assert.equal(renamed.statusCode, 200);
+    assert.equal(renamed.json().name, "Nova");
+    assert.equal(renamed.json().passwordHash, undefined);
+    assert.equal((await patch({ email: "new@example.com" })).statusCode, 400);
+    assert.equal(
+      (await patch({ email: "new@example.com", currentPassword: "wrong" }))
+        .statusCode,
+      400,
+    );
+    assert.equal(
+      (await patch({ email: "bia@example.com", currentPassword: "secret123" }))
+        .statusCode,
+      409,
+    );
+    assert.equal((await patch({ name: "Other", id: "2" })).statusCode, 400);
+    assert.equal(
+      (await patch({ email: "new@example.com", currentPassword: "secret123" }))
+        .statusCode,
+      200,
+    );
+    assert.equal((await repository.findById(2n))?.email, "bia@example.com");
+    await repository.update(1n, { active: false });
+    assert.equal((await patch({ name: "Inactive" })).statusCode, 403);
+  } finally {
+    await app.close();
+  }
+});
+
+test("perfil limita tentativas como senha", async () => {
+  const { app } = await passwordApp();
+  try {
+    const token = (
+      await app.inject({
+        method: "POST",
+        url: "/auth/login",
+        payload: { email: "ana@example.com", password: "secret123" },
+      })
+    ).json().accessToken;
+    for (let i = 0; i < 6; i++) {
+      const result = await app.inject({
+        method: "PATCH",
+        url: "/auth/me",
+        headers: { authorization: `Bearer ${token}` },
+        payload: { name: "Ana" },
+      });
+      assert.equal(result.statusCode, i < 5 ? 200 : 429);
+    }
+  } finally {
+    await app.close();
+  }
+});

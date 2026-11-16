@@ -46,3 +46,8 @@ test("percentual recebido do banco: 5%, zero e fracionado", () => {
   assert.equal(calculateBill(2010, 12.34).serviceInCents, 248);
   assert.equal(calculateBill(2010, 5, true).serviceInCents, 0);
 });
+
+test("arredonda metade do centavo corretamente com percentuais decimais", () => {
+  assert.equal(calculateBill(375, 9.2).serviceInCents, 35);
+  assert.equal(calculateBill(1000, 16.15).serviceInCents, 162);
+});

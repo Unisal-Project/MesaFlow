@@ -67,8 +67,15 @@ function statusBadge(promo: Partial<PromoFields>) {
   );
 }
 
-export default function Promotions({ onNavigate }: PromotionsProps) {
-  const { feedbackRef, ...state } = usePromotions();
+export default function Promotions(props: PromotionsProps) {
+  const state = usePromotions();
+  return <PromotionsContent {...props} state={state} />;
+}
+
+export function PromotionsContent({ onNavigate, embedded = false, state: promotionState }: PromotionsProps & { embedded?: boolean; state: ReturnType<typeof usePromotions> }) {
+  const { feedbackRef, ...state } = promotionState;
+  const Container = embedded ? "section" : "main";
+  const Heading = embedded ? "h2" : "h1";
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const rows = [...state.products, ...state.categories];
@@ -118,26 +125,26 @@ export default function Promotions({ onNavigate }: PromotionsProps) {
   );
   const showActions = !!(state.selected.length || state.error || state.notice);
   return (
-    <div className={`promotions-page${showActions ? " has-actions" : ""}`}>
-      <AdminSidebar
+    <div className={`promotions-page${embedded ? " promotions-embedded" : ""}${showActions ? " has-actions" : ""}`}>
+      {!embedded && <AdminSidebar
         activeId="promotions"
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate}
-      />
-      <main className="promotions-content">
-        <header className="promotions-topbar">
+      />}
+      <Container className="promotions-content">
+        {!embedded && <header className="promotions-topbar">
           <div className="promotions-breadcrumb" aria-label="Página atual">
             <span>Visão geral</span>
             <strong>/ &nbsp;Promoções</strong>
           </div>
           <Notifications />
-        </header>
+        </header>}
         <div className="promotions-body">
           <header className="promotions-heading">
-            <h1>Promoções</h1>
+            <Heading>Promoções</Heading>
             <p>Coloque produtos ou categorias inteiras em promoção.</p>
           </header>
           <div className="promotions-filters">
@@ -183,7 +190,7 @@ export default function Promotions({ onNavigate }: PromotionsProps) {
               title="Nenhum produto no cardápio."
               description="Cadastre produtos para definir promoções."
               action={
-                <Button onClick={() => onNavigate("products")}>
+                <Button onClick={() => onNavigate("menu")}>
                   Cadastrar produtos
                 </Button>
               }
@@ -358,7 +365,7 @@ export default function Promotions({ onNavigate }: PromotionsProps) {
             )}
           </div>
         )}
-      </main>
+      </Container>
       {state.panelOpen && (
         <PromotionPanel state={state} feedbackRef={feedbackRef} />
       )}

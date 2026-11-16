@@ -293,17 +293,17 @@ test("link da prévia no formulário: desativado com alterações pendentes", as
         onDelete() {},
       }),
     );
+  // Com alterações pendentes: cartão não é link e aparece a dica.
   const dirty = render(true);
-  assert.ok(dirty.includes("Salve as alterações para ver a prévia"));
+  assert.ok(dirty.includes("Salve as alterações para abrir a prévia no cardápio"));
   assert.ok(!dirty.includes("/admin/ver-cardapio"));
-  assert.match(
-    dirty,
-    /<button[^>]*disabled=""[^>]*aria-describedby="product-preview-hint"/,
-  );
+  // Sem pendências: o próprio cartão é o link (sem texto/botão "Prévia no cardápio").
   const clean = render(false);
-  assert.ok(
-    clean.includes('href="/admin/ver-cardapio?produto=7&amp;origem=produtos"'),
+  assert.match(
+    clean,
+    /<a class="new-product-preview-link" href="\/admin\/ver-cardapio\?produto=7&amp;origem=produtos"[^>]*>.*product-card/s,
   );
+  assert.ok(!clean.includes("Prévia no cardápio"));
   assert.ok(!clean.includes("Salve as alterações"));
 });
 
@@ -383,4 +383,18 @@ test("prévia do admin usa a mesma imagem original do cardápio do cliente (fiel
     assert.ok(html.includes('/a.webp"'));
     assert.ok(!html.includes("a-thumb.webp"));
   }
+});
+
+
+test("prévia admin herda a seção Destaque pelo featured sem categoria especial", async () => {
+  const { default: MenuPreview } = await server.ssrLoadModule("/src/pages/admin/MenuPreview/index.tsx");
+  const render = featured => renderAt("/admin/ver-cardapio", withCart(createElement(MenuPreview, {
+    catalog: { categories: [{ id: "1", name: "Lanches", active: true }], products: [{ ...product, featured }] },
+  })));
+  const highlighted = render(true), normal = render(false);
+  assert.match(highlighted, /client-menu-products--carousel[^]*Ver item: X-Burger/);
+  assert.equal((highlighted.match(/Ver item: X-Burger/g) ?? []).length, 2);
+  assert.equal((normal.match(/Ver item: X-Burger/g) ?? []).length, 1);
+  assert.match(normal, /aria-label="Destaque"/); // seção vazia preservada, como antes.
+
 });

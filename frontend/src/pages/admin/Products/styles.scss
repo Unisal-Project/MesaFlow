@@ -108,6 +108,8 @@
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-large);
   background: var(--surface);
+  // Respiro entre a barra de busca/filtros e a lista ("Produtos cadastrados").
+  margin-bottom: var(--spacing-4);
 }
 .product-search {
   display: flex;
@@ -183,8 +185,17 @@
     padding-right: 16px;
   }
 }
-.product-search:focus-within, .product-select:focus-within {
-  box-shadow: var(--focus-ring);
+// Busca: sem contorno ao focar (pedido do usuário; o cursor indica a digitação).
+// Filtros (select): sem contorno no clique; linha fina só na navegação por teclado.
+.product-search:focus-within { box-shadow: none; }
+.product-select:focus-within { box-shadow: none; }
+.product-select:has(select:focus-visible) {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+.product-search input:focus,
+.product-select select:focus {
+  border-color: transparent;
+  box-shadow: none;
 }
 .products-tabs {
   display: flex;
@@ -607,7 +618,7 @@
 .product-form-modal .field select:focus,
 .product-form-modal .field textarea:focus {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: none; // sem anel verde de foco (pedido do usuário)
 }
 .new-product-category {
   position: relative;
@@ -695,7 +706,7 @@
     flex-shrink: 0;
   }
   &:focus-within {
-    box-shadow: var(--focus-ring);
+    box-shadow: none; // sem anel verde de foco (pedido do usuário)
   }
 }
 .product-modal-actions {
@@ -851,9 +862,26 @@
   gap: var(--spacing-1);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  // Prévia centralizada no formulário (título e cartão).
+  justify-items: center;
+  text-align: center;
 
   .product-card {
-    width: min(100%, 280px);
+    width: min(100%, 320px);
+    text-align: left;
+  }
+  // Cartão clicável: abre o cardápio rolado até o produto.
+  .new-product-preview-link {
+    display: block;
+    width: min(100%, 320px);
+    border-radius: var(--radius-large);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    .product-card { width: 100%; }
+    &:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+    &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
   }
   .new-product-preview-photo {
     display: block;
@@ -1092,3 +1120,33 @@ label.field.money-field input {
   color: var(--text);
   cursor: pointer;
 }
+
+
+.product-featured-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  // Destacado: estrela PREENCHIDA e dourada. O fill precisa ser via CSS porque a
+  // regra global `svg { fill: none }` (styles/base/_global.scss) vence o atributo.
+  &[aria-pressed="true"] {
+    color: var(--warning);
+    svg { fill: currentColor; }
+  }
+  &:hover { color: var(--warning); }
+  &:focus-visible { @include mixins.focus-visible(2px, 3px); }
+}
+
+.products-heading-actions, .products-promotion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); }
+.products-promotion-actions { margin-block: var(--spacing-4); }
+.products-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); }
+.products-selectable-row > .check-control { min-height: var(--spacing-11); width: var(--spacing-11); justify-content: center; }

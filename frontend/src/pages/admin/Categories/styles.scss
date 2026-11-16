@@ -121,7 +121,8 @@
 }
 .category-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 80px 290px;
+  // Controles com largura do conteúdo: o botão "Promoção" (aba unificada) não cabia nos 290px fixos.
+  grid-template-columns: minmax(220px, 1fr) 80px auto;
   gap: var(--spacing-6);
   align-items: center;
   min-height: 68px;
@@ -415,4 +416,16 @@
 /* Prefixo "R$" alinhado ao campo de 46px do formulário de categoria. */
 .category-form .money-field::after {
   height: 46px;
+}
+
+.category-delete-modes {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: var(--spacing-4) 0;
+  padding: var(--spacing-3);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  legend { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .radio-control { min-height: var(--spacing-11); }
 }

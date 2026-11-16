@@ -20,6 +20,14 @@ export class PaymentController {
     );
   }
 
+  async reopen(request: FastifyRequest, reply: FastifyReply) {
+    const { attendanceId } = confirmAttendancePaymentParamsSchema.parse(
+      request.params,
+    );
+    reply.header("Cache-Control", "no-store");
+    return this.service.reopenAttendance(attendanceId);
+  }
+
   async confirm(request: FastifyRequest, reply: FastifyReply) {
     const { attendanceId } = confirmAttendancePaymentParamsSchema.parse(
       request.params,

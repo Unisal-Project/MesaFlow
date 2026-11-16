@@ -35,7 +35,7 @@ SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 $DC exec -T database sh -c 'exec mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction "$MARIADB_DATABASE"' > backup-$(date +%F-%H%M).sql
 
 # 2. Incrementais antigos (se ainda não aplicados), 3. colunas do painel admin, controle de estoque opcional e promoções, 4. remoção do acompanhamento de preparo
-for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images restaurant-settings remove-order-tracking; do
+for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images product-featured restaurant-settings remove-order-tracking product-category-nullable; do
   $DC exec -T database sh -c "$SQL" < backend/prisma/sql/$f.sql || break
 done
 
@@ -44,7 +44,7 @@ $DC up --build -d
 curl -fsS http://localhost/api/v1/health   # {"status":"ok"}
 ```
 
-`admin-panel-columns.sql` só adiciona colunas (`seats`, `service_fee` e detalhes de pagamento), `product-track-stock.sql` só adiciona `products.track_stock` (padrão `TRUE`, produtos existentes continuam com estoque controlado) `promotions.sql` só adiciona as colunas `promo_*` em `products` e `categories` (promoção desligada por padrão) e `product-images.sql` só adiciona `image_url_2`/`image_url_3` em `products` (fotos extras; `image_url` segue como capa); a versão anterior do backend as ignora. `remove-order-tracking.sql` preserva pedidos e cancelamentos e converte os antigos estados de preparo (`PREPARING`, `READY`, `DELIVERED`) para `PENDING`; essa conversão só é desfeita restaurando o backup.
+`admin-panel-columns.sql` só adiciona colunas (`seats`, `service_fee` e detalhes de pagamento), `product-track-stock.sql` só adiciona `products.track_stock` (padrão `TRUE`, produtos existentes continuam com estoque controlado) `promotions.sql` só adiciona as colunas `promo_*` em `products` e `categories` (promoção desligada por padrão) e `product-images.sql` só adiciona `image_url_2`/`image_url_3` em `products` (fotos extras; `image_url` segue como capa); `product-featured.sql` adiciona `products.featured` com padrão `FALSE` (destaque escolhido pelo admin). Aplique esse incremental antes de publicar o backend; a versão anterior ignora as novas colunas. `remove-order-tracking.sql` preserva pedidos e cancelamentos e converte os antigos estados de preparo (`PREPARING`, `READY`, `DELIVERED`) para `PENDING`; essa conversão só é desfeita restaurando o backup.
 
 Rollback: a versão anterior do backend funciona com o banco já atualizado. Para devolver o enum de pedidos ao formato antigo (sem recuperar os estados convertidos):
 
@@ -73,3 +73,6 @@ A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. E
 
 
 `restaurant-settings.sql` cria a tabela de configuração única e insere id=1 com taxa padrão de 10% somente se a linha ainda não existir. Reexecutar não sobrescreve dados do restaurante nem a taxa já configurada. Aplique este SQL antes de publicar a versão que lê a taxa do banco; sem a linha, o fechamento retorna configuração indisponível, sem presumir uma taxa. Os atendimentos anteriores preservam `service_fee` já gravado. Não há rollback destrutivo: a versão anterior ignora esta tabela.
+
+
+`product-category-nullable.sql` deve ser executado por último, antes de publicar a versão que exclui categorias com produtos inativos. Apenas permite NULL em `products.category_id`, mantendo a FK RESTRICT. Pode ser reexecutado; não remove produtos nem pedidos. O backend continua exigindo categoria para criar, editar ou reativar produtos. Depois que houver históricos sem categoria, não reverta a coluna para NOT NULL sem primeiro atribuir uma categoria a esses inativos.

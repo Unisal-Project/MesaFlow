@@ -22,6 +22,7 @@ export type Product = {
   stockQuantity: number;
   /** false = produto sem controle de estoque: nunca esgota. */
   trackStock: boolean;
+  featured?: boolean;
   available: boolean;
   active: boolean;
   /** Preço a cobrar agora, calculado pelo backend (com promoção vigente). */
@@ -42,7 +43,8 @@ export const isSoldOut = (product: Product) =>
 
 export type MenuCatalog = { categories: Category[]; products: Product[] };
 
-export const fetchCategories = (signal?: AbortSignal) => apiRequest<Category[]>("/categories", { signal });
+export const fetchCategories = (signal?: AbortSignal) =>
+  apiRequest<Category[]>("/categories", { signal });
 export type PromoInput = {
   promoType: PromoFields["promoType"];
   promoValue: number | null;
@@ -61,23 +63,29 @@ export const saveCategory = (data: CategoryInput, id?: string) =>
     body: JSON.stringify(data),
   });
 /** moveTo: categoria que recebe os produtos (inclusive inativos) da excluída. */
-export const removeCategory = (id: string, moveTo?: string) =>
-  apiRequest<void>(
-    `/categories/${id}${moveTo ? `?moveTo=${encodeURIComponent(moveTo)}` : ""}`,
-    { method: "DELETE" },
-  );
+export const removeCategory = (
+  id: string,
+  moveTo?: string,
+  deleteProducts = false,
+) => {
+  const query = new URLSearchParams();
+  if (moveTo) query.set("moveTo", moveTo);
+  if (deleteProducts) query.set("deleteProducts", "true");
+  return apiRequest<void>(`/categories/${id}${query.size ? `?${query}` : ""}`, {
+    method: "DELETE",
+  });
+};
+
 const withImage = (product: Product): Product => ({
   ...product,
   imageUrl: assetUrl(product.imageUrl),
   imageUrls: product.imageUrls?.map((url) => assetUrl(url) ?? url),
   thumbUrls: product.thumbUrls?.map((url) => assetUrl(url) ?? url),
 });
-
 export const fetchProducts = (signal?: AbortSignal) =>
   apiRequest<Product[]>("/products", { signal }).then((products) =>
     products.map(withImage),
   );
-
 export const fetchProductsById = (id: string, signal?: AbortSignal) =>
   apiRequest<Product>(`/products/${encodeURIComponent(id)}`, { signal }).then(
     withImage,
@@ -89,6 +97,7 @@ export type ProductInput = {
   price: number;
   stockQuantity?: number;
   trackStock: boolean;
+  featured?: boolean;
   available: boolean;
   categoryId: string;
   additionalCategoryIds?: string[];
@@ -99,8 +108,7 @@ export type ProductInput = {
  */
 export const applyPromotions = (
   data: { productIds: string[]; categoryIds: string[] } & (
-    | PromoInput
-    | { promoActive: false }
+    PromoInput | { promoActive: false }
   ),
 ) =>
   apiRequest<{ products: number; categories: number }>("/promotions", {

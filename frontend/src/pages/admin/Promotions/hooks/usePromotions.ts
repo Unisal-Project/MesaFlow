@@ -28,7 +28,7 @@ const message = (error: unknown) =>
 /** Chave de seleção: produto e categoria podem ter o mesmo id. */
 export type ItemKey = `p:${string}` | `c:${string}`;
 
-export function usePromotions() {
+export function usePromotions(onChanged?: () => void | Promise<unknown>) {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selected, setSelected] = useState<ItemKey[]>([]);
@@ -111,6 +111,7 @@ export function usePromotions() {
       setPanelOpen(false);
       setSelected([]);
       await reload();
+      await onChanged?.();
     } catch (err) {
       // O backend grava tudo ou nada; a mensagem dele explica o motivo.
       setError(message(err));
@@ -243,6 +244,7 @@ export function usePromotions() {
   };
 
   return {
+    defineFor: (keys: ItemKey[]) => { if (busy) return; setSelected([...new Set(keys)]); setError(""); setNotice(""); setPanelOpen(true); },
     panelOpen,
     openPanel: () => {
       setError("");

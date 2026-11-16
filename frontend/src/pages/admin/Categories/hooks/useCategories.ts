@@ -212,11 +212,12 @@ export function useCategories(
   const confirmCategoryDeletion = async (
     moveTo?: string,
     moves: CategoryProductMove[] = [],
+    deleteProducts = false,
   ) => {
     if (!categoryToDelete) return;
     setBusy(true);
     try {
-      for (const { product, categoryId } of moves) {
+      for (const { product, categoryId } of deleteProducts ? [] : moves) {
         if (categoryId === moveTo) continue;
         await saveProduct(
           {
@@ -228,12 +229,12 @@ export function useCategories(
           product.id,
         );
       }
-      await removeCategory(categoryToDelete.id, moveTo);
+      await removeCategory(categoryToDelete.id, moveTo, deleteProducts);
       setCategories((current) =>
         current.filter((category) => category.id !== categoryToDelete.id),
       );
       setCategoryToDelete(null);
-      setError("");
+      await reload();
     } catch (err) {
       setError(message(err));
     } finally {

@@ -15,6 +15,7 @@ const ProductFieldsSchema = z.object({
   price: z.number().positive().max(99_999_999.99).multipleOf(0.01),
   stockQuantity: z.number().int().nonnegative(),
   trackStock: z.boolean(),
+  featured: z.boolean(),
   available: z.boolean(),
   active: z.boolean(),
   categoryId: ProductCategoryIdSchema,
@@ -42,6 +43,7 @@ const checkPromo = (
 export const ProductSchema = ProductFieldsSchema.extend({
   stockQuantity: ProductFieldsSchema.shape.stockQuantity.default(0),
   trackStock: ProductFieldsSchema.shape.trackStock.default(true),
+  featured: ProductFieldsSchema.shape.featured.default(false),
   available: ProductFieldsSchema.shape.available.default(true),
   active: ProductFieldsSchema.shape.active.default(true),
 })

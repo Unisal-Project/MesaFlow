@@ -85,21 +85,20 @@ export function filterOrdersByDate<T extends DatedOrderSummary>(
     );
   }
 
-  const todayTime = Date.parse(`${todayDate}T00:00:00Z`);
+  if (period === "today") {
+    // Dia de trabalho: pedidos antigos continuam enquanto a conta está aberta.
+    return orders.filter((order) => order.date === todayDate ||
+      (order.date < todayDate && order.status === "open"));
+  }
 
-  const maximumAge =
-    period === "today" ? 0 : period === "7days" ? 6 : 29;
+  // Calendário local, sem dividir milissegundos (dias de horário de verão variam).
+  const start = new Date(`${todayDate}T12:00:00`);
+  start.setDate(start.getDate() - (period === "yesterday" ? 1 : period === "7days" ? 6 : 29));
+  const firstDate = toDateKey(start);
+  return orders.filter((order) => period === "yesterday"
+    ? order.date === firstDate
+    : order.date >= firstDate && order.date <= todayDate);
 
-  return orders.filter((order) => {
-    const orderTime = Date.parse(
-      `${order.date}T00:00:00Z`
-    );
-
-    const ageInDays =
-      (todayTime - orderTime) / 86_400_000;
-
-    return ageInDays >= 0 && ageInDays <= maximumAge;
-  });
 }
 export function sortOrders<T extends DatedOrderSummary & { time: string }>(
   orders: T[],

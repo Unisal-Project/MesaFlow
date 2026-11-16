@@ -167,3 +167,8 @@ test("thumbUrls recebem a mesma base de assets, preservando ordem e legado", asy
   ]);
   assert.equal(old.thumbUrls, undefined);
 });
+
+test("detalhe público propaga 404 de produto inativo sem alterar tipo do catálogo", async () => {
+  globalThis.fetch = async () => Response.json({ message: "Produto não encontrado" }, { status: 404 });
+  await assert.rejects(menu.fetchProductsById("3"), /Produto não encontrado/);
+});

@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { ProfileForm } from "./components/ProfileForm";
 import { AdminSidebar } from "@/components";
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { getSession } from "@/services/auth.service";
@@ -9,6 +11,7 @@ import "./styles.scss";
 type SettingsProps = { onNavigate: (id: string) => void };
 
 export default function Settings({ onNavigate }: SettingsProps) {
+  const [, refreshProfile] = useState(0);
   const user = getSession()?.user;
   const editable = user?.role === "ADMIN";
   const settings = useRestaurantSettings(editable);
@@ -18,14 +21,7 @@ export default function Settings({ onNavigate }: SettingsProps) {
         brandImage={<img src={logoAlternativo} alt="" />} onChange={id => { if (settings.confirmDiscard()) onNavigate(id); }} />
       <main className="settings-content">
         <h1>Configurações</h1>
-        <section className="settings-card" aria-label="Dados da conta">
-          <h2>Sua conta</h2>
-          <dl>
-            <dt>Nome</dt><dd>{user?.name ?? "—"}</dd>
-            <dt>E-mail</dt><dd>{user?.email ?? "—"}</dd>
-            <dt>Perfil</dt><dd>{user?.role === "ADMIN" ? "Administrador" : "Funcionário"}</dd>
-          </dl>
-        </section>
+        <ProfileForm onSaved={() => refreshProfile(value => value + 1)} />
         <ChangePasswordForm />
         <RestaurantSettingsForm state={settings} editable={editable} />
       </main>

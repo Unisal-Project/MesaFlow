@@ -8,6 +8,9 @@ export async function paymentRoutes(app: FastifyInstance) {
   app.post("/attendances/:attendanceId/close", (request, reply) =>
     controller.close(request, reply),
   );
+  app.post("/attendances/:attendanceId/reopen", (request, reply) =>
+    controller.reopen(request, reply),
+  );
   app.post("/attendances/:attendanceId/confirm-payment", (request, reply) =>
     controller.confirm(request, reply),
   );

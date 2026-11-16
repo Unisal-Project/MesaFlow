@@ -1,5 +1,5 @@
 import { useContentTransition } from "@/hooks/useContentTransition";
-import { useImperativeHandle, useRef } from "react";
+import { useImperativeHandle, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
   CheckCircle2,
@@ -10,14 +10,16 @@ import {
   Search,
 } from "lucide-react";
 
-import { Button } from "@/components";
+import { Button, ConfirmationDialog, Tabs } from "@/components";
+import { getSession } from "@/services/auth.service";
+import { accountPaidTotal } from "./hooks/useOrder";
 import { AdminSidebar } from "@/components";
 
 import { PaymentModal } from "./components/PaymentModal.js";
 import { OrderEditPanel } from "./components/OrderEditPanel.js";
 import { Notifications } from "@/components";
 
-import { paymentMethodLabels } from "./constants/order.constants.js";
+import { paymentMethodLabels, orderPeriods, emptyPeriodMessages } from "./constants/order.constants.js";
 
 import {
   formatCurrency,
@@ -25,7 +27,7 @@ import {
   getOrderTotal,
 } from "./utils/order.utils";
 
-import type { OrdersProps, OrderSort } from "./types/order.types.js";
+import type { OrdersProps, OrderSort, OrderFilter, OrderPeriod } from "./types/order.types.js";
 
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { OrdersSummary } from "./components/OrdersSummary";
@@ -47,6 +49,7 @@ export default function Orders({
     saveOrderChanges,
     completeOrder,
     cancelOrder,
+    reopenAccount,
     createOrder,
     selectOrder,
     filteredOrders,
@@ -56,6 +59,14 @@ export default function Orders({
     setSearchQuery,
     orders,
     todayOrders,
+    todayDate,
+    minimumDate,
+    period,
+    setPeriod,
+    specificDate,
+    setSpecificDate,
+    activeFilter,
+    setActiveFilter,
     sortOrder,
     setSortOrder,
     setIsCreatingOrder,
@@ -64,6 +75,15 @@ export default function Orders({
     selectedOrder,
     setEditingOrderId,
   } = state;
+
+  const isAdmin = getSession()?.user.role === "ADMIN";
+  // Confirmação de "Excluir pedido" / "Reabrir conta" do pedido aberto no painel.
+  const [confirm, setConfirm] = useState<{
+    kind: "delete" | "reopen";
+    orderId: number;
+  } | null>(null);
+  const [restoreStock, setRestoreStock] = useState(true);
+  const [deleteReason, setDeleteReason] = useState("");
 
   const detailsRef = useRef<HTMLElement>(null);
   const topbarRef = useRef<HTMLDivElement>(null);
@@ -150,6 +170,15 @@ export default function Orders({
             </div>
             <div className="orders-list-controls">
               <label className="orders-sort-control">
+                <span>Status</span>
+                <select aria-label="Filtrar por status" value={activeFilter}
+                  onChange={(event) => setActiveFilter(event.target.value as OrderFilter)}>
+                  <option value="all">Todos</option>
+                  <option value="open">Em aberto</option>
+                  <option value="closed">Fechados</option>
+                </select>
+              </label>
+              <label className="orders-sort-control">
                 <span>Ordenar por</span>
                 <select
                   value={sortOrder}
@@ -169,6 +198,18 @@ export default function Orders({
                 Novo pedido
               </Button>
             </div>
+          </div>
+
+          <div className="orders-period-controls">
+            <Tabs items={orderPeriods} activeId={period}
+              onChange={(value) => setPeriod(value as OrderPeriod)} ariaLabel="Período dos pedidos" />
+            {period === "specific" && (
+              <label className="orders-sort-control">
+                <span>Data do pedido</span>
+                <input type="date" min={minimumDate} max={todayDate} value={specificDate}
+                  onChange={(event) => setSpecificDate(event.target.value)} />
+              </label>
+            )}
           </div>
 
           <p
@@ -241,7 +282,7 @@ export default function Orders({
                   <div className="orders-empty-state">
                     {orders.length === 0 ? (
                       <>
-                        <h3>Nenhum pedido ainda</h3>
+                        <h3>{emptyPeriodMessages[period]}</h3>
                         <Button onClick={() => setIsCreatingOrder(true)}>
                           <Plus aria-hidden="true" />
                           Lançar primeiro pedido
@@ -249,7 +290,7 @@ export default function Orders({
                       </>
                     ) : (
                       <>
-                        <h3>Nenhum pedido encontrado</h3>
+                        <h3>{emptyPeriodMessages[period]}</h3>
                         <Button variant="secondary" onClick={() => openOrder()}>
                           Limpar filtros
                         </Button>
@@ -363,9 +404,7 @@ export default function Orders({
                           <div className="closed-payment-lines">
                             <div>
                               <span>
-                                {selectedOrder.payment.serviceFeeWaived
-                                  ? "Cliente optou por não pagar a taxa de serviço"
-                                  : "Taxa de serviço"}
+                                Taxa de serviço
                               </span>
                               <strong>
                                 {formatCurrency(
@@ -402,7 +441,7 @@ export default function Orders({
                       )}
 
                     <div className="order-details-actions">
-                      {/* Conta paga é histórico: não reabre nem cancela. */}
+                      {/* Conta paga: só o ADMIN reabre (estorna os pagamentos). */}
                       {selectedOrder.status !== "closed" && (
                         <Button
                           onClick={() => setPaymentOrderId(selectedOrder.id)}
@@ -410,16 +449,86 @@ export default function Orders({
                           Finalizar pedido
                         </Button>
                       )}
-                      {selectedOrder.status !== "closed" && (
+                      {isAdmin && selectedOrder.status === "closed" && (
                         <Button
                           variant="secondary"
                           disabled={state.busy}
-                          onClick={cancelOrder}
+                          onClick={() =>
+                            setConfirm({ kind: "reopen", orderId: selectedOrder.id })
+                          }
                         >
-                          Cancelar
+                          Reabrir conta
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="secondary"
+                          disabled={state.busy || selectedOrder.status === "closed"}
+                          title={
+                            selectedOrder.status === "closed"
+                              ? "Reabra a conta para excluir este pedido"
+                              : undefined
+                          }
+                          onClick={() => {
+                            setRestoreStock(true);
+                            setConfirm({ kind: "delete", orderId: selectedOrder.id });
+                          }}
+                        >
+                          Excluir pedido
                         </Button>
                       )}
                     </div>
+                    <ConfirmationDialog
+                      open={confirm?.orderId === selectedOrder.id}
+                      variant="danger"
+                      title={
+                        confirm?.kind === "reopen"
+                          ? `Reabrir a conta de ${selectedOrder.table}?`
+                          : `Excluir o pedido #${selectedOrder.id}?`
+                      }
+                      description={
+                        confirm?.kind === "reopen"
+                          ? `⚠️ Atenção: os pagamentos registrados nesta conta (${formatCurrency(accountPaidTotal(orders, selectedOrder))}) serão desfeitos e a mesa volta a ficar ocupada. Você precisará registrar o pagamento de novo ao fechar.`
+                          : "⚠️ Atenção: este pedido será cancelado e sairá da lista e da conta da mesa. Esta ação não pode ser desfeita."
+                      }
+                      confirmLabel={
+                        confirm?.kind === "reopen" ? "Reabrir conta" : "Excluir pedido"
+                      }
+                      onCancel={() => {
+                        setConfirm(null);
+                        setDeleteReason("");
+                      }}
+                      onConfirm={() => {
+                        setConfirm(null);
+                        void (confirm?.kind === "reopen"
+                          ? reopenAccount()
+                          : cancelOrder(restoreStock, deleteReason));
+                        setDeleteReason("");
+                      }}
+                    >
+                      {confirm?.kind === "delete" && (
+                        <>
+                          <label className="field">
+                            <span>Motivo (opcional)</span>
+                            <input
+                              type="text"
+                              maxLength={500}
+                              value={deleteReason}
+                              placeholder="Excluído pelo administrador"
+                              onChange={(event) => setDeleteReason(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={restoreStock}
+                              onChange={(event) => setRestoreStock(event.target.checked)}
+                            />
+                            Devolver itens ao estoque
+                          </label>
+                        </>
+                      )}
+                    </ConfirmationDialog>
                   </>
                 </>
               ) : (

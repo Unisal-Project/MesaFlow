@@ -159,3 +159,36 @@ test("achado 6: polling a cada 15 s, sem sobrepor e parando no cleanup", async (
   t.mock.timers.tick(60_000);
   assert.equal(calls, 2, "cleanup interrompe o polling");
 });
+
+test("nota 18: reabrir conta e excluir pedido usam os endpoints ADMIN", async () => {
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push(`${options.method ?? "GET"} ${url.replace(/^.*\/api\/v1/, "")}`);
+    return Response.json({ attendanceId: "50", refundedPayments: 2 });
+  };
+  await orders.reopenAttendance("50");
+  assert.deepEqual(calls, ["POST /attendances/50/reopen"]);
+  // O backend exige motivo com pelo menos 3 caracteres.
+  assert.ok(hook.DELETE_ORDER_REASON.length >= 3);
+});
+
+test("nota 18: aviso de reabrir soma os pagamentos da conta inteira", () => {
+  const attendance = {
+    id: "50",
+    status: "CLOSED",
+    closedAt: "2026-11-08T16:00:00.000Z",
+    serviceFee: "0.00",
+    payments: [
+      { method: "PIX", amount: "36.00", receivedAmount: null, changeAmount: null, processingFee: null },
+      { method: "CASH", amount: "30.00", receivedAmount: null, changeAmount: null, processingFee: null },
+    ],
+  };
+  const list = hook.toOrders([
+    response({ id: "12", attendance }),
+    response({ id: "10", attendance }),
+    response({ id: "20", attendance: { ...attendance, id: "60" } }),
+  ]);
+  // Selecionando o 2º pedido da conta (sem pagamentos nele) o total continua 66.
+  const second = list.find((order) => order.id === 12);
+  assert.equal(hook.accountPaidTotal(list, second), 66);
+});

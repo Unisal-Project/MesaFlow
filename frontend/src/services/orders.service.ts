@@ -167,6 +167,13 @@ export const closeAttendance = (
     { method: "POST", body: JSON.stringify(input) },
   );
 
+/** ADMIN: reabre conta fechada; os pagamentos dela são estornados. */
+export const reopenAttendance = (attendanceId: string) =>
+  apiRequest<{ attendanceId: string; refundedPayments: number }>(
+    `/attendances/${attendanceId}/reopen`,
+    { method: "POST" },
+  );
+
 export type SalesReportDay = {
   date: string;
   revenue: number;

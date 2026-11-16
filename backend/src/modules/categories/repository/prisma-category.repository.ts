@@ -86,33 +86,60 @@ export class PrismaCategoryRepository implements CategoryRepository {
     }
   }
 
-  async delete(id: bigint, moveTo?: bigint): Promise<void> {
+  async delete(
+    id: bigint,
+    moveTo?: bigint,
+    deleteProducts = false,
+  ): Promise<void> {
+    if (moveTo !== undefined && deleteProducts)
+      throw new AppError(
+        "Escolha mover ou excluir os produtos, não ambos.",
+        400,
+      );
+    if (moveTo === id)
+      throw new AppError(
+        "A categoria de destino deve ser diferente da excluída",
+        400,
+      );
     try {
-      if (moveTo === undefined) {
-        await this.prismaClient.category.delete({ where: { id } });
-        return;
-      }
-      if (moveTo === id) {
-        throw new AppError(
-          "A categoria de destino deve ser diferente da excluída",
-          400,
-        );
-      }
-      // Tudo ou nada: mover produtos, limpar ligações adicionais e excluir.
       await this.prismaClient.$transaction(async (tx) => {
-        const target = await tx.category.findUnique({ where: { id: moveTo } });
-        if (!target) {
-          throw new AppError("Categoria de destino não encontrada", 404);
+        await tx.$queryRaw`SELECT id FROM categories WHERE id = ${id} FOR UPDATE`;
+        if (!(await tx.category.findUnique({ where: { id } })))
+          throw new AppError("Categoria não encontrada", 404);
+        if (moveTo !== undefined) {
+          if (!(await tx.category.findUnique({ where: { id: moveTo } })))
+            throw new AppError("Categoria de destino não encontrada", 404);
+          await tx.productCategory.deleteMany({
+            where: { categoryId: moveTo, product: { categoryId: id } },
+          });
+          await tx.product.updateMany({
+            where: { categoryId: id },
+            data: { categoryId: moveTo },
+          });
+        } else {
+          if (
+            !deleteProducts &&
+            (await tx.product.count({
+              where: { categoryId: id, active: true },
+            }))
+          ) {
+            throw new AppError(
+              "Não é possível excluir uma categoria que possui produtos ativos",
+              409,
+            );
+          }
+          await tx.product.updateMany({
+            where: {
+              categoryId: id,
+              ...(deleteProducts ? {} : { active: false }),
+            },
+            data: {
+              categoryId: null,
+              ...(deleteProducts ? { active: false } : {}),
+            },
+          });
         }
-        // Quem passa a ter moveTo como principal não pode tê-la como adicional.
-        await tx.productCategory.deleteMany({
-          where: { categoryId: moveTo, product: { categoryId: id } },
-        });
         await tx.productCategory.deleteMany({ where: { categoryId: id } });
-        await tx.product.updateMany({
-          where: { categoryId: id },
-          data: { categoryId: moveTo },
-        });
         await tx.category.delete({ where: { id } });
       });
     } catch (error) {

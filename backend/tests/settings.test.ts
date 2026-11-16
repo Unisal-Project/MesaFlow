@@ -28,6 +28,7 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
     contact: string | null;
   };
   let writes = 0;
+  let adminActive = true;
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   await app.register(fastifyJwt, { secret: "settings-test-secret" });
@@ -35,6 +36,10 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
     async (api) => {
       api.addHook("onRequest", requireApiAuthentication);
       await registerSettingsRoutes(api, {
+        userRepository: {
+          findById: async () =>
+            ({ id: 1n, role: "ADMIN", active: adminActive }) as any,
+        },
         repository: {
           get: async () => saved,
           save: async (data) => {
@@ -136,6 +141,19 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
         ).statusCode,
         400,
       );
+    assert.equal(writes, 5);
+    adminActive = false;
+    assert.equal(
+      (
+        await app.inject({
+          method: "PUT",
+          url: "/api/v1/settings",
+          headers: admin,
+          payload: initial,
+        })
+      ).statusCode,
+      403,
+    );
     assert.equal(writes, 5);
     assert.equal(
       "serviceFeeRate" in

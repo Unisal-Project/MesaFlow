@@ -222,12 +222,12 @@ test("aplicar sem desconto não envia nada (não apaga as promoções selecionad
   assert.deepEqual(hook().selected, ["p:1"]);
 });
 
-test("rota /admin/promocoes exige login e aparece no menu lateral", () => {
-  const render = (element) =>
+test("legado redireciona e promoções ficam na aba autenticada do cardápio", () => {
+  const render = (element, path = "/admin/cardapio/promocoes") =>
     renderToString(
       createElement(
         MemoryRouter,
-        { initialEntries: ["/admin/promocoes"] },
+        { initialEntries: [path] },
         createElement(
           Routes,
           null,
@@ -240,10 +240,11 @@ test("rota /admin/promocoes exige login e aparece no menu lateral", () => {
     "",
   );
   const html = render(createElement(AdminRoutes));
-  assert.match(html, /<h1>Promoções<\/h1>/);
-  assert.match(html, /aria-current="page"[^>]*>.*?<span>Promoções<\/span>/);
+  assert.match(html, /<h2>Promoções<\/h2>/);
+  assert.match(html, /aria-current="page"[^>]*>.*?<span>Cardápio<\/span>/);
   assert.ok(!html.includes("promotions-selection-bar"));
-  assert.equal(paths.adminPaths.promotions, "/admin/promocoes");
+  assert.equal(paths.adminPaths.promotions, "/admin/cardapio/promocoes");
+  assert.equal(render(createElement(AdminRoutes), "/admin/promocoes"), "");
 });
 
 test("selecionar todos une as chaves sem duplicar nem perder seleção anterior", async () => {
@@ -562,4 +563,15 @@ test("seleção sem promoção própria, mesmo herdada, não confirma nem remove
     products[1] = original;
     window.confirm = confirm;
   }
+});
+
+test("atalho define apenas as chaves escolhidas e abre o painel; sucesso recarrega catálogo", async () => {
+  let changed = 0;
+  const hook = run(() => usePromotions(() => { changed++; }));
+  await hook().reload(); hook().toggle('p:2');
+  hook().defineFor(['c:3']);
+  assert.deepEqual(hook().selected,['c:3']); assert.equal(hook().panelOpen,true);
+  hook().setForm({...hook().form,promoValue:'10'});
+  hook().apply({preventDefault(){}}); await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(changed,1);
 });

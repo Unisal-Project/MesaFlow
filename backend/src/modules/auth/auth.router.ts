@@ -34,6 +34,11 @@ export async function registerAuthRoutes(
   app.post("/auth/login", { onRequest: rateLimit }, (request, reply) =>
     controller.login(request, reply),
   );
+  app.patch(
+    "/auth/me",
+    { onRequest: [rateLimit, authenticate] },
+    (request, reply) => controller.updateProfile(request, reply),
+  );
   // Qualquer usuário autenticado troca a PRÓPRIA senha (fora de api-access).
   app.patch(
     "/auth/password",

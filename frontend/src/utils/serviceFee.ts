@@ -1,4 +1,5 @@
 export function calculateBill(subtotalInCents: number, serviceFeeRate: number, serviceFeeWaived = false) {
-  const serviceInCents = serviceFeeWaived ? 0 : Math.round(subtotalInCents * serviceFeeRate / 100);
+  const rateBasisPoints = Math.round(serviceFeeRate * 100);
+  const serviceInCents = serviceFeeWaived ? 0 : Math.round(subtotalInCents * rateBasisPoints / 10_000);
   return { subtotalInCents, serviceInCents, totalInCents: subtotalInCents + serviceInCents };
 }

@@ -5,6 +5,7 @@ import {
   closeAttendance,
   createTableOrder,
   fetchAdminOrders,
+  reopenAttendance,
   updateOrderItems,
   type AdminOrderItemsInput,
   type AdminOrderResponse,
@@ -17,6 +18,8 @@ import type { AdminProduct } from "../../Products/types/product.types";
 import {
   getAccountOrders,
   toDateKey,
+  dateDaysAgo,
+  filterOrdersByDate,
   filterOrders,
   sortOrders,
 } from "../utils/order.utils";
@@ -24,6 +27,7 @@ import {
 import type {
   Order,
   OrderFilter,
+  OrderPeriod,
   OrderSort,
   CompletedPayment,
   OrderCatalogProduct,
@@ -159,7 +163,7 @@ export function toOrder(
 
 export function toOrders(responses: AdminOrderResponse[]): Order[] {
   // Pedidos cancelados ficam no histórico do banco, fora da lista operacional.
-  const active = responses.filter((order) => order.status !== "CANCELLED");
+  const active = responses.filter((order) => order.status !== "CANCELLED" && order.attendance.status !== "CANCELLED");
   const byAttendance = new Map<string, number[]>();
   for (const order of active) {
     const ids = byAttendance.get(order.attendance.id) ?? [];
@@ -180,6 +184,18 @@ export function pickSelectedOrderId(current: number | null, list: Order[]) {
 }
 
 export const POLL_INTERVAL_MS = 15_000;
+export const DELETE_ORDER_REASON = "Excluído pelo administrador";
+
+/** Soma dos pagamentos da conta (eles ficam só no primeiro pedido dela). */
+export const accountPaidTotal = (orders: Order[], order: Order) =>
+  orders
+    .filter((item) => item.attendanceId === order.attendanceId)
+    .reduce(
+    (sum, item) =>
+      sum +
+      (item.payment?.entries ?? []).reduce((acc, entry) => acc + entry.amount, 0),
+    0,
+  );
 
 /**
  * Chama `load` agora e a cada `intervalMs`, sem sobrepor requisições.
@@ -222,6 +238,21 @@ export function useOrder(
   const setSearchQuery = (query: string) => {
     setFocusedOrderId(null);
     updateSearchQuery(query);
+  };
+  // Recalculado no render: o polling já atualiza a tela na virada do dia local.
+  const todayDate = toDateKey(new Date());
+  const minimumDate = dateDaysAgo(89); // Hoje + 89 anteriores = 90 datas carregadas.
+  const [period, updatePeriod] = useState<OrderPeriod>("today");
+  const [specificDate, updateSpecificDate] = useState(todayDate);
+  const setPeriod = (value: OrderPeriod) => {
+    setFocusedOrderId(null);
+    updatePeriod(value);
+  };
+  const setSpecificDate = (value: string) => {
+    if (value >= minimumDate && value <= todayDate) {
+      setFocusedOrderId(null);
+      updateSpecificDate(value);
+    }
   };
   const [activeFilter, setActiveFilter] = useState<OrderFilter>("all");
   const [sortOrder, setSortOrder] = useState<OrderSort>("newest");
@@ -291,31 +322,46 @@ export function useOrder(
     [tables],
   );
 
+  // O link direto pode chegar antes do catálogo de pedidos carregar.
+  const focusedOrder = orders.find((order) => order.id === focusedOrderId);
+  const visiblePeriod = focusedOrder &&
+    !filterOrdersByDate([focusedOrder], period, specificDate, todayDate).length
+    ? "specific" : period;
+  const visibleDate = focusedOrder?.date ?? specificDate;
   const filteredOrders = useMemo(
     () =>
       sortOrders(
-        filterOrders(orders, activeFilter, searchQuery).filter(
-          (order) => focusedOrderId === null || order.id === focusedOrderId,
-        ),
+        filterOrders(filterOrdersByDate(orders, visiblePeriod, visibleDate, todayDate), activeFilter, searchQuery),
         sortOrder,
       ),
-    [activeFilter, orders, searchQuery, focusedOrderId, sortOrder],
+    [activeFilter, orders, searchQuery, sortOrder, visiblePeriod, visibleDate, todayDate],
   );
+  const visibleSelectedOrderId = focusedOrderId ?? pickSelectedOrderId(selectedOrderId, filteredOrders);
   const selectedOrder =
-    orders.find((order) => order.id === selectedOrderId) ?? null;
+    filteredOrders.find((order) => order.id === visibleSelectedOrderId) ?? null;
 
   const selectOrder = (orderId: number) => {
+    // Escolher outro pedido encerra o "foco" de link/notificação; sem isso a rota
+    // reabria o pedido e voltava o período para Hoje, encolhendo a lista.
+    setFocusedOrderId(null);
     setSelectedOrderId(orderId);
     setEditingOrderId(null);
   };
 
   const openOrder = (orderId?: number) => {
+    updatePeriod("today");
+    const target = orders.find((order) => order.id === orderId);
+    if (target && !filterOrdersByDate([target], "today", "", todayDate).length) {
+      updatePeriod("specific");
+      updateSpecificDate(target.date);
+    }
     setActiveFilter("all");
     setSortOrder("newest");
     setFocusedOrderId(orderId ?? null);
-    updateSearchQuery(orderId === undefined ? "" : String(orderId));
-    if (orderId !== undefined) selectOrder(orderId);
-    else setSelectedOrderId(orders[0]?.id ?? null);
+    updateSearchQuery("");
+    // Não usa selectOrder: ele encerra o foco (clique do usuário), e aqui o foco é intencional.
+    setSelectedOrderId(orderId ?? orders[0]?.id ?? null);
+    setEditingOrderId(null);
   };
 
   const toInput = (changes: OrderFormChanges): AdminOrderItemsInput => ({
@@ -331,6 +377,7 @@ export function useOrder(
     }, "Pedido criado com sucesso.");
     if (!ok) return;
     setIsCreatingOrder(false);
+    updatePeriod("today");
     setActiveFilter("all");
     setSortOrder("newest");
     setSearchQuery("");
@@ -348,26 +395,28 @@ export function useOrder(
     if (ok) setEditingOrderId(null);
   };
 
-  const cancelOrder = async () => {
+  /** "Excluir pedido" = cancelamento (soft). Motivo opcional: vazio (ou < 3 letras,
+   *  mínimo do backend) usa o padrão "Excluído pelo administrador". */
+  const cancelOrder = async (restoreStock: boolean, reason = "") => {
     if (!selectedOrder) return;
-    // Regra de negócio: o cancelamento pelo painel exige motivo.
-    const reason = window
-      .prompt(`Motivo do cancelamento do pedido #${selectedOrder.id}:`)
-      ?.trim();
-    if (!reason) return;
-    if (reason.length < 3) {
-      setError("Descreva o motivo com pelo menos 3 caracteres.");
-      return;
-    }
-    const restoreStock = window.confirm(
-      "Devolver os itens ao estoque?\n\nOK: sim, os itens não foram usados.\nCancelar: não, o item já foi preparado.",
-    );
+    const typed = reason.trim();
     const ok = await run(
       () =>
-        cancelAdminOrder(String(selectedOrder.id), { reason, restoreStock }),
-      `Pedido #${selectedOrder.id} cancelado.`,
+        cancelAdminOrder(String(selectedOrder.id), {
+          reason: typed.length >= 3 ? typed : DELETE_ORDER_REASON,
+          restoreStock,
+        }),
+      `Pedido #${selectedOrder.id} excluído.`,
     );
     if (ok) setSelectedOrderId(null);
+  };
+
+  const reopenAccount = async () => {
+    if (!selectedOrder?.attendanceId || selectedOrder.status !== "closed") return;
+    await run(
+      () => reopenAttendance(selectedOrder.attendanceId!),
+      `Conta de ${selectedOrder.table} reaberta.`,
+    );
   };
 
   const completeOrder = async (
@@ -411,6 +460,7 @@ export function useOrder(
     saveOrderChanges,
     completeOrder,
     cancelOrder,
+    reopenAccount,
     createOrder,
     selectOrder,
     filteredOrders,
@@ -420,13 +470,19 @@ export function useOrder(
     searchQuery,
     setSearchQuery,
     orders,
-    todayOrders: orders.filter((order) => order.date === toDateKey(new Date())),
+    todayOrders: orders.filter((order) => order.date === todayDate),
+    todayDate,
+    minimumDate,
+    period: visiblePeriod,
+    setPeriod,
+    specificDate: visibleDate,
+    setSpecificDate,
     activeFilter,
     setActiveFilter,
     sortOrder,
     setSortOrder,
     setIsCreatingOrder,
-    selectedOrderId,
+    selectedOrderId: visibleSelectedOrderId,
     setPaymentOrderId,
     selectedOrder,
     setEditingOrderId,

@@ -23,6 +23,9 @@ test("confirming a requested account records its full total and closes the atten
     closeWithPayments: async () => {
       throw new Error("not used");
     },
+    reopen: async () => {
+      throw new Error("not used");
+    },
   };
 
   const result = await new PaymentService(repository).confirmAttendancePayment(
@@ -148,3 +151,25 @@ for (const [rate, waived, fee] of [
     assert.equal(stored.closedById, 1n);
   });
 }
+
+test("taxa decimal usa centésimos de percentual antes de arredondar centavos", async () => {
+  const client: any = {
+    $transaction: async (callback: (tx: any) => unknown) => callback(client),
+    $queryRaw: async () => undefined,
+    attendance: {
+      findUnique: async () => ({ id: 1n, status: "OPEN" }),
+      updateMany: async () => ({ count: 1 }),
+    },
+    attendanceTotal: { findUnique: async () => ({ total: "3.75" }) },
+    restaurantSettings: {
+      findUnique: async () => ({ serviceFeeRate: "9.20" }),
+    },
+    payment: { create: async () => ({}) },
+  };
+  const result = await new PrismaPaymentRepository(client).closeWithPayments(
+    1n,
+    { serviceFeeWaived: false, payments: [{ method: "PIX", amount: 4.1 }] },
+    1n,
+  );
+  assert.equal(result.serviceFee, "0.35");
+});

@@ -27,7 +27,7 @@ export default class ProductService {
   async getProductById(id: bigint): Promise<ProductOutput> {
     const product = await this.productRepository.getProductById(id);
 
-    if (!product) {
+    if (!product || product.active === false || product.categoryId === null) {
       throw new AppError("Produto não encontrado", 404);
     }
 

@@ -57,7 +57,7 @@
   color: var(--text-secondary);
 }
 .table-search:focus-within {
-  box-shadow: var(--focus-ring);
+  box-shadow: none; // sem anel verde de foco (pedido do usuário)
 }
 .tables-body {
   padding: var(--spacing-7) var(--spacing-9) var(--spacing-12);
@@ -840,7 +840,7 @@
   font-weight: var(--font-weight-regular);
 }
 .table-form-modal .field input:focus {
-  box-shadow: var(--focus-ring);
+  box-shadow: none; // sem anel verde de foco (pedido do usuário)
 }
 .table-form-note {
   margin-top: var(--spacing-3);
@@ -994,6 +994,8 @@
   }
   .tables-print-sheet {
     display: block;
+    // A página não tem margem (sem cabeçalho/rodapé do navegador); o respiro fica aqui.
+    padding: 12mm;
   }
   .tables-print-sheet figure {
     display: inline-block;

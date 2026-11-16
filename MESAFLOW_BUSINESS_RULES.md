@@ -200,6 +200,8 @@ Indica se o produto faz parte do catálogo do estabelecimento.
 
 `active = false` significa que o produto foi descontinuado ou removido do cardápio.
 
+Produtos ativos precisam de uma categoria principal. Produtos inativos podem ter `category_id = NULL` depois da exclusão da categoria; criar, editar ou reativar um produto exige categoria válida. A exclusão simples de categoria com apenas inativos desvincula esses produtos e preserva os registros. Com produtos ativos, é necessário escolher entre mover para outra categoria ou excluir a categoria e retirar seus produtos do cardápio (`active=false`, categoria nula), após confirmação. Os produtos que tinham essa categoria apenas como adicional continuam no cardápio e perdem só a associação. Pedidos, itens vendidos e relatórios são preservados.
+
 ### `available`
 
 Indica disponibilidade operacional atual.

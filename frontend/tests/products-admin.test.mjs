@@ -228,3 +228,34 @@ test("novo produto inicia sem controlar estoque e envia false; edição preserva
   render().openNewProduct();
   assert.equal(render().newProduct.trackStock, false);
 });
+
+test("nota 19: excluir selecionados faz um DELETE por produto e recarrega", async () => {
+  const deletes = [];
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.method === "DELETE") {
+      deletes.push(url.replace(/^.*\/api\/v1/, ""));
+      return new Response(null, { status: 204 });
+    }
+    return Response.json([]);
+  };
+  const render = createHookRunner(() => useProducts([]));
+  const hook = render();
+  const failed = await hook.deleteProducts(["1", "2", "3"]);
+  assert.deepEqual(deletes, ["/products/1", "/products/2", "/products/3"]);
+  assert.deepEqual(failed, []);
+  assert.equal(render().error, "");
+});
+
+test("nota 19: falha parcial devolve só os que falharam e mostra quantos saíram", async () => {
+  globalThis.fetch = async (url, options = {}) => {
+    if (options.method === "DELETE")
+      return url.endsWith("/products/2")
+        ? Response.json({ message: "Produto não encontrado" }, { status: 404 })
+        : new Response(null, { status: 204 });
+    return Response.json([]);
+  };
+  const render = createHookRunner(() => useProducts([]));
+  const failed = await render().deleteProducts(["1", "2", "3"]);
+  assert.deepEqual(failed, ["2"]);
+  assert.match(render().error, /^2 de 3 produtos excluídos\. Produto não encontrado/);
+});

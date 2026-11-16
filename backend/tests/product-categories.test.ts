@@ -32,7 +32,7 @@ const stored = {
   additionalCategories: [{ categoryId: 2n }],
 };
 
-function setup(existingIds = [1n, 2n, 3n]) {
+function setup(existingIds = [1n, 2n, 3n], orphan = false) {
   const calls: { operation: string; args?: any }[] = [];
   const tx = {
     $queryRaw: async () => {
@@ -44,7 +44,8 @@ function setup(existingIds = [1n, 2n, 3n]) {
         where.id.in.filter((id: bigint) => existingIds.includes(id)).length,
     },
     product: {
-      findUnique: async () => stored,
+      findUnique: async () =>
+        orphan ? { ...stored, categoryId: null, active: false } : stored,
       findMany: async () => [stored],
       create: async (args: any) => {
         calls.push({ operation: "create", args });
@@ -263,4 +264,174 @@ test("deleted products stay out of the catalog after a new query", async () => {
   assert.equal((await repository.getAllProducts()).length, 1);
   await repository.deactivateProduct(10n);
   assert.deepEqual(await repository.getAllProducts(), []);
+});
+
+test("featured defaults false on create, accepts booleans and stays absent in unrelated PATCH", () => {
+  assert.equal(ProductSchema.parse(input).featured, false);
+  for (const featured of [true, false]) {
+    assert.equal(
+      ProductSchema.parse({ ...input, featured }).featured,
+      featured,
+    );
+    assert.equal(ProductUpdateSchema.parse({ featured }).featured, featured);
+  }
+  assert.equal(
+    "featured" in ProductUpdateSchema.parse({ name: "Novo" }),
+    false,
+  );
+  for (const featured of ["true", 1, null]) {
+    assert.equal(
+      ProductSchema.safeParse({ ...input, featured }).success,
+      false,
+    );
+    assert.equal(ProductUpdateSchema.safeParse({ featured }).success, false);
+  }
+});
+
+test("ADMIN creates and toggles featured through existing routes; EMPLOYEE is refused", async () => {
+  const { default: jwt } = await import("@fastify/jwt");
+  const { requireApiAuthentication } =
+    await import("../src/shared/api-access.js");
+  const { repository, calls } = setup();
+  const controller = new ProductsController(
+    new ProductService(repository, {} as StorageService),
+  );
+  const app = Fastify();
+  await app.register(jwt, { secret: "featured-test-secret" });
+  await app.register(
+    async (api) => {
+      api.addHook("onRequest", requireApiAuthentication);
+      api.post("/products", (request, reply) =>
+        controller.createProduct(request, reply),
+      );
+      api.patch("/products/:id", (request, reply) =>
+        controller.updateProduct(request, reply),
+      );
+    },
+    { prefix: "/api/v1" },
+  );
+  await app.ready();
+  const authorization = (role: "ADMIN" | "EMPLOYEE") =>
+    `Bearer ${app.jwt.sign({ id: "1", email: "test@example.com", role })}`;
+  try {
+    for (const featured of [undefined, true]) {
+      const created = await app.inject({
+        method: "POST",
+        url: "/api/v1/products",
+        headers: { authorization: authorization("ADMIN") },
+        payload: { ...input, ...(featured !== undefined && { featured }) },
+      });
+      assert.equal(created.statusCode, 201);
+      assert.equal(created.json().featured, featured ?? false);
+    }
+    for (const featured of [true, false]) {
+      const updated = await app.inject({
+        method: "PATCH",
+        url: "/api/v1/products/10",
+        headers: { authorization: authorization("ADMIN") },
+        payload: { featured },
+      });
+      assert.equal(updated.statusCode, 200);
+      assert.equal(updated.json().featured, featured);
+      assert.equal(
+        calls.filter((call) => call.operation === "update").at(-1)?.args.data
+          .featured,
+        featured,
+      );
+    }
+    await repository.updateProduct(10n, { name: "Novo" });
+    assert.equal(
+      "featured" in
+        calls.filter((call) => call.operation === "update").at(-1)?.args.data,
+      false,
+    );
+    const count = calls.length;
+    for (const method of ["POST", "PATCH"] as const) {
+      const denied = await app.inject({
+        method,
+        url: method === "POST" ? "/api/v1/products" : "/api/v1/products/10",
+        headers: { authorization: authorization("EMPLOYEE") },
+        payload:
+          method === "POST" ? { ...input, featured: true } : { featured: true },
+      });
+      assert.equal(denied.statusCode, 403);
+    }
+    assert.equal(calls.length, count);
+  } finally {
+    await app.close();
+  }
+});
+
+test("produto sem categoria não pode ser criado, editado nem reativado", async () => {
+  assert.equal(
+    ProductSchema.safeParse({ name: "Sem categoria", price: 10 }).success,
+    false,
+  );
+  assert.equal(
+    ProductUpdateSchema.safeParse({ categoryId: null }).success,
+    false,
+  );
+  const { repository, calls } = setup(undefined, true);
+  for (const patch of [{ active: true }, { name: "Novo nome" }]) {
+    await assert.rejects(repository.updateProduct(10n, patch), {
+      statusCode: 400,
+    });
+  }
+  assert.equal(
+    calls.some((call) => call.operation === "update"),
+    false,
+  );
+  const fixed = await repository.updateProduct(10n, {
+    active: true,
+    categoryId: 1n,
+  });
+  assert.equal(fixed.categoryId, 1n);
+});
+
+test("HTTP: órfão não pode ser criado/editado/reativado nem exposto ao público", async () => {
+  const { repository } = setup(undefined, true);
+  const { errorHandler } =
+    await import("../src/shared/errors/error-handler.js");
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  const controller = new ProductsController(
+    new ProductService(repository, {} as StorageService),
+  );
+  app.post("/products", (request, reply) =>
+    controller.createProduct(request, reply),
+  );
+  app.patch("/products/:id", (request, reply) =>
+    controller.updateProduct(request, reply),
+  );
+  app.get("/products/:id", (request, reply) =>
+    controller.getProductById(request, reply),
+  );
+  try {
+    assert.equal(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/products",
+          payload: { name: "Orfão", price: 10 },
+        })
+      ).statusCode,
+      400,
+    );
+    for (const payload of [
+      { name: "Editado" },
+      { active: true },
+      { categoryId: null },
+    ]) {
+      assert.equal(
+        (await app.inject({ method: "PATCH", url: "/products/10", payload }))
+          .statusCode,
+        400,
+      );
+    }
+    const inactive = await app.inject("/products/10");
+    assert.equal(inactive.statusCode, 404);
+    assert.equal((await repository.getProductById(10n))?.categoryId, null);
+  } finally {
+    await app.close();
+  }
 });

@@ -109,6 +109,10 @@ export class PrismaProductRepository implements ProductsRepository {
       data.trackStock = productUpdateInput.trackStock;
     }
 
+    if (productUpdateInput.featured !== undefined) {
+      data.featured = productUpdateInput.featured;
+    }
+
     if (productUpdateInput.available !== undefined) {
       data.available = productUpdateInput.available;
     }
@@ -149,6 +153,8 @@ export class PrismaProductRepository implements ProductsRepository {
         );
         if (promoMessage) throw new AppError(promoMessage, 400);
         const categoryId = productUpdateInput.categoryId ?? current.categoryId;
+        if (categoryId === null)
+          throw new AppError("Informe a categoria principal do produto.", 400);
         const additionalIds =
           productUpdateInput.additionalCategoryIds ??
           current.additionalCategories.map((item) => item.categoryId);

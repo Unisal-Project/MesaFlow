@@ -1,6 +1,10 @@
+import { useState } from "react";
+import { PromotionsContent } from "../Promotions";
+import { usePromotions, type ItemKey } from "../Promotions/hooks/usePromotions";
 import { useContentTransition } from "@/hooks/useContentTransition";
 import { ArrowLeft, ChevronDown, Eye, List, Plus, Search } from "lucide-react";
-import { Button, AdminSidebar, Notifications } from "@/components";
+import { Button, AdminSidebar, Notifications, Checkbox, ConfirmationDialog } from "@/components";
+import { getSession } from "@/services/auth.service";
 
 import { DeleteProductModal } from "./components/DeleteProductModal";
 import { ProductFormModal } from "./components/ProductFormModal";
@@ -26,6 +30,10 @@ export default function Products({
   onShowAllCategories,
   onBackToMenu,
 }: ProductsProps) {
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const isAdmin = getSession()?.user.role === "ADMIN";
+  const promotionState = usePromotions(() => Promise.all([productState.reload(), categoryState.reload()]));
   const { contentRef, transitionContent } =
     useContentTransition(".products-list");
 
@@ -57,6 +65,7 @@ export default function Products({
     normalizedSearch,
     filteredProducts,
     updateAvailability,
+    updateFeatured,
     updateQuantity,
     error: productError,
     busy: productBusy,
@@ -74,6 +83,7 @@ export default function Products({
   // Inclui a promoção da categoria para a prévia do formulário de produto.
   const productCategories = categoryState.categories;
   const isCategories = activeTab === "categories";
+  const selectedProductIds = selectedProducts.filter(id => products.some(product => product.id === id));
   // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
   const isFiltering =
     normalizedSearch !== "" ||
@@ -88,10 +98,20 @@ export default function Products({
     showAllProducts || isFiltering
       ? filteredProducts
       : filteredProducts.slice(0, 4);
-  const switchTab = (tab: "products" | "categories") => {
+  const deleteSelected = async () => {
+    setConfirmBulkDelete(false);
+    // Ficam selecionados só os que falharam (se nenhum falhar, a seleção limpa).
+    setSelectedProducts(await productState.deleteProducts(selectedProductIds));
+  };
+  const switchTab = (tab: "products" | "categories" | "promotions") => {
     transitionContent(() => onSwitchTab(tab));
   };
 
+  const promote = (keys: ItemKey[]) => {
+    promotionState.defineFor(keys);
+    onSwitchTab("promotions");
+    setSelectedProducts([]);
+  };
   return (
     <div className="products-page">
       <AdminSidebar
@@ -141,14 +161,15 @@ export default function Products({
                     : "Gerencie produtos e categorias do seu cardápio."}
               </p>
             </div>
-            <Button
+            <div className="products-heading-actions"><Button variant="secondary" onClick={() => onNavigate?.("menuPreviewFromProducts")}><Eye aria-hidden="true" />Ver cardápio</Button>
+            {activeTab !== "promotions" && <Button
               onClick={
                 isCategories ? categoryState.openNewCategory : openNewProduct
               }
             >
               <Plus aria-hidden="true" />
               {isCategories ? "Nova categoria" : "Novo produto"}
-            </Button>
+            </Button>}</div>
           </header>
           {!showAllProducts && !showAllCategories && (
             <section
@@ -190,8 +211,13 @@ export default function Products({
               ))}
             </section>
           )}
-          {isCategories ? (
+          <nav className="products-tabs" aria-label="Seções do cardápio">
+            {[["products", "Produtos"], ["categories", "Categorias"], ["promotions", "Promoções"]].map(([id, label]) => <button key={id} type="button" className={activeTab === id ? "active" : ""} aria-current={activeTab === id ? "page" : undefined} onClick={() => switchTab(id as ProductsProps["activeTab"])}>{label}</button>)}
+          </nav>
+          {activeTab === "promotions" ? <PromotionsContent embedded state={promotionState} onNavigate={onNavigate ?? (() => undefined)} /> : isCategories ? (
             <Categories
+              hideTabs
+              onPromote={(id) => promote([`c:${id}`])}
               showAll={showAllCategories}
               onShowAll={onShowAllCategories}
               state={categoryState}
@@ -235,7 +261,7 @@ export default function Products({
                       setAvailabilityFilter(event.target.value)
                     }
                   >
-                    <option value="all">Disponibilidade</option>
+                    <option value="all">Todos</option>
                     <option value="available">Disponíveis</option>
                     <option value="unavailable">Indisponíveis</option>
                   </select>
@@ -254,21 +280,11 @@ export default function Products({
                   </select>
                 </label>
               </div>
-              {!showAllProducts && (
-                <nav className="products-tabs" aria-label="Seções do cardápio">
-                  <button
-                    type="button"
-                    className="active"
-                    aria-current="page"
-                    onClick={() => switchTab("products")}
-                  >
-                    Produtos
-                  </button>
-                  <button type="button" onClick={() => switchTab("categories")}>
-                    Categorias
-                  </button>
-                </nav>
-              )}
+              {selectedProductIds.length > 0 && <div className="products-promotion-actions"><span>{selectedProductIds.length} selecionados</span><Button variant="secondary" onClick={() => setSelectedProducts([])}>Limpar seleção</Button><Button onClick={() => promote(selectedProductIds.map(id => `p:${id}` as ItemKey))}>Colocar em promoção</Button>{isAdmin && <Button variant="danger" disabled={productBusy} onClick={() => setConfirmBulkDelete(true)}>Excluir selecionados</Button>}</div>}
+              <ConfirmationDialog open={confirmBulkDelete && selectedProductIds.length > 0} variant="danger"
+                title={selectedProductIds.length === 1 ? "Excluir 1 produto?" : `Excluir ${selectedProductIds.length} produtos?`}
+                description={`⚠️ Atenção: ${selectedProductIds.length === 1 ? "1 produto será excluído" : `${selectedProductIds.length} produtos serão excluídos`} do cardápio. O histórico de pedidos e os relatórios são mantidos. Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir" onCancel={() => setConfirmBulkDelete(false)} onConfirm={() => void deleteSelected()} />
               <section
                 className={`products-list${showAllProducts ? " products-list-full" : ""}`}
                 aria-labelledby="products-list-title"
@@ -297,14 +313,15 @@ export default function Products({
                 {productLoading && <p role="status">Carregando produtos...</p>}
                 <div className="products-list-body">
                   {visibleProducts.map((product) => (
-                    <ProductRow
+                    <div key={product.id} className="products-selectable-row"><Checkbox label="" aria-label={`Selecionar ${product.name}`} disabled={promotionState.busy} checked={selectedProducts.includes(product.id)} onChange={() => setSelectedProducts(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])} /><ProductRow
                       key={product.id}
                       product={product}
                       onUpdateQuantity={updateQuantity}
                       onUpdateAvailability={updateAvailability}
+                      onUpdateFeatured={updateFeatured}
                       onEdit={openEditProduct}
                       onDelete={setProductToDelete}
-                    />
+                    /></div>
                   ))}
                   {!productLoading && products.length === 0 && (
                     <div className="products-no-results">

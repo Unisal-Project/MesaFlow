@@ -18,7 +18,7 @@ before(async () => {
   server = await createServer({ root: fileURLToPath(new URL("..", import.meta.url)), server: { middlewareMode: true, ws: false }, optimizeDeps: { noDiscovery: true },
     plugins: [{ name: "settings-controlled", enforce: "pre", transform(code, id) {
       if (["/Settings/hooks/useRestaurantSettings.ts", "/Order/components/PaymentModal.tsx", "/layout/RestaurantInfo.tsx"].some(path => id.endsWith(path)))
-        return code.replace(/useId,\s*/, "").replace('from "react"', 'from "/tests/helpers/hook-runtime.mjs"') + '\nconst useId = () => "restaurant-info-title";';
+        return code.replace(/useId,\s*/, "").replace('from "react"', 'from "/tests/helpers/hook-runtime.mjs"').replaceAll('useEffect(', 'captureEffect(') + '\nconst captureEffect = fn => globalThis.settingsEffects?.push(fn); const useId = () => "restaurant-info-title";';
     } }] });
   ({ createHookRunner: run } = await server.ssrLoadModule("/tests/helpers/hook-runtime.mjs"));
   service = await server.ssrLoadModule("/src/services/settings.service.ts");
@@ -112,4 +112,37 @@ test("informações do restaurante carregam ao abrir, respeitam prop e falha man
     await find(failed(), n => n.props?.["aria-label"] === "Informações do restaurante").props.onClick();
     assert.ok(renderToStaticMarkup(failed()).includes("Não informado"));
   } finally { globalThis.fetch = fetch; }
+});
+
+
+test("formulário é somente leitura para EMPLOYEE e mostra salvar para ADMIN", async () => {
+  const { RestaurantSettingsForm } = await server.ssrLoadModule("/src/pages/admin/Settings/components/RestaurantSettingsForm.tsx");
+  const hook = run(() => useRestaurantSettings(false));
+  await hook().reload();
+  const employee = renderToStaticMarkup(createElement(RestaurantSettingsForm, { state: hook(), editable: false }));
+  assert.ok(employee.includes("readOnly"));
+  assert.ok(!employee.includes("Salvar configurações"));
+  assert.ok(employee.includes("Somente o administrador"));
+  const admin = renderToStaticMarkup(createElement(RestaurantSettingsForm, { state: hook(), editable: true }));
+  assert.ok(admin.includes("Salvar configurações"));
+});
+
+test("pagamento aguarda GET settings e permite tentar novamente após falha", async () => {
+  const fetch = globalThis.fetch;
+  globalThis.settingsEffects = [];
+  try {
+    globalThis.fetch = async () => Response.json({ message: "Configuração indisponível" }, { status: 503 });
+    const render = run(() => PaymentModal({ orderId: 1, total: 20, onClose() {}, onComplete() {} }));
+    render();
+    globalThis.settingsEffects[0]();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.ok(renderToStaticMarkup(render()).includes("Configuração indisponível"));
+    assert.ok(!find(render(), n => n.type === PaymentForm));
+    globalThis.fetch = fetch;
+    find(render(), n => n.props?.children === "Tentar de novo").props.onClick();
+    await new Promise(resolve => setImmediate(resolve));
+    const form = render();
+    assert.equal(form.type, PaymentForm);
+    assert.equal(form.props.serviceFeeRate, 5);
+  } finally { globalThis.fetch = fetch; delete globalThis.settingsEffects; }
 });

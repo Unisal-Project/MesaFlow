@@ -19,4 +19,6 @@ export type DashboardProps = {
   onViewOrder?: (orderId: number) => void;
   onViewOrders?: () => void;
   onViewReports?: () => void;
+  /** Abre a mesa clicada no mapa (tela Mesas com os detalhes dela). */
+  onOpenTable?: (table: RestaurantTable) => void;
 };

@@ -64,15 +64,43 @@
   border-radius: var(--radius-control);
   background: var(--surface);
   box-shadow: var(--shadow);
-  > h3 {
-    margin: 0;
+  .notifications-panel-header {
+    position: sticky;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
     padding: var(--spacing-4) var(--spacing-5);
     border-bottom: 1px solid var(--border);
     background: var(--surface-hover);
-    color: var(--primary-dark);
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    line-height: 1.4;
+    h3 {
+      margin: 0;
+      color: var(--primary-dark);
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-bold);
+      line-height: 1.4;
+    }
+    button {
+      padding: 0;
+      border: 0;
+      background: none;
+      color: var(--primary-dark);
+      font: inherit;
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-decoration: underline;
+      cursor: pointer;
+      &:disabled {
+        color: var(--text-secondary);
+        text-decoration: none;
+        cursor: default;
+      }
+      &:focus-visible {
+        outline: 3px solid var(--focus);
+        outline-offset: 2px;
+      }
+    }
   }
   > ul {
     margin: 0;
@@ -134,4 +162,10 @@
   --notification-color: var(--primary);
   --notification-label: var(--primary);
   button { margin-top: var(--spacing-2); }
+}
+
+/* Lida: perde o fundo e a cor de destaque; a não lida continua destacada. */
+.notifications-panel > ul > li.notification-item--read {
+  border-left-color: var(--border);
+  background: transparent;
 }

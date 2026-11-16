@@ -32,21 +32,26 @@ export function KitchenQueue({ orders, onViewOrders, onViewOrder }: KitchenQueue
 
       <div className="mf-dashboard-orders">
         {orders.map((order) => (
-          <article
+          // A linha inteira abre o pedido; o olho fica só como indicação visual
+          // (botão dentro de botão não é válido).
+          <button
+            type="button"
             className="mf-dashboard-order"
             key={order.id}
+            aria-label={`Visualizar pedido #${order.id}: ${describe(order)}`}
+            onClick={() => onViewOrder?.(order.id)}
           >
             <span className="mf-dashboard-order-icon"><List aria-hidden="true" size={24} /></span>
-            <div className="mf-dashboard-order-description">
-              <h3>Pedido #{order.id}</h3>
-              <p>{describe(order)}</p>
-            </div>
+            <span className="mf-dashboard-order-description">
+              <strong className="mf-dashboard-order-title">Pedido #{order.id}</strong>
+              <span className="mf-dashboard-order-meta">{describe(order)}</span>
+            </span>
 
-            <Button type="button" variant="secondary" size="small" className="mf-dashboard-order-view" aria-label={`Visualizar pedido #${order.id}`} onClick={() => onViewOrder?.(order.id)}>
+            <span className="btn secondary small mf-dashboard-order-view" aria-hidden="true">
               <Eye aria-hidden="true" />
               <span>Ver pedido</span>
-            </Button>
-          </article>
+            </span>
+          </button>
         ))}
         {orders.length === 0 && <p>Nenhum pedido em aberto agora.</p>}
       </div>

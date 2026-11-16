@@ -20,6 +20,11 @@ export class PaymentService {
     return { ...result, attendanceId: result.attendanceId.toString() };
   }
 
+  async reopenAttendance(attendanceId: bigint) {
+    const result = await this.paymentRepository.reopen(attendanceId);
+    return { ...result, attendanceId: result.attendanceId.toString() };
+  }
+
   async confirmAttendancePayment(attendanceId: bigint) {
     const payment =
       await this.paymentRepository.confirmFullPayment(attendanceId);

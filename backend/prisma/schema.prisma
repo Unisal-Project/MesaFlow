@@ -112,7 +112,7 @@ model Category {
 
 model Product {
   id                   BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
-  categoryId           BigInt            @map("category_id") @db.UnsignedBigInt
+  categoryId           BigInt?           @map("category_id") @db.UnsignedBigInt
   name                 String            @db.VarChar(150)
   description          String?           @db.Text
   imageUrl             String?           @map("image_url") @db.VarChar(2048)
@@ -126,11 +126,12 @@ model Product {
   promoEndsAt          DateTime?         @map("promo_ends_at") @db.DateTime(0)
   stockQuantity        Int               @default(0) @map("stock_quantity")
   trackStock           Boolean           @default(true) @map("track_stock")
+  featured             Boolean           @default(false)
   available            Boolean           @default(true)
   active               Boolean           @default(true)
   createdAt            DateTime          @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  category             Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
+  category             Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
   additionalCategories ProductCategory[]
   orderItems           OrderItem[]
   stockMovements       StockMovement[]

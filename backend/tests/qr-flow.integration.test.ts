@@ -53,6 +53,7 @@ test(
         price: 10,
         stockQuantity: 5,
         trackStock: true,
+        featured: false,
         available: true,
         active: true,
       });

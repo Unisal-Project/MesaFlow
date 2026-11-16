@@ -69,3 +69,10 @@ export const changePassword = (currentPassword: string, newPassword: string) =>
     method: "PATCH",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
+
+export async function updateProfile(data: {name?: string; email?: string; currentPassword?: string}) {
+  const user = await apiRequest<AuthUser>("/auth/me", {method: "PATCH", body: JSON.stringify(data)});
+  const session = getSession();
+  if (session) saveSession({...session, user});
+  return user;
+}

@@ -9,6 +9,7 @@ export type ProductInput = {
   price: number;
   stockQuantity?: number;
   trackStock?: boolean;
+  featured?: boolean;
   available?: boolean;
   active?: boolean;
   promoType?: "PERCENT" | "AMOUNT" | null;
@@ -29,6 +30,7 @@ export type ProductUpdateInput = {
   price?: number;
   stockQuantity?: number;
   trackStock?: boolean;
+  featured?: boolean;
   available?: boolean;
   active?: boolean;
   promoType?: "PERCENT" | "AMOUNT" | null;
@@ -40,7 +42,7 @@ export type ProductUpdateInput = {
 
 export type ProductOutput = {
   id: bigint;
-  categoryId: bigint;
+  categoryId: bigint | null;
   additionalCategoryIds?: bigint[];
   name: string;
   description: string | null;
@@ -52,6 +54,7 @@ export type ProductOutput = {
   price: string;
   stockQuantity: number;
   trackStock: boolean;
+  featured: boolean;
   available: boolean;
   active: boolean;
   promoType: "PERCENT" | "AMOUNT" | null;
@@ -68,7 +71,7 @@ export type ProductOutput = {
 
 export type ProductResponse = {
   id: string;
-  categoryId: string;
+  categoryId: string | null;
   additionalCategoryIds: string[];
   name: string;
   description: string | null;
@@ -80,6 +83,7 @@ export type ProductResponse = {
   price: string;
   stockQuantity: number;
   trackStock: boolean;
+  featured: boolean;
   available: boolean;
   active: boolean;
   promoType: "PERCENT" | "AMOUNT" | null;

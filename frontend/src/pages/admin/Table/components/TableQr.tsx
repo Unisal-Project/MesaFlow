@@ -126,6 +126,9 @@ export function TablesQrSheet({
   // Filha direta do body: na impressão o resto do body some com display:none.
   return createPortal(
     <div className="tables-print-sheet" ref={sheetRef} aria-hidden="true">
+      {/* Sem margem de página o navegador não imprime cabeçalho/rodapé (título e URL).
+          Só existe enquanto esta folha está montada: outras impressões não mudam. */}
+      <style>{"@page { margin: 0; }"}</style>
       {images?.map((src, index) => (
         <figure key={tables[index].id}>
           <img src={src} alt="" />

@@ -3,7 +3,7 @@ import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 import { Badge, Button, Switch, TextField } from "@/components";
 import { promotionLabel } from "@/utils/promotion";
 
-import { Pencil } from "lucide-react";
+import { Pencil, Star } from "lucide-react";
 
 import { ProductRowPreview } from "./ProductRowPreview";
 
@@ -12,6 +12,7 @@ import type { AdminProduct } from "../types/product.types";
 type ProductRowProps = {
   product: AdminProduct;
   onUpdateQuantity: (productId: string, quantity: number) => void;
+  onUpdateFeatured: (productId: string, featured: boolean) => void;
   onUpdateAvailability: (productId: string, available: boolean) => void;
   onEdit: (product: AdminProduct) => void;
   onDelete: (product: AdminProduct) => void;
@@ -21,6 +22,7 @@ export function ProductRow({
   product,
   onUpdateQuantity,
   onUpdateAvailability,
+  onUpdateFeatured,
   onEdit,
   onDelete,
 }: ProductRowProps) {
@@ -52,6 +54,15 @@ export function ProductRow({
           </h3>
           <p>{product.category}</p>
         </div>
+        <button
+          type="button"
+          className="product-featured-button"
+          aria-pressed={product.featured ?? false}
+          aria-label={product.featured ? `Remover destaque de ${product.name}` : `Destacar ${product.name}`}
+          onClick={() => onUpdateFeatured(product.id, !product.featured)}
+        >
+          <Star aria-hidden="true" fill={product.featured ? "currentColor" : "none"} />
+        </button>
       </div>
 
       <strong className="product-price">

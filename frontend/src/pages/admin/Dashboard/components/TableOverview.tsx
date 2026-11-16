@@ -13,9 +13,11 @@ const view = (table: RestaurantTable) =>
 type TableOverviewProps = {
   tables: RestaurantTable[];
   onViewTables: () => void;
+  /** Clicar numa mesa do mapa abre os detalhes dela em Mesas. */
+  onOpenTable?: (table: RestaurantTable) => void;
 };
 
-export function TableOverview({ tables, onViewTables }: TableOverviewProps) {
+export function TableOverview({ tables, onViewTables, onOpenTable }: TableOverviewProps) {
   return (
     <section
       className="mf-dashboard-panel"
@@ -47,15 +49,17 @@ export function TableOverview({ tables, onViewTables }: TableOverviewProps) {
           .map((table) => {
             const { tone, label, short } = view(table);
             return (
-              <div
+              <button
+                type="button"
                 key={table.id}
                 className={`mf-dashboard-table ${tone}`}
                 title={`${table.name}: ${label}`}
-                aria-label={`${table.name}: ${label}`}
+                aria-label={`Ver ${table.name}: ${label}`}
+                onClick={() => onOpenTable?.(table)}
               >
                 <strong>{String(table.number).padStart(2, "0")}</strong>
                 <span>{short}</span>
-              </div>
+              </button>
             );
           })}
         {tables.length === 0 && <p>Nenhuma mesa cadastrada.</p>}

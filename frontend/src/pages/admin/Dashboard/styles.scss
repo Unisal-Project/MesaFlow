@@ -156,14 +156,26 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-4);
+  width: 100%;
   padding: var(--spacing-3);
+  border: 0;
   border-radius: var(--radius-medium);
   background: var(--background);
-  h3 {
+  // Linha inteira clicável (abre o pedido).
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  &:hover { background: var(--surface-muted); }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .mf-dashboard-order-title {
+    display: block;
     margin-bottom: var(--spacing-2);
     font-size: var(--font-size-sm);
   }
-  p {
+  .mf-dashboard-order-meta {
+    display: block;
     color: var(--text-secondary);
     font-size: var(--font-size-xs);
     line-height: 1.5;
@@ -222,6 +234,16 @@
   gap: var(--spacing-1);
   min-height: 66px;
   border-radius: var(--radius-medium);
+  // Clicável (abre a mesa em Mesas): mantém o visual de bloco do mapa.
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  &:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
   strong {
     font-family: var(--font-heading);
     font-size: var(--font-size-lg);

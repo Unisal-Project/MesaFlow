@@ -1,4 +1,4 @@
-import { Button } from "@/components";
+import { Button, Radio, SystemMessage } from "@/components";
 import { Trash } from "lucide-react";
 import { useState } from "react";
 
@@ -12,7 +12,7 @@ type DeleteCategoryModalProps = {
   /** Produtos visíveis (ativos) cuja categoria principal é a excluída. */
   products: AdminProduct[];
   onClose: () => void;
-  onConfirm: (moveTo?: string, moves?: CategoryProductMove[]) => void;
+  onConfirm: (moveTo?: string, moves?: CategoryProductMove[], deleteProducts?: boolean) => void;
   error?: string;
   busy?: boolean;
 };
@@ -26,25 +26,25 @@ export function DeleteCategoryModal({
   error,
   busy,
 }: DeleteCategoryModalProps) {
+  const options = categories.filter((item) => item.id !== category?.id);
+  const [mode, setMode] = useState(options.length ? "move" : "delete");
   const [moveAll, setMoveAll] = useState("");
   const [targets, setTargets] = useState<Record<string, string>>({});
   if (!category) return null;
 
-  const options = categories.filter((item) => item.id !== category.id);
   const hasProducts = products.length > 0;
   const ready = products.every((product) => targets[product.id]);
 
+  const warning = `⚠️ Atenção: ${products.length === 1 ? "o 1 produto desta categoria será excluído" : `os ${products.length} produtos desta categoria serão excluídos`} do cardápio. O histórico de pedidos e os relatórios são mantidos. Esta ação não pode ser desfeita.`;
   const confirm = () => {
-    // Sem produtos visíveis, eventuais inativos (ocultos) vão para a primeira
-    // outra categoria; o backend só usa moveTo se houver o que mover.
-    if (!hasProducts) return onConfirm(options[0]?.id);
-    onConfirm(
-      moveAll || targets[products[0].id],
-      products.map((product) => ({
-        product,
-        categoryId: targets[product.id],
-      })),
-    );
+    if (busy) return;
+    if (!hasProducts) return onConfirm();
+    if (mode === "delete") {
+      if (window.confirm(warning)) onConfirm(undefined, [], true);
+      return;
+    }
+    if (!ready) return;
+    onConfirm(moveAll || targets[products[0].id], products.map(product => ({ product, categoryId: targets[product.id] })));
   };
 
   return (
@@ -70,15 +70,17 @@ export function DeleteCategoryModal({
 
         <p id="delete-category-description">
           {hasProducts
-            ? `“${category.name}” tem ${products.length} ${products.length === 1 ? "produto" : "produtos"}. Escolha para onde ${products.length === 1 ? "ele vai" : "eles vão"} antes de excluir.`
+            ? `“${category.name}” tem ${products.length} ${products.length === 1 ? "produto" : "produtos"}. Escolha mover ou excluir os produtos do cardápio.`
             : `“${category.name}” será excluída.`}
         </p>
 
-        {hasProducts && !options.length && (
-          <p role="alert">Crie outra categoria antes de excluir esta.</p>
-        )}
+        {hasProducts && <fieldset className="category-delete-modes"><legend>O que fazer com os produtos?</legend>
+          <Radio name="category-delete-mode" label="Mover os produtos para…" checked={mode === "move"} disabled={busy || !options.length} onChange={() => setMode("move")} />
+          <Radio name="category-delete-mode" label="Excluir a categoria e os produtos dela" checked={mode === "delete"} disabled={busy} onChange={() => setMode("delete")} />
+        </fieldset>}
+        {hasProducts && mode === "delete" && <SystemMessage variant="warning">{warning}</SystemMessage>}
 
-        {hasProducts && options.length > 0 && (
+        {hasProducts && mode === "move" && options.length > 0 && (
           <div className="category-delete-moves">
             <label>
               <span>Mover todos para…</span>
@@ -140,10 +142,10 @@ export function DeleteCategoryModal({
             type="button"
             variant="danger"
             loading={busy}
-            disabled={hasProducts && (!options.length || !ready)}
+            disabled={hasProducts && mode === "move" && (!options.length || !ready)}
             onClick={confirm}
           >
-            {hasProducts ? "Mover e excluir" : "Excluir"}
+            {hasProducts ? mode === "delete" ? "Excluir categoria e produtos" : "Mover e excluir" : "Excluir"}
           </Button>
         </footer>
       </section>

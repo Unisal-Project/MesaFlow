@@ -38,6 +38,7 @@ const adminRoutes = new Set([
   "DELETE /tables/:id",
   "POST /orders/:id/cancel",
   "GET /attendances/cancelled",
+  "POST /attendances/:attendanceId/reopen",
   "GET /reports/sales",
 ]);
 

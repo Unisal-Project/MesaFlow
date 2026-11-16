@@ -59,9 +59,8 @@ before(async () => {
   ({ AdminSidebar } = await server.ssrLoadModule(
     "/src/components/layout/AdminSidebar.tsx",
   ));
-  ({ default: Promotions } = await server.ssrLoadModule(
-    "/src/pages/admin/Promotions/index.tsx",
-  ));
+  const { PromotionsContent } = await server.ssrLoadModule("/src/pages/admin/Promotions/index.tsx");
+  Promotions = props => PromotionsContent({ ...props, state: globalThis.promotionState });
   ({ createHookRunner: run } = await server.ssrLoadModule(
     "/tests/helpers/hook-runtime.mjs",
   ));

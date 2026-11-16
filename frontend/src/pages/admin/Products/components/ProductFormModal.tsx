@@ -15,20 +15,21 @@ import {
 } from "@/utils/promotion";
 import { PromotionFields } from "./PromotionFields";
 
-import { ChevronDown, ExternalLink, Plus, Trash, X } from "lucide-react";
+import { ChevronDown, Plus, Trash, X } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
 
 import type { ChangeEvent, Dispatch, FormEvent, SetStateAction } from "react";
 
-import type {
-  AdminProduct,
-  NewProductForm,
-} from "../types/product.types";
+import type { AdminProduct, NewProductForm } from "../types/product.types";
 import { MONEY_PATTERN, toDecimal } from "../utils/decimal";
 
 type ProductFormModalProps = {
-  categories: ({ id: string; name: string; active?: boolean } & Partial<PromoFields>)[];
+  categories: ({
+    id: string;
+    name: string;
+    active?: boolean;
+  } & Partial<PromoFields>)[];
   editingProductId: string | null;
   hasUnsavedChanges?: boolean;
   error?: string;
@@ -65,7 +66,9 @@ export function ProductFormModal({
 }: ProductFormModalProps) {
   const modalRef = useRef<HTMLElement>(null);
   const category = categories.find((item) => item.id === newProduct.category);
-  const photos = [newProduct.imageUrl, ...(newProduct.moreImages ?? [])].filter(Boolean);
+  const photos = [newProduct.imageUrl, ...(newProduct.moreImages ?? [])].filter(
+    Boolean,
+  );
   const preview = previewPrice(
     toDecimal(newProduct.price),
     { ...newProduct.promo, promoValue: toDecimal(newProduct.promo.promoValue) },
@@ -106,7 +109,9 @@ export function ProductFormModal({
       setNewCategoryName(null);
     } catch (reason) {
       setCategoryError(
-        reason instanceof Error ? reason.message : "Não foi possível criar a categoria.",
+        reason instanceof Error
+          ? reason.message
+          : "Não foi possível criar a categoria.",
       );
     } finally {
       setCreatingCategory(false);
@@ -212,9 +217,10 @@ export function ProductFormModal({
                     setNewProduct((current) => ({
                       ...current,
                       category: event.target.value,
-                      additionalCategoryIds: current.additionalCategoryIds.filter(
-                        (id) => id !== event.target.value,
-                      ),
+                      additionalCategoryIds:
+                        current.additionalCategoryIds.filter(
+                          (id) => id !== event.target.value,
+                        ),
                     }))
                   }
                 >
@@ -325,6 +331,16 @@ export function ProductFormModal({
             </span>
           </label>
           <Switch
+            label="Destaque no cardápio"
+            checked={newProduct.featured ?? false}
+            onChange={(event) =>
+              setNewProduct((current) => ({
+                ...current,
+                featured: event.target.checked,
+              }))
+            }
+          />
+          <Switch
             className="new-product-track-stock"
             label="Controlar estoque"
             checked={newProduct.trackStock}
@@ -353,7 +369,9 @@ export function ProductFormModal({
             />
           )}
           <div className="new-product-photo">
-            <span>Imagem do produto (até 3 fotos; a capa aparece no cardápio)</span>
+            <span>
+              Imagem do produto (até 3 fotos; a capa aparece no cardápio)
+            </span>
             <ul className="product-photo-list">
               {photos.map((url, index) => (
                 <li key={url} className="product-photo-item">
@@ -361,20 +379,32 @@ export function ProductFormModal({
                     src={newProduct.photoThumbs?.[url] ?? url}
                     alt={`Foto ${index + 1} do produto`}
                     onError={(event) => {
-                      if (event.currentTarget.getAttribute("src") !== url) event.currentTarget.src = url;
+                      if (event.currentTarget.getAttribute("src") !== url)
+                        event.currentTarget.src = url;
                     }}
                   />
                   {index === 0 ? (
                     <Badge variant="success">Capa</Badge>
                   ) : (
                     onSetCoverPhoto && (
-                      <Button type="button" variant="secondary" size="small" onClick={() => onSetCoverPhoto(url)}>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="small"
+                        onClick={() => onSetCoverPhoto(url)}
+                      >
                         Definir como capa
                       </Button>
                     )
                   )}
                   {onRemovePhoto && (
-                    <Button type="button" variant="ghost" size="small" aria-label={`Remover foto ${index + 1}`} onClick={() => onRemovePhoto(url)}>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="small"
+                      aria-label={`Remover foto ${index + 1}`}
+                      onClick={() => onRemovePhoto(url)}
+                    >
                       <Trash aria-hidden="true" />
                       Remover
                     </Button>
@@ -427,94 +457,94 @@ export function ProductFormModal({
             open={newProduct.additionalCategoryIds.length > 0 || undefined}
           >
             <summary>Mais opções</summary>
-          <fieldset className="new-product-additional-categories">
-            <legend>Categorias adicionais (opcional)</legend>
-            {categories
-              .filter((category) => category.id !== newProduct.category)
-              .map((category) => (
-                <label key={category.id}>
-                  <input
-                    type="checkbox"
-                    checked={newProduct.additionalCategoryIds.includes(
-                      category.id,
-                    )}
-                    onChange={(event) =>
-                      setNewProduct((current) => ({
-                        ...current,
-                        additionalCategoryIds: event.target.checked
-                          ? [...current.additionalCategoryIds, category.id]
-                          : current.additionalCategoryIds.filter(
-                              (id) => id !== category.id,
-                            ),
-                      }))
-                    }
-                  />
-                  {category.name}
-                  {category.active === false ? " (inativa)" : ""}
-                </label>
-              ))}
-            {!categories.length && <p>Nenhuma categoria cadastrada.</p>}
-          </fieldset>
+            <fieldset className="new-product-additional-categories">
+              <legend>Categorias adicionais (opcional)</legend>
+              {categories
+                .filter((category) => category.id !== newProduct.category)
+                .map((category) => (
+                  <label key={category.id}>
+                    <input
+                      type="checkbox"
+                      checked={newProduct.additionalCategoryIds.includes(
+                        category.id,
+                      )}
+                      onChange={(event) =>
+                        setNewProduct((current) => ({
+                          ...current,
+                          additionalCategoryIds: event.target.checked
+                            ? [...current.additionalCategoryIds, category.id]
+                            : current.additionalCategoryIds.filter(
+                                (id) => id !== category.id,
+                              ),
+                        }))
+                      }
+                    />
+                    {category.name}
+                    {category.active === false ? " (inativa)" : ""}
+                  </label>
+                ))}
+              {!categories.length && <p>Nenhuma categoria cadastrada.</p>}
+            </fieldset>
           </details>
 
           <div className="new-product-preview">
-            <span>Prévia no cardápio</span>
-            <ProductCard
-              name={newProduct.name || "Nome do produto"}
-              description={newProduct.observation}
-              price={formatPriceMenu(preview.finalPrice)}
-              originalPrice={
-                preview.promotion
-                  ? formatPriceMenu(toDecimal(newProduct.price) || "0")
-                  : undefined
-              }
-              badge={
-                preview.promotion
-                  ? promotionLabel(preview.promotion)
-                  : undefined
-              }
-              available={newProduct.available}
-              image={
-                newProduct.imageUrl ? (
-                  <img
-                    className="food-photo new-product-preview-photo"
-                    src={newProduct.imageUrl}
-                    alt=""
-                  />
-                ) : undefined
-              }
-            />
-            {/* Produto salvo: abre o cardápio real rolado até ele (mesma aba).
-                O link recarrega o app, então só fica ativo sem alterações pendentes. */}
-            {editingProductId !== null &&
-              (hasUnsavedChanges ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="small"
-                    disabled
-                    aria-describedby="product-preview-hint"
-                  >
-                    <ExternalLink aria-hidden="true" />
-                    Prévia no cardápio
-                  </Button>
-                  <small id="product-preview-hint">
-                    Salve as alterações para ver a prévia
-                  </small>
-                </>
-              ) : (
+            {(() => {
+              const card = (
+                <ProductCard
+                  name={newProduct.name || "Nome do produto"}
+                  description={newProduct.observation}
+                  price={formatPriceMenu(preview.finalPrice)}
+                  originalPrice={
+                    preview.promotion
+                      ? formatPriceMenu(toDecimal(newProduct.price) || "0")
+                      : undefined
+                  }
+                  badge={
+                    preview.promotion
+                      ? promotionLabel(preview.promotion)
+                      : undefined
+                  }
+                  available={newProduct.available}
+                  image={
+                    newProduct.imageUrl ? (
+                      <img
+                        className="food-photo new-product-preview-photo"
+                        src={newProduct.imageUrl}
+                        alt=""
+                      />
+                    ) : undefined
+                  }
+                />
+              );
+              // Produto salvo e sem alterações: o próprio cartão abre o cardápio real
+              // rolado até ele (mesma aba). O link recarrega o app, por isso só sem pendências.
+              if (editingProductId === null) return card;
+              if (hasUnsavedChanges)
+                return (
+                  <>
+                    {card}
+                    <small id="product-preview-hint">
+                      Salve as alterações para abrir a prévia no cardápio
+                    </small>
+                  </>
+                );
+              return (
                 <a
-                  className="btn secondary small"
+                  className="new-product-preview-link"
                   href={`/admin/ver-cardapio?produto=${encodeURIComponent(editingProductId)}&origem=produtos`}
+                  aria-label={`Abrir ${newProduct.name || "produto"} no cardápio`}
                 >
-                  <ExternalLink aria-hidden="true" />
-                  Prévia no cardápio
+                  {card}
                 </a>
-              ))}
+              );
+            })()}
           </div>
 
-          {error && <p className="product-form-error" role="alert">{error}</p>}
+          {error && (
+            <p className="product-form-error" role="alert">
+              {error}
+            </p>
+          )}
 
           <footer className="product-modal-actions">
             {editingProductId !== null && (

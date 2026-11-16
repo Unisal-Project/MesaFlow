@@ -56,9 +56,11 @@ export default class CategoryController {
 
   async deleteCategory(request: FastifyRequest, reply: FastifyReply) {
     const { id } = categoryIdSchema.parse(request.params);
-    const { moveTo } = deleteCategoryQuerySchema.parse(request.query);
+    const { moveTo, deleteProducts } = deleteCategoryQuerySchema.parse(
+      request.query,
+    );
 
-    await this.categoryService.deleteCategory(id, moveTo);
+    await this.categoryService.deleteCategory(id, moveTo, deleteProducts);
 
     return reply.status(204).send();
   }

@@ -28,11 +28,13 @@ test("lists categories at the categories collection route", async (t) => {
 /** Banco em memória com só o que a exclusão de categoria usa. */
 function fakeCatalog() {
   const categories = [1n, 2n, 3n];
-  const products = [
-    { id: 10n, categoryId: 1n, active: true },
-    { id: 11n, categoryId: 1n, active: false },
-    { id: 12n, categoryId: 3n, active: true },
-  ];
+  const products: { id: bigint; categoryId: bigint | null; active: boolean }[] =
+    [
+      { id: 10n, categoryId: 1n, active: true },
+      { id: 11n, categoryId: 1n, active: false },
+      { id: 12n, categoryId: 3n, active: true },
+    ];
+  const orderItems = [{ productId: 10n, quantity: 2, unitPrice: "30.00" }];
   let links = [
     { productId: 10n, categoryId: 2n },
     { productId: 12n, categoryId: 1n },
@@ -51,6 +53,13 @@ function fakeCatalog() {
         throw error;
       }
     },
+    orderItem: {
+      findMany: async () => orderItems,
+      deleteMany: async () => {
+        orderItems.length = 0;
+      },
+    },
+    $queryRaw: async () => [],
     category: {
       findUnique: async ({ where }: any) =>
         categories.includes(where.id) ? { id: where.id } : null,
@@ -77,9 +86,17 @@ function fakeCatalog() {
       },
     },
     product: {
+      count: async ({ where }: any) =>
+        products.filter(
+          (p) => p.categoryId === where.categoryId && p.active === where.active,
+        ).length,
       updateMany: async ({ where, data }: any) => {
         for (const p of products)
-          if (p.categoryId === where.categoryId) p.categoryId = data.categoryId;
+          if (
+            p.categoryId === where.categoryId &&
+            (where.active === undefined || p.active === where.active)
+          )
+            Object.assign(p, data);
       },
     },
   };
@@ -146,7 +163,109 @@ test("DELETE /categories/:id valida moveTo na query", async (t) => {
       url: "/api/v1/categories/1?moveTo=2",
     });
     assert.equal(ok.statusCode, 204);
-    assert.deepEqual(calls, [[1n, 2n]]);
+    assert.deepEqual(calls, [[1n, 2n, false]]);
+  } finally {
+    await app.close();
+  }
+});
+
+test("só inativos exclui sem destino e preserva produtos históricos sem categoria", async () => {
+  const db = fakeCatalog();
+  db.products[0].active = false;
+  await new CategoryRepo(db.client).delete(1n);
+  assert.deepEqual(db.categories, [2n, 3n]);
+  assert.deepEqual(
+    db.products.map((product) => product.categoryId),
+    [null, null, 3n],
+  );
+  assert.equal(db.products.length, 3);
+  assert.deepEqual(db.links(), [{ productId: 10n, categoryId: 2n }]);
+});
+
+test("excluir com produtos só desativa os da categoria principal sem apagar histórico", async () => {
+  const db = fakeCatalog();
+  const orderItems = await db.client.orderItem.findMany();
+  const before = structuredClone(orderItems);
+  await new CategoryRepo(db.client).delete(1n, undefined, true);
+  assert.deepEqual(db.categories, [2n, 3n]);
+  assert.deepEqual(db.products, [
+    { id: 10n, categoryId: null, active: false },
+    { id: 11n, categoryId: null, active: false },
+    { id: 12n, categoryId: 3n, active: true },
+  ]);
+  assert.deepEqual(db.links(), [{ productId: 10n, categoryId: 2n }]);
+  assert.deepEqual(await db.client.orderItem.findMany(), before);
+});
+
+test("query deleteProducts é estrita, exclusiva com moveTo e DELETE continua ADMIN", async (t) => {
+  const calls: unknown[] = [];
+  t.mock.method(
+    CategoryRepo.prototype,
+    "delete",
+    async (...args: unknown[]) => {
+      calls.push(args);
+    },
+  );
+  const { registerCategoryRoutes } =
+    await import("../src/modules/categories/category.routes.js");
+  const { errorHandler } =
+    await import("../src/shared/errors/error-handler.js");
+  const { requireApiAuthentication } =
+    await import("../src/shared/api-access.js");
+  const { default: jwt } = await import("@fastify/jwt");
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(jwt, { secret: "test-secret" });
+  await app.register(
+    async (api) => {
+      api.addHook("onRequest", requireApiAuthentication);
+      await api.register(registerCategoryRoutes);
+    },
+    { prefix: "/api/v1" },
+  );
+  const auth = (role: "ADMIN" | "EMPLOYEE") => ({
+    authorization: `Bearer ${app.jwt.sign({ id: "1", role, email: "a@x.com" })}`,
+  });
+  try {
+    assert.equal(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: "/api/v1/categories/1?deleteProducts=true",
+          headers: auth("EMPLOYEE"),
+        })
+      ).statusCode,
+      403,
+    );
+    for (const query of [
+      "deleteProducts=true&moveTo=2",
+      "deleteProducts=false",
+      "deleteProducts=1",
+      "extra=1",
+      "moveTo=0",
+    ]) {
+      assert.equal(
+        (
+          await app.inject({
+            method: "DELETE",
+            url: `/api/v1/categories/1?${query}`,
+            headers: auth("ADMIN"),
+          })
+        ).statusCode,
+        400,
+      );
+    }
+    assert.equal(
+      (
+        await app.inject({
+          method: "DELETE",
+          url: "/api/v1/categories/1?deleteProducts=true",
+          headers: auth("ADMIN"),
+        })
+      ).statusCode,
+      204,
+    );
+    assert.deepEqual(calls, [[1n, undefined, true]]);
   } finally {
     await app.close();
   }
