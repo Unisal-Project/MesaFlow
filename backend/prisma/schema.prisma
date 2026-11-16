@@ -81,6 +81,8 @@ model User {
   passwordHash      String          @map("password_hash") @db.VarChar(255)
   role              UserRole        @default(EMPLOYEE)
   active            Boolean         @default(true)
+  /// Incrementado no logout, troca de senha, desativação e mudança de perfil: invalida os JWT emitidos.
+  tokenVersion      Int             @default(0) @map("token_version")
   createdAt         DateTime        @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
   closedAttendances Attendance[]    @relation("AttendanceClosedBy")

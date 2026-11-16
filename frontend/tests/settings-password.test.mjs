@@ -81,7 +81,7 @@ test("sucesso chama o service, limpa os campos e mantém a sessão", async () =>
   globalThis.fetch = async (url, options) => {
     assert.match(url, /\/auth\/password$/);
     body = JSON.parse(options.body);
-    return new Response(null, { status: 204 });
+    return Response.json(JSON.parse(session));
   };
   const render = createHookRunner(() => useChangePassword());
   fill(render(), {

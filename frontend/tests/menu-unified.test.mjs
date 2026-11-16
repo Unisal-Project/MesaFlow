@@ -37,7 +37,8 @@ test('cardápio tem prévia com origem e abas; seleção abre painel compartilha
  const current=props(); current.onSwitchTab=tab=>tabs.push(tab); current.onNavigate=id=>navigation.push(id);
  const render=run(()=>Products(current));
  find(render(),n=>n.props?.children?.some?.(c=>c==='Ver cardápio')).props.onClick();
- assert.equal(paths.adminPaths[navigation[0]],'/admin/ver-cardapio?origem=produtos');
+ // "Ver cardápio" abre o pop-up de acesso (QR + abrir no computador), sem navegar (fa604b0).
+ assert.deepEqual(navigation,[]); assert.ok(find(render(),n=>n.type?.name==='MenuAccessModal'));
  find(render(),n=>n.props?.['aria-label']==='Selecionar Suco').props.onChange();
  find(render(),n=>n.props?.['aria-label']==='Selecionar Água').props.onChange();
  find(render(),n=>n.props?.children==='Colocar em promoção').props.onClick();

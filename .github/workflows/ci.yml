@@ -18,6 +18,8 @@ jobs:
   validate:
     name: Validar aplicação
     runs-on: ubuntu-24.04
+    # A suíte de frontend já travou em execuções locais; sem limite o job ficaria preso.
+    timeout-minutes: 20
 
     steps:
       - name: Baixar código
@@ -38,11 +40,20 @@ jobs:
       - name: Compilar backend
         run: npm run build:backend
 
+      - name: Verificar backend (tipos dos testes e formatação)
+        run: npm run lint:backend
+
+      - name: Testar backend
+        # Testes de unidade/rota com fakes; os de integração com MariaDB ficam em `npm run test:db`.
+        run: npm run test:backend
+        timeout-minutes: 10
+
       - name: Verificar frontend com Oxlint
         run: npm run lint
 
       - name: Testar frontend
         run: npm run test:frontend
+        timeout-minutes: 10
 
       - name: Compilar frontend
         run: npm run build:frontend

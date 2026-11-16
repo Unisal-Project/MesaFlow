@@ -5,6 +5,8 @@ export type AuthTokenPayload = {
   id: string;
   email: string;
   role: UserRole;
+  /** users.token_version: o token só vale enquanto for igual. */
+  tv: number;
 };
 
 export type AuthTokenSigner = (

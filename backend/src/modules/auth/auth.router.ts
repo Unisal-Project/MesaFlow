@@ -4,12 +4,12 @@ import { UserService } from "../users/user.service.js";
 import { AuthService } from "./auth.service.js";
 import { AuthController } from "./auth.controller.js";
 import { BcryptPasswordHasher } from "../../config/hash/bcrypt-password-hasher.js";
-import { createAuthRateLimit } from "./auth-rate-limit.js";
+import { createAuthRateLimit, type LoginLimiter } from "./auth-rate-limit.js";
 import { authenticate } from "../../shared/authenticate.js";
 
 export async function registerAuthRoutes(
   app: FastifyInstance,
-  options: { repository?: UserRepository } = {},
+  options: { repository?: UserRepository; loginLimiter?: LoginLimiter } = {},
 ) {
   const repository =
     options.repository ??
@@ -25,14 +25,17 @@ export async function registerAuthRoutes(
     (payload, options) => app.jwt.sign(payload, options),
   );
 
-  const controller = new AuthController(service);
+  const controller = new AuthController(service, options.loginLimiter);
   const rateLimit = createAuthRateLimit();
 
   app.post("/auth/register", { onRequest: rateLimit }, (request, reply) =>
     controller.register(request, reply),
   );
-  app.post("/auth/login", { onRequest: rateLimit }, (request, reply) =>
-    controller.login(request, reply),
+  // O login tem limite próprio (só falhas, por IP+e-mail) no controller.
+  app.post("/auth/login", (request, reply) => controller.login(request, reply));
+  // Logout real: sobe a token_version e invalida os tokens do usuário.
+  app.post("/auth/logout", { onRequest: authenticate }, (request, reply) =>
+    controller.logout(request, reply),
   );
   app.patch(
     "/auth/me",

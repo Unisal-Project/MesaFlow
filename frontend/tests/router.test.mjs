@@ -224,8 +224,8 @@ test("configurações exige login e mostra a conta com o menu do usuário", asyn
   );
   assert.ok(!guarded.includes("Configurações"));
   const page = render(createElement(AdminRoutes));
-  // A página passou a ter configurações reais (troca de senha, restaurante e taxa).
-  assert.ok(page.includes("Alterar senha"));
+  // Página de configurações renderiza (o formulário de troca de senha saiu da página em fa604b0).
+  assert.ok(page.includes("Configurações"));
   // Disclosure: botão controla a lista; sem role=menu/menuitem.
   assert.match(page, /aria-controls="([^"]+)" aria-expanded="false"/);
   const menuId = page.match(/class="profile-area" aria-controls="([^"]+)"/)[1];

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -63,7 +64,7 @@ async function makeApp() {
     controller.applyPromotions(request, reply),
   );
   const as = (role: "ADMIN" | "EMPLOYEE") =>
-    `Bearer ${app.jwt.sign({ id: "1", email: "a@x.com", role })}`;
+    `Bearer ${app.jwt.sign({ id: idFor(role), email: "a@x.com", role })}`;
   const patch = (payload: object, role: "ADMIN" | "EMPLOYEE" = "ADMIN") =>
     app.inject({
       method: "PATCH",

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -83,7 +84,7 @@ test("reabrir conta é só ADMIN", async () => {
       method: "POST",
       url: "/api/v1/attendances/1/reopen",
       headers: {
-        authorization: `Bearer ${app.jwt.sign({ id: "1", email: "a@b.c", role })}`,
+        authorization: `Bearer ${app.jwt.sign({ id: idFor(role), email: "a@b.c", role })}`,
       },
     });
   try {

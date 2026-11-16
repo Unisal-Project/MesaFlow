@@ -4,7 +4,7 @@ O Compose de produção usa Nginx como única entrada HTTP. Ele entrega o React 
 
 ## Preparação
 
-Copie `production.env.example` para `production.env`, gere senhas e JWT secret próprios e ajuste `FRONTEND_URL` para a origem pública exata, por exemplo `https://mesaflow.exemplo.com`. `DATABASE_URL` deve usar a mesma senha de `MARIADB_PASSWORD`; caracteres reservados na senha precisam estar codificados para URL.
+Copie `production.env.example` para `production.env`, gere senhas e um `JWT_SECRET` próprio com pelo menos 32 bytes aleatórios (`openssl rand -base64 48`; em produção o backend não inicia com segredo curto ou de exemplo) e ajuste `FRONTEND_URL` para a origem pública exata, por exemplo `https://mesaflow.exemplo.com`. `DATABASE_URL` deve usar a mesma senha de `MARIADB_PASSWORD`; caracteres reservados na senha precisam estar codificados para URL.
 
 ```bash
 docker compose --env-file production.env -f docker-compose.production.yml up --build -d
@@ -39,7 +39,7 @@ SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 $DC exec -T database sh -c 'exec mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction "$MARIADB_DATABASE"' > backup-$(date +%F-%H%M).sql
 
 # 2. Incrementais antigos (se ainda não aplicados), 3. colunas do painel admin, controle de estoque opcional e promoções, 4. remoção do acompanhamento de preparo
-for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images product-featured restaurant-settings remove-order-tracking product-category-nullable; do
+for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images product-featured restaurant-settings remove-order-tracking user-token-version product-category-nullable; do
   $DC exec -T database sh -c "$SQL" < backend/prisma/sql/$f.sql || break
 done
 
@@ -78,6 +78,8 @@ A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. E
 
 `restaurant-settings.sql` cria a tabela de configuração única e insere id=1 com taxa padrão de 10% somente se a linha ainda não existir. Reexecutar não sobrescreve dados do restaurante nem a taxa já configurada. Aplique este SQL antes de publicar a versão que lê a taxa do banco; sem a linha, o fechamento retorna configuração indisponível, sem presumir uma taxa. Os atendimentos anteriores preservam `service_fee` já gravado. Não há rollback destrutivo: a versão anterior ignora esta tabela.
 
+
+`user-token-version.sql` só adiciona `users.token_version` (padrão 0): tokens emitidos antes, sem a versão, continuam valendo até expirar ou até o primeiro logout/troca de senha do usuário; a versão anterior do backend ignora a coluna.
 
 `product-category-nullable.sql` deve ser executado por último, antes de publicar a versão que exclui categorias com produtos inativos. Apenas permite NULL em `products.category_id`, mantendo a FK RESTRICT. Pode ser reexecutado; não remove produtos nem pedidos. O backend continua exigindo categoria para criar, editar ou reativar produtos. Depois que houver históricos sem categoria, não reverta a coluna para NOT NULL sem primeiro atribuir uma categoria a esses inativos.
 

@@ -124,7 +124,7 @@ test("401 fora de /auth encerra a sessão e volta ao login", async () => {
   assert.deepEqual(redirects, ["/login"]);
 });
 
-test("trocar senha faz PATCH autenticado e mantém a sessão; erro chega ao formulário", async () => {
+test("trocar senha faz PATCH autenticado e salva o token novo; erro chega ao formulário", async () => {
   const session = JSON.stringify({ user, accessToken: jwt(nowSec() + 3600) });
   store.set("mesaflow.session", session);
   globalThis.fetch = async (url, options) => {
@@ -135,10 +135,12 @@ test("trocar senha faz PATCH autenticado e mantém a sessão; erro chega ao form
       currentPassword: "antiga123",
       newPassword: "novaSenha1",
     });
-    return new Response(null, { status: 204 });
+    return Response.json({ user, accessToken: "novo-token" });
   };
   await auth.changePassword("antiga123", "novaSenha1");
-  assert.equal(store.get("mesaflow.session"), session);
+  // O backend revogou o token antigo: a sessão passa a usar o novo.
+  assert.equal(JSON.parse(store.get("mesaflow.session")).accessToken, "novo-token");
+  store.set("mesaflow.session", session);
 
   globalThis.fetch = async () =>
     Response.json({ message: "Senha atual incorreta" }, { status: 400 });
@@ -163,4 +165,27 @@ test("401 só é 'credencial errada' em login/cadastro; em /auth/password encerr
   await assert.rejects(auth.changePassword("antiga123", "novaSenha1"));
   assert.equal(auth.getSession(), null);
   assert.deepEqual(redirects, ["/login"]);
+});
+
+test("Sair avisa o servidor (keepalive) e sai mesmo se a chamada falhar", async () => {
+  const token = jwt(nowSec() + 3600);
+  store.set("mesaflow.session", JSON.stringify({ user, accessToken: token }));
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push([url, options.method, options.keepalive, options.headers.get("Authorization")]);
+    throw new Error("offline");
+  };
+  const replaced = [];
+  window.location.replace = (url) => replaced.push(url);
+  try {
+    auth.signOut();
+    assert.equal(store.has("mesaflow.session"), false);
+    assert.deepEqual(replaced, ["/login"]);
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(calls.length, 1);
+    assert.match(calls[0][0], /\/api\/v1\/auth\/logout$/);
+    assert.deepEqual(calls[0].slice(1), ["POST", true, `Bearer ${token}`]);
+  } finally {
+    delete window.location.replace;
+  }
 });

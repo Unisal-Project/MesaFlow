@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -64,7 +65,7 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
     );
 
   const token = app.jwt.sign({
-    id: "1",
+    id: "2",
     email: "staff@example.com",
     role: "EMPLOYEE",
   });

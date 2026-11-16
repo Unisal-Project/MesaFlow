@@ -18,9 +18,29 @@ const optionalRedisUrl = (name: string) => {
   return value;
 };
 
+// Valores de exemplo/dev conhecidos: aceitos fora de produção, nunca em produção.
+const PLACEHOLDER_SECRETS = new Set([
+  "change-me",
+  "development-only-change-me",
+  "replace-with-a-long-random-secret",
+  "test-jwt-secret",
+  "test-secret",
+]);
+
+/** Em produção o JWT_SECRET (HS256) precisa ter >= 32 bytes e não ser exemplo. */
+export function checkJwtSecret(secret: string, nodeEnv = process.env.NODE_ENV) {
+  if (nodeEnv !== "production") return secret;
+  if (PLACEHOLDER_SECRETS.has(secret) || Buffer.byteLength(secret) < 32) {
+    throw new Error(
+      "JWT_SECRET fraco: use pelo menos 32 bytes aleatórios (ex.: openssl rand -base64 48).",
+    );
+  }
+  return secret;
+}
+
 export const env = {
   PORT: Number(process.env.PORT ?? 3333),
-  JWT_SECRET: getEnv("JWT_SECRET"),
+  JWT_SECRET: checkJwtSecret(getEnv("JWT_SECRET")),
   FRONTEND_URL: getEnv("FRONTEND_URL"),
   DATABASE_URL: getEnv("DATABASE_URL"),
   VALKEY_URL: optionalRedisUrl("VALKEY_URL"),

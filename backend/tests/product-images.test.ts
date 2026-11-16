@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -98,7 +99,7 @@ test("rotas novas de foto são só de ADMIN", async () => {
   app.patch("/products/:id/image/:slot/cover", async () => ({ ok: true }));
   await app.ready();
   const token = (role: "ADMIN" | "EMPLOYEE") =>
-    app.jwt.sign({ id: "1", email: "a@b.c", role });
+    app.jwt.sign({ id: idFor(role), email: "a@b.c", role });
   for (const [method, url] of [
     ["DELETE", "/products/1/image/2"],
     ["PATCH", "/products/1/image/2/cover"],

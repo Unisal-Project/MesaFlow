@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -42,7 +43,7 @@ test("register is not public and EMPLOYEE gets 403 on admin routes", async () =>
   await app.ready();
 
   const sign = (role: "ADMIN" | "EMPLOYEE") =>
-    `Bearer ${app.jwt.sign({ id: "1", email: "x@example.com", role })}`;
+    `Bearer ${app.jwt.sign({ id: idFor(role), email: "x@example.com", role })}`;
   const call = async (method: string, path: string, auth?: string) =>
     (
       await app.inject({

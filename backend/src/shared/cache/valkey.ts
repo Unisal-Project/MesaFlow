@@ -8,12 +8,18 @@ export type CounterStore = {
   pttl(key: string): Promise<number>;
 };
 
+/** O limite do login também lê e apaga contadores. */
+export type KeyValueStore = CounterStore & {
+  get(key: string): Promise<string | null>;
+  del(key: string): Promise<number>;
+};
+
 /**
  * Cliente Valkey opcional: sem VALKEY_URL fica null (dev, testes, CI).
  * Com o Valkey fora, os comandos falham na hora (sem fila) e quem chama
  * usa o fallback em memória; o boot nunca depende dele.
  */
-export function createValkey(url = env.VALKEY_URL): CounterStore | null {
+export function createValkey(url = env.VALKEY_URL): KeyValueStore | null {
   if (!url) return null;
   const client = new Valkey(url, {
     enableOfflineQueue: false,

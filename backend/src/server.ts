@@ -25,8 +25,14 @@ export const app = fastify({ logger: true, trustProxy: true });
 await mkdir(uploadsRootDirectory, { recursive: true });
 
 //plugins
-app.register(swaggerPlugin);
-app.register(fastifyJwt, { secret: env.JWT_SECRET });
+// A documentação da API só existe fora de produção.
+if (process.env.NODE_ENV !== "production") app.register(swaggerPlugin);
+// Algoritmo fixo: nem a assinatura nem a verificação aceitam outro.
+app.register(fastifyJwt, {
+  secret: env.JWT_SECRET,
+  sign: { algorithm: "HS256" },
+  verify: { algorithms: ["HS256"] },
+});
 app.register(fastifyCors, {
   origin: env.FRONTEND_URL,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

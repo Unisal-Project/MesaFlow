@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 
@@ -224,7 +225,7 @@ test("query deleteProducts é estrita, exclusiva com moveTo e DELETE continua AD
     { prefix: "/api/v1" },
   );
   const auth = (role: "ADMIN" | "EMPLOYEE") => ({
-    authorization: `Bearer ${app.jwt.sign({ id: "1", role, email: "a@x.com" })}`,
+    authorization: `Bearer ${app.jwt.sign({ id: idFor(role), role, email: "a@x.com" })}`,
   });
   try {
     assert.equal(

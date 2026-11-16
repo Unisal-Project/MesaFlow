@@ -18,12 +18,17 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('ADMIN', 'EMPLOYEE') NOT NULL DEFAULT 'EMPLOYEE',
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB;
+
+-- Revogação de sessões: o JWT leva a versão e deixa de valer quando ela sobe.
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0 AFTER active;
 
 
 -- ============================================================

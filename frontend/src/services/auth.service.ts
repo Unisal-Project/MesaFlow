@@ -42,6 +42,12 @@ export function logout() {
  * e o recarregamento descarta o estado do admin em memória.
  */
 export function signOut() {
+  // Logout no servidor invalida o token (token_version). keepalive deixa o
+  // pedido terminar depois do redirecionamento; a saída não espera nem depende
+  // dele. O token é lido de forma síncrona, antes do logout() local.
+  void apiRequest("/auth/logout", { method: "POST", keepalive: true }).catch(
+    () => undefined,
+  );
   logout();
   window.location.replace("/login");
 }
@@ -63,12 +69,15 @@ export const register = (name: string, email: string, password: string) =>
     body: JSON.stringify({ name, email, password }),
   }).then(saveSession);
 
-/** Troca a senha do usuário logado; a sessão (token) continua válida. */
+/**
+ * Troca a senha do usuário logado. O backend invalida os tokens antigos e
+ * devolve um novo: salvo aqui, esta sessão continua logada.
+ */
 export const changePassword = (currentPassword: string, newPassword: string) =>
-  apiRequest<void>("/auth/password", {
+  apiRequest<AuthResult>("/auth/password", {
     method: "PATCH",
     body: JSON.stringify({ currentPassword, newPassword }),
-  });
+  }).then(saveSession);
 
 export async function updateProfile(data: {name?: string; email?: string; currentPassword?: string}) {
   const user = await apiRequest<AuthUser>("/auth/me", {method: "PATCH", body: JSON.stringify(data)});

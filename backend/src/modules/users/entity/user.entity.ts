@@ -7,6 +7,7 @@ export type UserEntity = {
   passwordHash: string;
   role: UserRole;
   active: boolean;
+  tokenVersion: number;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -19,7 +20,13 @@ export type CreateUserData = {
   active?: boolean;
 };
 
-export type PublicUser = Omit<UserEntity, "passwordHash">;
+export type PublicUser = Omit<UserEntity, "passwordHash" | "tokenVersion">;
+
+export const toPublicUser = ({
+  passwordHash: _passwordHash,
+  tokenVersion: _tokenVersion,
+  ...user
+}: UserEntity): PublicUser => user;
 
 export type RegisterUserInput = Pick<UserEntity, "name" | "email"> & {
   password: string;
@@ -30,4 +37,6 @@ export type CreateUserInput = RegisterUserInput & {
   active?: boolean;
 };
 
-export type UpdateUserData = Partial<CreateUserData>;
+export type UpdateUserData = Partial<CreateUserData> & {
+  tokenVersion?: number;
+};

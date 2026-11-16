@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { idFor } from "./helpers/session.js";
 import { test } from "node:test";
 import { Prisma } from "../src/generated/prisma/client.js";
 import type { PrismaConnector } from "../src/database/prisma.js";
@@ -312,7 +313,7 @@ test("ADMIN creates and toggles featured through existing routes; EMPLOYEE is re
   );
   await app.ready();
   const authorization = (role: "ADMIN" | "EMPLOYEE") =>
-    `Bearer ${app.jwt.sign({ id: "1", email: "test@example.com", role })}`;
+    `Bearer ${app.jwt.sign({ id: idFor(role), email: "test@example.com", role })}`;
   try {
     for (const featured of [undefined, true]) {
       const created = await app.inject({
