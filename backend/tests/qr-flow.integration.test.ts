@@ -158,7 +158,96 @@ test(
         "available",
       );
       assert.deepEqual((await qr.findBill(token)).items, []);
+      
+      // MF-27: reutilizar a mesa após o fechamento.
+      const tableAfterClosing = await tables.getTableByToken(token);
+
+      assert.equal(tableAfterClosing.id, table.id);
+
+      const productBeforeSecondOrder =
+        await db.product.findUniqueOrThrow({
+          where: { id: productId },
+          select: {
+            id: true,
+            active: true,
+            available: true,
+            stockQuantity: true,
+          },
+        });
+
+      assert.equal(productBeforeSecondOrder.active, true);
+      assert.equal(productBeforeSecondOrder.available, true);
+      assert.equal(productBeforeSecondOrder.stockQuantity, 3);
+      
+      // Cliente B utiliza o mesmo QR Code.
+      const secondOrder = await qr.submit(token, {
+        customerName: "Cliente B",
+        items: [
+          {
+            productId: productId.toString(),
+            quantity: 1,
+          },
+        ],
+      });
+
+      const secondAttendanceId = BigInt(secondOrder.attendanceId);
+
+      // O novo atendimento deve ser diferente do anterior.
+      assert.notEqual(secondAttendanceId, attendanceId);
+      assert.equal(secondOrder.order.attendanceId, secondOrder.attendanceId);
+
+      // A nova conta deve conter somente o pedido do Cliente B.
+      const secondBill = await qr.findBill(token);
+
+      assert.equal(secondBill.attendanceId, secondOrder.attendanceId);
+      assert.equal(secondBill.items.length, 1);
+      assert.equal(secondBill.items[0].quantity, 1);
+
+      // O primeiro atendimento continua encerrado.
+      const previousAttendance = await db.attendance.findUniqueOrThrow({
+        where: { id: attendanceId },
+      });
+
+      assert.equal(previousAttendance.status, "CLOSED");
+      assert.equal(previousAttendance.closedById, employee.id);
+
+      // Os pedidos dos dois clientes permanecem separados.
+      const firstOrders = await db.order.findMany({
+        where: { attendanceId },
+      });
+
+      const secondOrders = await db.order.findMany({
+        where: { attendanceId: secondAttendanceId },
+      });
+
+      assert.equal(firstOrders.length, 1);
+      assert.equal(secondOrders.length, 1);
+      assert.equal(firstOrders[0].customerName, "Teste automatizado");
+      assert.equal(secondOrders[0].customerName, "Cliente B");
+
+      // O primeiro pagamento permanece vinculado à conta anterior.
+      const previousPayments = await db.payment.findMany({
+        where: { attendanceId },
+      });
+
+      assert.equal(previousPayments.length, 1);
+      assert.equal(previousPayments[0].status, "PAID");
+
+      // O segundo atendimento permanece aberto e ainda não possui pagamentos.
+      const currentAttendance = await db.attendance.findUniqueOrThrow({
+        where: { id: secondAttendanceId },
+      });
+
+      assert.equal(currentAttendance.status, "OPEN");
+      assert.equal(
+        await db.payment.count({
+          where: { attendanceId: secondAttendanceId },
+        }),
+        0,
+      );
+
       await catalog.deleteProduct(productId);
+
       assert.equal(
         (await catalog.getAllProducts()).some((item) => item.id === productId),
         false,
