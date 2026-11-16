@@ -30,6 +30,7 @@ test("confirming a requested account records its full total and closes the atten
 
   const result = await new PaymentService(repository).confirmAttendancePayment(
     12n,
+    1n,
   );
 
   assert.equal(result.attendanceId, "12");
@@ -60,6 +61,7 @@ test("payment repository settles the attendance in one transaction", async () =>
 
   const result = await new PrismaPaymentRepository(client).confirmFullPayment(
     12n,
+    1n,
   );
 
   assert.equal(result.amount, "40.00");
@@ -69,6 +71,15 @@ test("payment repository settles the attendance in one transaction", async () =>
 
 test("payment confirmation endpoint accepts a positive attendance id", async () => {
   const app = Fastify();
+
+  app.addHook("onRequest", async (request) => {
+    Object.assign(request, {
+      user: {
+        id: "1",
+        role: "EMPLOYEE",
+      },
+    });
+  });
   app.setErrorHandler(errorHandler);
   const controller = new PaymentController({
     confirmAttendancePayment: async (id: bigint) => ({

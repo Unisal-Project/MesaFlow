@@ -42,7 +42,18 @@ test(
     let categoryId: bigint | undefined;
     let productId: bigint | undefined;
     let tableId: bigint | undefined;
+    let employeeId: bigint | undefined;
     try {
+      const employee = await db.user.create({
+        data: {
+          name: "Funcionário Teste QR",
+          email: `qr-test-${randomUUID()}@example.com`,
+          passwordHash: "test-only-not-a-real-password-hash",
+          role: "EMPLOYEE",
+        },
+      });
+
+      employeeId = employee.id;
       const category = await db.category.create({
         data: { name: `QR test ${randomUUID()}` },
       });
@@ -125,9 +136,23 @@ test(
       const paid = await new PrismaPaymentRepository(db).closeWithPayments(
         attendanceId,
         { serviceFeeWaived: true, payments: [{ method: "PIX", amount: 20 }] },
-        null,
+        employee.id,
       );
       assert.equal(Number(paid.total), 20);
+      const closedAttendance = await db.attendance.findUniqueOrThrow({
+        where: { id: attendanceId },
+      });
+
+      assert.equal(closedAttendance.status, "CLOSED");
+      assert.equal(closedAttendance.closedById, employee.id);
+
+      const payments = await db.payment.findMany({
+        where: { attendanceId },
+      });
+
+      assert.equal(payments.length, 1);
+      assert.equal(payments[0].status, "PAID");
+      assert.equal(payments[0].createdById, employee.id);
       assert.equal(
         (await tables.getTableById({ id: tableId })).status,
         "available",
@@ -173,6 +198,13 @@ test(
       }
       if (productId) await db.product.delete({ where: { id: productId } });
       if (categoryId) await db.category.delete({ where: { id: categoryId } });
+
+      if (employeeId) {
+        await db.user.delete({
+          where: { id: employeeId },
+        });
+      }
+
       await rm(uploadDirectory, { recursive: true, force: true });
       await db.$disconnect();
     }
