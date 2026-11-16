@@ -158,27 +158,26 @@ test(
         "available",
       );
       assert.deepEqual((await qr.findBill(token)).items, []);
-      
+
       // MF-27: reutilizar a mesa após o fechamento.
       const tableAfterClosing = await tables.getTableByToken(token);
 
       assert.equal(tableAfterClosing.id, table.id);
 
-      const productBeforeSecondOrder =
-        await db.product.findUniqueOrThrow({
-          where: { id: productId },
-          select: {
-            id: true,
-            active: true,
-            available: true,
-            stockQuantity: true,
-          },
-        });
+      const productBeforeSecondOrder = await db.product.findUniqueOrThrow({
+        where: { id: productId },
+        select: {
+          id: true,
+          active: true,
+          available: true,
+          stockQuantity: true,
+        },
+      });
 
       assert.equal(productBeforeSecondOrder.active, true);
       assert.equal(productBeforeSecondOrder.available, true);
       assert.equal(productBeforeSecondOrder.stockQuantity, 3);
-      
+
       // Cliente B utiliza o mesmo QR Code.
       const secondOrder = await qr.submit(token, {
         customerName: "Cliente B",
