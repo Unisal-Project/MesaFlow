@@ -1,5 +1,7 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 
+import { AppError } from "../../../shared/errors/app-errors.js";
+import { byProductId, moveStock } from "../stock.js";
 import { OrderEntity } from "../entity/orders.entity.js";
 
 import type { OrderRepository, CreateOrderData } from "./order.repository.js";
@@ -11,29 +13,58 @@ type PrismaOrderWithItems = Order & {
 };
 
 export class PrismaOrderRepository implements OrderRepository {
-  async create(data: CreateOrderData): Promise<OrderWithItems> {
-    const order = await PrismaConnector.order.create({
-      data: {
-        attendanceId: data.attendanceId,
-        customerName: data.customerName,
-        notes: data.notes,
-        items: {
-          create: data.items.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            notes: item.notes,
-          })),
-        },
-      },
-      include: { items: true },
-    });
+  constructor(
+    private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
+  ) {}
 
-    return this.toOrderWithItems(order);
+  async create(data: CreateOrderData): Promise<OrderWithItems> {
+    return this.prismaClient.$transaction(async (tx) => {
+      const identity = await tx.attendance.findUnique({
+        where: { id: data.attendanceId },
+        select: { tableId: true },
+      });
+      if (!identity) throw new AppError("Atendimento não encontrado.", 404);
+      // A mesma ordem de bloqueios usada pelo cadastro de pedidos da mesa.
+      await tx.$queryRaw`SELECT id FROM restaurant_tables WHERE id = ${identity.tableId} FOR UPDATE`;
+      const [attendance] = await tx.$queryRaw<
+        Array<{ id: bigint; status: string }>
+      >`
+        SELECT id, status FROM attendances WHERE id = ${data.attendanceId} FOR UPDATE
+      `;
+      if (!attendance || attendance.status !== "OPEN") {
+        throw new AppError("Atendimento não está aberto para pedidos.", 409);
+      }
+      const order = await tx.order.create({
+        data: {
+          attendanceId: data.attendanceId,
+          customerName: data.customerName,
+          notes: data.notes,
+          items: {
+            create: data.items.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              notes: item.notes,
+            })),
+          },
+        },
+        include: { items: true },
+      });
+      for (const item of [...order.items].sort(byProductId)) {
+        await moveStock(tx, item.productId, -item.quantity, {
+          type: "SALE",
+          orderId: order.id,
+          orderItemId: item.id,
+          userId: null,
+        });
+      }
+      await tx.printJob.create({ data: { orderId: order.id, type: "ORDER" } });
+      return this.toOrderWithItems(order);
+    });
   }
 
   async findByAttendanceId(attendanceId: bigint): Promise<OrderWithItems[]> {
-    const orders = await PrismaConnector.order.findMany({
+    const orders = await this.prismaClient.order.findMany({
       where: { attendanceId },
       include: { items: true },
       orderBy: { createdAt: "asc" },

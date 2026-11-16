@@ -7,9 +7,10 @@ import type { Category } from "../types/category.types";
 
 type CategoryRowProps = {
   category: Category;
-  onStatusChange: (categoryId: number, active: boolean) => void;
+  onStatusChange: (categoryId: string, active: boolean) => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  onPromote?: (categoryId: string) => void;
 };
 
 export function CategoryRow({
@@ -17,6 +18,7 @@ export function CategoryRow({
   onStatusChange,
   onEdit,
   onDelete,
+  onPromote,
 }: CategoryRowProps) {
   return (
     <article className="category-row">
@@ -51,6 +53,7 @@ export function CategoryRow({
           }
         />
 
+        {onPromote && <Button variant="secondary" size="small" aria-label={`Promoção de ${category.name}`} onClick={() => onPromote(category.id)}>Promoção</Button>}
         <Button
           variant="secondary"
           size="small"

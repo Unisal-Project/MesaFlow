@@ -10,10 +10,11 @@ export type OrderItem = {
   price: string;
 };
 
-export type RestaurantTable = Omit<TableRecord, "name"> & {
+export type RestaurantTable = Omit<
+  TableRecord,
+  "name" | "openedAt" | "closingRequestedAt"
+> & {
   name: string;
-  seats?: number;
-  people?: number;
   openedAt?: string;
   closingRequestedAt?: string;
   orderValue?: string;
@@ -31,6 +32,7 @@ export type TablesProps = {
   state: ReturnType<typeof useTables>;
   orders: Order[];
   onViewOrder: (orderId: number) => void;
+  onLaunchOrder?: (tableId: string) => void;
   onNavigate?: (id: string) => void;
 };
 

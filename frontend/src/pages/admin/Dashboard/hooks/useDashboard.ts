@@ -1,128 +1,80 @@
-import { useState } from "react";
+import { useMemo } from "react";
 
-import {
-  chartPeriods,
-  chartSalesHistory,
-  salesHistory,
-} from "../mocks/dashboard.mock";
+import type { Order } from "../../Order/types/order.types";
+import type { RestaurantTable } from "../../Table/types/table.types";
 
-import {
-  currency,
-  dateDaysAgo,
-} from "../utils/dashboard.utils";
+import { currency, dateDaysAgo } from "../utils/dashboard.utils";
 
-import type { DashboardPeriod } from "../types/dashboard.types";
+/**
+ * Faturamento de um dia: soma dos pagamentos das contas fechadas nele
+ * (regra 21: pagamentos PAID são a base financeira). Os pagamentos de uma
+ * conta vêm só no primeiro pedido dela, então não há contagem dupla.
+ */
+export function salesOn(orders: Order[], day: string) {
+  let total = 0;
+  let accounts = 0;
+  for (const order of orders) {
+    const payment = order.payment;
+    if (payment?.closedOn !== day || payment.entries.length === 0) continue;
+    total += payment.entries.reduce((sum, entry) => sum + entry.amount, 0);
+    accounts += 1;
+  }
+  return { total, accounts };
+}
 
-export function useDashboard() {
-  // Período do gráfico
-  const [chartPeriod, setChartPeriod] = useState(7);
+const percentChange = (current: number, previous: number) => {
+  if (previous === 0) return current === 0 ? "Sem vendas ontem" : "Primeiras vendas desde ontem";
+  const change = Math.round(((current - previous) / previous) * 100);
+  return `${change >= 0 ? "+" : ""}${change}% vs. ontem`;
+};
 
-  // Período dos indicadores
-  const [period, setPeriod] = useState<DashboardPeriod>("today");
-
-  // Data específica selecionada
-  const [specificDate, setSpecificDate] = useState(() => dateDaysAgo(0));
-
-  // Dados do gráfico
-  const salesDays = chartSalesHistory
-    .slice(-chartPeriod)
-    .map((value, index) => {
-      const date = new Date();
-
-      date.setDate(date.getDate() - (chartPeriod - 1 - index));
-
-      return {
-        value,
-        label: date.toLocaleDateString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-        }),
-      };
-    });
-
-  // Filtro de vendas
+export function useDashboard(orders: Order[] = [], tables: RestaurantTable[] = []) {
   const today = dateDaysAgo(0);
 
-  const startDate = dateDaysAgo(
-    period === "7days" ? 6 : period === "30days" ? 29 : 0,
+  const indicators = useMemo(() => {
+    const todaySales = salesOn(orders, today);
+    const yesterdaySales = salesOn(orders, dateDaysAgo(1));
+    const openOrders = orders.filter((order) => order.status === "open");
+    const activeTables = tables.filter((table) => table.active);
+    const occupied = activeTables.filter((table) => table.status !== "available");
+    const occupancy = activeTables.length
+      ? Math.round((occupied.length / activeTables.length) * 100)
+      : 0;
+    const ticket = todaySales.accounts ? todaySales.total / todaySales.accounts : 0;
+
+    return [
+      {
+        label: "Vendas hoje",
+        value: currency(todaySales.total),
+        detail: percentChange(todaySales.total, yesterdaySales.total),
+      },
+      {
+        label: "Pedidos ativos",
+        value: String(openOrders.length),
+        detail: "Em contas ainda abertas",
+      },
+      {
+        label: "Mesas ocupadas",
+        value: `${occupied.length}/${activeTables.length}`,
+        detail: `${occupancy}% do salão agora`,
+      },
+      {
+        label: "Ticket médio",
+        value: currency(ticket),
+        detail: `${todaySales.accounts} ${todaySales.accounts === 1 ? "conta fechada" : "contas fechadas"} hoje`,
+      },
+    ];
+  }, [orders, tables, today]);
+
+  // Os mais recentes primeiro: é o que a equipe precisa acompanhar agora.
+  const queue = useMemo(
+    () =>
+      orders
+        .filter((order) => order.status === "open")
+        .sort((a, b) => b.id - a.id)
+        .slice(0, 4),
+    [orders],
   );
 
-  const selectedSales = salesHistory.filter(({ date }) => {
-    if (period === "all") return true;
-
-    if (period === "specific") return date === specificDate;
-
-    return date >= startDate && date <= today;
-  });
-
-  // Cálculo das vendas
-  const totalSales = selectedSales.reduce(
-    (total, day) => total + day.sales,
-    0,
-  );
-
-  const totalOrders = selectedSales.reduce(
-    (total, day) => total + day.orders,
-    0,
-  );
-
-  // Cálculo do ticket médio
-  const averageTicket = totalOrders
-    ? selectedSales.reduce(
-        (total, day) => total + day.ticket * day.orders,
-        0,
-      ) / totalOrders
-    : 0;
-
-  const periodDetail = selectedSales.length
-    ? "No período selecionado"
-    : "Sem vendas no período";
-
-  // Indicadores do Dashboard
-  const indicators = [
-    {
-      label: period === "today" ? "Vendas hoje" : "Vendas no período",
-
-      value: totalSales.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        maximumFractionDigits: 0,
-      }),
-
-      detail: period === "today" ? "+12% vs. ontem" : periodDetail,
-    },
-    {
-      label: "Pedidos ativos",
-      value: "3",
-      detail: "Pedidos registrados",
-    },
-    {
-      label: "Mesas ocupadas",
-      value: "14/20",
-      detail: "70% do salão agora",
-    },
-    {
-      label: "Ticket médio",
-      value: currency(averageTicket),
-      detail: period === "today" ? "+4% na semana" : periodDetail,
-    },
-  ];
-
-  return {
-    // Filtros
-    period,
-    setPeriod,
-    specificDate,
-    setSpecificDate,
-    today,
-
-    // Gráfico
-    chartPeriod,
-    setChartPeriod,
-    chartPeriods,
-    salesDays,
-
-    // Indicadores
-    indicators,
-  };
+  return { today, indicators, queue };
 }

@@ -18,12 +18,17 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('ADMIN', 'EMPLOYEE') NOT NULL DEFAULT 'EMPLOYEE',
     active BOOLEAN NOT NULL DEFAULT TRUE,
+    token_version INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
     PRIMARY KEY (id),
     UNIQUE KEY uq_users_email (email)
 ) ENGINE=InnoDB;
+
+-- Revogação de sessões: o JWT leva a versão e deixa de valer quando ela sobe.
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0 AFTER active;
 
 
 -- ============================================================
@@ -34,6 +39,11 @@ CREATE TABLE IF NOT EXISTS categories (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     description VARCHAR(255) NULL,
+    promo_type ENUM('PERCENT', 'AMOUNT') NULL,
+    promo_value DECIMAL(10,2) NULL,
+    promo_active BOOLEAN NOT NULL DEFAULT FALSE,
+    promo_starts_at DATETIME NULL,
+    promo_ends_at DATETIME NULL,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -49,12 +59,21 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    category_id BIGINT UNSIGNED NOT NULL,
+    category_id BIGINT UNSIGNED NULL,
     name VARCHAR(150) NOT NULL,
     description TEXT NULL,
     image_url VARCHAR(2048) NULL,
+    image_url_2 VARCHAR(2048) NULL,
+    image_url_3 VARCHAR(2048) NULL,
     price DECIMAL(10,2) NOT NULL,
+    promo_type ENUM('PERCENT', 'AMOUNT') NULL,
+    promo_value DECIMAL(10,2) NULL,
+    promo_active BOOLEAN NOT NULL DEFAULT FALSE,
+    promo_starts_at DATETIME NULL,
+    promo_ends_at DATETIME NULL,
     stock_quantity INT NOT NULL DEFAULT 0,
+    track_stock BOOLEAN NOT NULL DEFAULT TRUE,
+    featured BOOLEAN NOT NULL DEFAULT FALSE,
     available BOOLEAN NOT NULL DEFAULT TRUE,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -83,6 +102,39 @@ CREATE TABLE IF NOT EXISTS products (
 ALTER TABLE products
     ADD COLUMN IF NOT EXISTS image_url VARCHAR(2048) NULL AFTER description;
 
+-- Até 3 fotos por produto; image_url continua sendo a capa.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS image_url_2 VARCHAR(2048) NULL AFTER image_url,
+    ADD COLUMN IF NOT EXISTS image_url_3 VARCHAR(2048) NULL AFTER image_url_2;
+
+-- Produto sem controle de estoque nunca esgota; existentes continuam controlados.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS track_stock BOOLEAN NOT NULL DEFAULT TRUE AFTER stock_quantity;
+
+-- Destaque escolhido pelo admin, desligado para produtos existentes.
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Produto INATIVO pode ficar sem categoria (categoria excluída); ativo sempre tem.
+-- Idempotente: bancos de dev existentes também recebem a coluna anulável.
+ALTER TABLE products
+    MODIFY category_id BIGINT UNSIGNED NULL;
+
+-- Promoção opcional (regra 8): desligada por padrão; datas nulas = sem limite.
+ALTER TABLE categories
+    ADD COLUMN IF NOT EXISTS promo_type ENUM('PERCENT', 'AMOUNT') NULL AFTER description,
+    ADD COLUMN IF NOT EXISTS promo_value DECIMAL(10,2) NULL AFTER promo_type,
+    ADD COLUMN IF NOT EXISTS promo_active BOOLEAN NOT NULL DEFAULT FALSE AFTER promo_value,
+    ADD COLUMN IF NOT EXISTS promo_starts_at DATETIME NULL AFTER promo_active,
+    ADD COLUMN IF NOT EXISTS promo_ends_at DATETIME NULL AFTER promo_starts_at;
+
+ALTER TABLE products
+    ADD COLUMN IF NOT EXISTS promo_type ENUM('PERCENT', 'AMOUNT') NULL AFTER price,
+    ADD COLUMN IF NOT EXISTS promo_value DECIMAL(10,2) NULL AFTER promo_type,
+    ADD COLUMN IF NOT EXISTS promo_active BOOLEAN NOT NULL DEFAULT FALSE AFTER promo_value,
+    ADD COLUMN IF NOT EXISTS promo_starts_at DATETIME NULL AFTER promo_active,
+    ADD COLUMN IF NOT EXISTS promo_ends_at DATETIME NULL AFTER promo_starts_at;
+
 
 -- ============================================================
 -- 4. Mesas
@@ -105,6 +157,7 @@ CREATE TABLE IF NOT EXISTS restaurant_tables (
     number INT UNSIGNED NOT NULL,
     name VARCHAR(100) NULL,
     qr_token VARCHAR(120) NOT NULL,
+    seats SMALLINT UNSIGNED NOT NULL DEFAULT 4,
     active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -114,6 +167,10 @@ CREATE TABLE IF NOT EXISTS restaurant_tables (
     UNIQUE KEY uq_restaurant_tables_number (number),
     UNIQUE KEY uq_restaurant_tables_qr_token (qr_token)
 ) ENGINE=InnoDB;
+
+-- Bancos criados antes da capacidade da mesa recebem a coluna sem perder dados.
+ALTER TABLE restaurant_tables
+    ADD COLUMN IF NOT EXISTS seats SMALLINT UNSIGNED NOT NULL DEFAULT 4 AFTER qr_token;
 
 
 -- ============================================================
@@ -184,6 +241,10 @@ ALTER TABLE attendances
         AS (CASE WHEN status IN ('OPEN', 'CLOSING_REQUESTED', 'AWAITING_PAYMENT')
             THEN table_id ELSE NULL END) STORED;
 
+-- Taxa de serviço cobrada no fechamento (0 quando isentada).
+ALTER TABLE attendances
+    ADD COLUMN IF NOT EXISTS service_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER closed_by;
+
 
 -- ============================================================
 -- 6. Pedidos
@@ -195,9 +256,6 @@ CREATE TABLE IF NOT EXISTS orders (
 
     status ENUM(
         'PENDING',
-        'PREPARING',
-        'READY',
-        'DELIVERED',
         'CANCELLED'
     ) NOT NULL DEFAULT 'PENDING',
 
@@ -242,6 +300,15 @@ CREATE TABLE IF NOT EXISTS orders (
     KEY idx_orders_created_at (created_at),
     KEY idx_orders_cancelled_at (cancelled_at)
 ) ENGINE=InnoDB;
+
+-- CREATE TABLE IF NOT EXISTS não atualiza volumes existentes. Mantém a
+-- migração remove-order-tracking.sql também no bootstrap reaplicável local:
+-- estados antigos impedem o Prisma de carregar toda a lista de pedidos.
+UPDATE orders SET status = 'PENDING'
+WHERE status NOT IN ('PENDING', 'CANCELLED');
+
+ALTER TABLE orders
+    MODIFY COLUMN status ENUM('PENDING', 'CANCELLED') NOT NULL DEFAULT 'PENDING';
 
 
 -- ============================================================
@@ -387,6 +454,13 @@ CREATE TABLE IF NOT EXISTS payments (
     KEY idx_payments_status (status),
     KEY idx_payments_paid_at (paid_at)
 ) ENGINE=InnoDB;
+
+-- Forma de pagamento e detalhes do recebimento; um registro por forma usada.
+ALTER TABLE payments
+    ADD COLUMN IF NOT EXISTS method ENUM('CASH', 'PIX', 'CREDIT_CARD', 'DEBIT_CARD') NULL AFTER amount,
+    ADD COLUMN IF NOT EXISTS received_amount DECIMAL(10,2) NULL AFTER method,
+    ADD COLUMN IF NOT EXISTS change_amount DECIMAL(10,2) NULL AFTER received_amount,
+    ADD COLUMN IF NOT EXISTS processing_fee DECIMAL(10,2) NULL AFTER change_amount;
 
 
 -- ============================================================
@@ -535,3 +609,18 @@ CREATE TABLE IF NOT EXISTS waiter_calls (
     CONSTRAINT fk_waiter_calls_table FOREIGN KEY (table_id)
         REFERENCES restaurant_tables(id) ON DELETE RESTRICT ON UPDATE RESTRICT
 ) ENGINE=InnoDB;
+
+-- Configuração do restaurante único. Aditivo, idempotente e sem sobrescrever valores salvos.
+CREATE TABLE IF NOT EXISTS restaurant_settings (
+    id TINYINT UNSIGNED NOT NULL DEFAULT 1,
+    service_fee_rate DECIMAL(5,2) NOT NULL DEFAULT 10.00,
+    name VARCHAR(120) NULL,
+    address VARCHAR(255) NULL,
+    opening_hours VARCHAR(255) NULL,
+    contact VARCHAR(120) NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT chk_restaurant_settings_singleton CHECK (id = 1),
+    CONSTRAINT chk_restaurant_settings_rate CHECK (service_fee_rate BETWEEN 0 AND 20)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+INSERT IGNORE INTO restaurant_settings (id, service_fee_rate) VALUES (1, 10.00);

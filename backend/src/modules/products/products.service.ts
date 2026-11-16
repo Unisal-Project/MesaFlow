@@ -1,4 +1,8 @@
-import { ProductDTO, ProductUpdateDTO } from "./dto/products.dto.js";
+import {
+  ProductDTO,
+  ProductUpdateDTO,
+  type PromotionsBatchDTO,
+} from "./dto/products.dto.js";
 import type ProductRepository from "./repositories/products.repository.js";
 import type { ProductOutput } from "./entity/products.entity.js";
 import { AppError } from "../../shared/errors/app-errors.js";
@@ -6,6 +10,8 @@ import type {
   StorageService,
   UploadFile,
 } from "../../shared/storage/storage.service.js";
+
+const MAX_IMAGES = 3;
 
 export default class ProductService {
   constructor(
@@ -21,7 +27,7 @@ export default class ProductService {
   async getProductById(id: bigint): Promise<ProductOutput> {
     const product = await this.productRepository.getProductById(id);
 
-    if (!product) {
+    if (!product || product.active === false || product.categoryId === null) {
       throw new AppError("Produto não encontrado", 404);
     }
 
@@ -51,28 +57,65 @@ export default class ProductService {
     return this.productRepository.switchCategory(id, newCategoryId);
   }
 
+  /**
+   * Foto no slot 1 (capa), 2 ou 3: substitui a que existe ali ou entra no fim.
+   * Sem slot = capa (compatível com o envio antigo).
+   */
   async uploadProductImage(
     id: bigint,
     file: UploadFile,
+    slot = 1,
   ): Promise<ProductOutput> {
     const product = await this.getProductById(id);
+    const urls = [...(product.imageUrls ?? [])];
+    const replaced = urls[slot - 1];
+    if (!replaced && urls.length >= MAX_IMAGES) {
+      throw new AppError(`O produto aceita no máximo ${MAX_IMAGES} fotos`, 400);
+    }
     const newImageUrl = await this.storageService.uploadProductImage(file);
+    if (replaced) urls[slot - 1] = newImageUrl;
+    else urls.push(newImageUrl);
 
     let updatedProduct: ProductOutput;
     try {
       updatedProduct = await this.productRepository.updateProduct(id, {
-        imageUrl: newImageUrl,
+        imageUrls: urls,
       });
     } catch (error) {
       await this.cleanupFile(newImageUrl);
       throw error;
     }
 
-    if (product.imageUrl && product.imageUrl !== newImageUrl) {
-      await this.cleanupFile(product.imageUrl);
-    }
-
+    if (replaced && replaced !== newImageUrl) await this.cleanupFile(replaced);
     return updatedProduct;
+  }
+
+  /** Remove a foto do slot; as seguintes sobem (sem a capa, a 2ª vira capa). */
+  async removeProductImage(id: bigint, slot: number): Promise<ProductOutput> {
+    const urls = await this.imageUrls(id, slot);
+    const [removed] = urls.splice(slot - 1, 1);
+    const updatedProduct = await this.productRepository.updateProduct(id, {
+      imageUrls: urls,
+    });
+    await this.cleanupFile(removed);
+    return updatedProduct;
+  }
+
+  /** Troca a foto do slot com a capa (slot 1). */
+  async setProductCover(id: bigint, slot: number): Promise<ProductOutput> {
+    const urls = await this.imageUrls(id, slot);
+    [urls[0], urls[slot - 1]] = [urls[slot - 1], urls[0]];
+    return this.productRepository.updateProduct(id, { imageUrls: urls });
+  }
+
+  private async imageUrls(id: bigint, slot: number) {
+    const urls = [...((await this.getProductById(id)).imageUrls ?? [])];
+    if (!urls[slot - 1]) throw new AppError("Foto não encontrada", 404);
+    return urls;
+  }
+
+  async applyPromotions(batch: PromotionsBatchDTO) {
+    return this.productRepository.applyPromotions(batch);
   }
 
   private validateCategorySelection(input: {

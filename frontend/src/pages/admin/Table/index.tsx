@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useContentTransition } from "@/hooks/useContentTransition";
-import { Armchair, Plus, Search } from "lucide-react";
+import { Armchair, Plus, Printer, Search } from "lucide-react";
 
 import { Button, Notifications, AdminSidebar } from "@/components";
 
@@ -7,6 +8,7 @@ import { DeleteTableModal } from "./components/DeleteTableModal";
 import { TableFormModal } from "./components/TableFormModal";
 import { TableDetailsModal } from "./components/TableDetailsModal";
 import { TableCard } from "./components/TableCard";
+import { TablesQrSheet } from "./components/TableQr";
 
 import type { TablesProps } from "./types/table.types";
 
@@ -22,6 +24,7 @@ export default function Tables({
   state,
   orders,
   onViewOrder,
+  onLaunchOrder,
 }: TablesProps) {
   const { contentRef, transitionContent } = useContentTransition();
   const {
@@ -54,6 +57,12 @@ export default function Tables({
     advanceStatus,
   } = state;
 
+  const [printing, setPrinting] = useState(false);
+  // Sem menuUrl (token) não há QR válido: a mesa fica fora da folha.
+  const printableTables = tables.filter(
+    (table) => table.active && table.menuUrl,
+  );
+
   const activeOrder = selectedTable
     ? findActiveTableOrder(selectedTable, orders)
     : undefined;
@@ -67,8 +76,6 @@ export default function Tables({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
       <main className="tables-content">
         <div className="tables-topbar">
@@ -77,17 +84,6 @@ export default function Tables({
             <strong>/ &nbsp;Mesas</strong>
           </div>
           <div className="tables-topbar-actions">
-            <label className="table-search">
-              <Search aria-hidden="true" />
-              <input
-                type="search"
-                aria-label="Pesquisar mesa"
-                placeholder="Buscar mesa por nome ou número"
-                enterKeyHint="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-              />
-            </label>
             <Notifications />
           </div>
         </div>
@@ -97,10 +93,20 @@ export default function Tables({
               <h1>Mesas</h1>
               <p>Visualize a ocupação e acompanhe os atendimentos.</p>
             </div>
-            <Button onClick={openNewTable}>
-              <Plus aria-hidden="true" />
-              Adicionar mesa
-            </Button>
+            <div className="tables-heading-actions">
+              <Button
+                variant="secondary"
+                disabled={printing || printableTables.length === 0}
+                onClick={() => setPrinting(true)}
+              >
+                <Printer aria-hidden="true" />
+                {printing ? "Preparando…" : "Imprimir QR de todas as mesas"}
+              </Button>
+              <Button onClick={openNewTable}>
+                <Plus aria-hidden="true" />
+                Adicionar mesa
+              </Button>
+            </div>
           </header>
           {error && (
             <p className="tables-error" role="alert">
@@ -179,8 +185,9 @@ export default function Tables({
               <Search aria-hidden="true" />
               <input
                 type="search"
-                aria-label="Buscar número da mesa"
-                placeholder="Buscar número da mesa"
+                aria-label="Buscar mesa"
+                placeholder="Buscar mesa por nome ou número"
+                enterKeyHint="search"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
               />
@@ -230,6 +237,14 @@ export default function Tables({
             setSelectedDetail(null);
             onViewOrder(orderId);
           }}
+          onLaunchOrder={
+            onLaunchOrder &&
+            ((tableId) => {
+              setSelectedTable(null);
+              setSelectedDetail(null);
+              onLaunchOrder(tableId);
+            })
+          }
           selectedDetail={selectedDetail}
           setSelectedDetail={setSelectedDetail}
           error={error}
@@ -251,6 +266,16 @@ export default function Tables({
           onClose={closeForm}
           onSave={saveTable}
           onDelete={setTableToDelete}
+        />
+      )}
+
+      {printing && (
+        <TablesQrSheet
+          tables={printableTables}
+          onDone={(message) => {
+            setPrinting(false);
+            if (message) setError(message);
+          }}
         />
       )}
 

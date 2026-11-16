@@ -25,6 +25,8 @@ const attendanceInclude = {
     select: {
       id: true,
       status: true,
+      openedAt: true,
+      closingRequestedAt: true,
     },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: 1,
@@ -55,6 +57,7 @@ export class PrismaTableRepository implements TableRepository {
         data: {
           number: data.number,
           name: data.name,
+          seats: data.seats,
           active: data.active,
           qrToken: data.qrToken,
         },
@@ -176,6 +179,7 @@ export class PrismaTableRepository implements TableRepository {
           data: {
             number: data.number,
             name: data.name,
+            seats: data.seats,
             active: data.active,
           },
           include: attendanceInclude,
@@ -218,6 +222,21 @@ export class PrismaTableRepository implements TableRepository {
           attendance,
           change,
         );
+
+        if (status === "CLOSED" && attendance) {
+          const orders = await tx.order.count({
+            where: {
+              attendanceId: attendance.id,
+              status: { not: "CANCELLED" },
+            },
+          });
+          if (orders > 0) {
+            throw new AppError(
+              "Registre o pagamento para fechar uma conta com consumo.",
+              409,
+            );
+          }
+        }
 
         if (!attendance) {
           await tx.attendance.create({
@@ -306,7 +325,12 @@ export class PrismaTableRepository implements TableRepository {
     return {
       table: this.toEntity(table),
       attendance: attendance
-        ? { id: attendance.id, status: attendance.status }
+        ? {
+            id: attendance.id,
+            status: attendance.status,
+            openedAt: attendance.openedAt,
+            closingRequestedAt: attendance.closingRequestedAt,
+          }
         : null,
     };
   }
@@ -320,6 +344,7 @@ export class PrismaTableRepository implements TableRepository {
       table.qrToken,
       table.createdAt,
       table.updatedAt,
+      table.seats,
     );
   }
 }

@@ -34,11 +34,14 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
+      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
       PORT: 3333
     volumes:
       - product_uploads:/app/backend/uploads
     depends_on:
       database:
+        condition: service_healthy
+      valkey:
         condition: service_healthy
 
   nginx:

@@ -1,6 +1,5 @@
 /* Quadros 10 e 11: restaurante e retorno */
 .cart-item,
-.order-steps,
 .table-status-grid,
 .modal,
 .loader-card,
@@ -31,50 +30,6 @@
   width: 72px;
   height: 72px;
   border-radius: var(--radius-card);
-}
-.order-steps {
-  display: grid;
-  gap: 10px;
-  padding: var(--spacing-4);
-  list-style: none;
-}
-.step {
-  position: relative;
-  padding: 10px var(--spacing-3) 10px 34px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  color: var(--text-secondary);
-  font-weight: var(--font-weight-bold);
-  &::before {
-    position: absolute;
-    top: 15px;
-    left: 12px;
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--border);
-    content: "";
-  }
-  &.done {
-    color: var(--success);
-  }
-  &.done::before {
-    background: var(--success);
-  }
-  &.current {
-    border-color: color-mix(in srgb, var(--info) 35%, transparent);
-    background: color-mix(in srgb, var(--info) 10%, transparent);
-    color: var(--info);
-  }
-  &.current::before {
-    background: var(--info);
-  }
-  &.canceled {
-    color: var(--error);
-  }
-  &.canceled::before {
-    background: var(--error);
-  }
 }
 .table-status-grid {
   display: grid;

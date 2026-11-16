@@ -1,10 +1,10 @@
 import type { Order } from "../../Order/types/order.types";
 import { formatPrice } from "@/utils/formatPrice";
-import { Pencil, QrCode, ReceiptText } from "lucide-react";
+import { Pencil, Plus, QrCode, ReceiptText } from "lucide-react";
 
 import { Button } from "@/components";
 
-import { MockTableQr } from "./MockTableQr";
+import { TableQr } from "./TableQr";
 
 import { statusInfo, nextStatus } from "../constants/table.constants";
 
@@ -14,6 +14,8 @@ type TableDetailsModalProps = {
   table: RestaurantTable;
   activeOrder?: Order;
   onViewOrder: (orderId: number) => void;
+  /** Abre o novo pedido com esta mesa já escolhida. */
+  onLaunchOrder?: (tableId: string) => void;
   selectedDetail: "qr" | null;
   setSelectedDetail: (detail: "qr" | null) => void;
   error: string;
@@ -27,6 +29,7 @@ export function TableDetailsModal({
   table,
   activeOrder,
   onViewOrder,
+  onLaunchOrder,
   selectedDetail,
   setSelectedDetail,
   error,
@@ -35,6 +38,10 @@ export function TableDetailsModal({
   onEdit,
   onAdvanceStatus,
 }: TableDetailsModalProps) {
+  const canLaunchOrder =
+    Boolean(onLaunchOrder) &&
+    table.active &&
+    (table.status === "available" || table.status === "occupied");
   return (
     <div
       className="table-modal-backdrop"
@@ -78,8 +85,21 @@ export function TableDetailsModal({
           {/* Visualização principal */}
           {selectedDetail === null && (
             <div className="table-options">
+              {/* O backend abre o atendimento se a mesa estiver livre. */}
+              {canLaunchOrder && (
+                  <Button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onLaunchOrder?.(table.id)}
+                  >
+                    <Plus aria-hidden="true" />
+                    Lançar pedido
+                  </Button>
+                )}
+              {/* Só um botão primário: com "Lançar pedido", o status é secundário. */}
               <Button
                 type="button"
+                variant={canLaunchOrder ? "secondary" : undefined}
                 disabled={
                   busy || (!table.active && table.status === "available")
                 }
@@ -162,7 +182,7 @@ export function TableDetailsModal({
 
           {/* Visualização do QR Code */}
           {selectedDetail === "qr" && (
-            <MockTableQr key={table.id} table={table} />
+            <TableQr key={table.id} table={table} />
           )}
         </div>
 

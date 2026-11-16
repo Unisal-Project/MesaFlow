@@ -121,7 +121,8 @@
 }
 .category-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) 80px 290px;
+  // Controles com largura do conteúdo: o botão "Promoção" (aba unificada) não cabia nos 290px fixos.
+  grid-template-columns: minmax(220px, 1fr) 80px auto;
   gap: var(--spacing-6);
   align-items: center;
   min-height: 68px;
@@ -374,4 +375,57 @@
       gap: var(--spacing-2);
     }
   }
+}
+
+.category-form-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
+}
+
+.category-delete-moves {
+  display: grid;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-4);
+  text-align: left;
+
+  ul {
+    display: grid;
+    gap: var(--spacing-2);
+    max-height: 240px;
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    list-style: none;
+  }
+  label {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--spacing-2);
+    align-items: center;
+    font-size: var(--font-size-sm);
+  }
+  select {
+    min-height: 40px;
+    padding-inline: var(--spacing-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--surface);
+    color: var(--text);
+  }
+}
+/* Prefixo "R$" alinhado ao campo de 46px do formulário de categoria. */
+.category-form .money-field::after {
+  height: 46px;
+}
+
+.category-delete-modes {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: var(--spacing-4) 0;
+  padding: var(--spacing-3);
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+  legend { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .radio-control { min-height: var(--spacing-11); }
 }

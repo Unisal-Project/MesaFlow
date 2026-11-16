@@ -32,10 +32,16 @@ function record(status: AttendanceStatus = "OPEN"): Attendance {
     closingRequestedAt: status === "CLOSING_REQUESTED" ? date : null,
     closedAt: null,
     closedById: null,
+    serviceFee: new Prisma.Decimal(0),
     createdAt: date,
     updatedAt: date,
     activeTableId: status === "CANCELLED" ? null : 9007199254740994n,
   };
+}
+
+// A listagem de status não expõe a taxa de serviço do fechamento.
+function withoutFee({ serviceFee: _serviceFee, ...row }: Attendance) {
+  return row;
 }
 
 function repositoryWith(client: unknown) {
@@ -46,11 +52,11 @@ test("status lists preserve fields and order while copying domain projections", 
   for (const status of ["CLOSING_REQUESTED", "CANCELLED"] as const) {
     const expected = [
       {
-        ...record(status),
+        ...withoutFee(record(status)),
         table: { id: 9007199254740994n, number: 5, name: null },
       },
       {
-        ...record(status),
+        ...withoutFee(record(status)),
         id: 9007199254740995n,
         closedById: 12n,
         table: { id: 9007199254740994n, number: 5, name: "Varanda" },

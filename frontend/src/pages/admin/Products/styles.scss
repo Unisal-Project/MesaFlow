@@ -108,6 +108,8 @@
   padding: var(--spacing-3) var(--spacing-4);
   border-radius: var(--radius-large);
   background: var(--surface);
+  // Respiro entre a barra de busca/filtros e a lista ("Produtos cadastrados").
+  margin-bottom: var(--spacing-4);
 }
 .product-search {
   display: flex;
@@ -183,8 +185,21 @@
     padding-right: 16px;
   }
 }
-.product-search:focus-within, .product-select:focus-within {
-  box-shadow: var(--focus-ring);
+// O contorno envolve a busca inteira, incluindo ícone e espaçamento interno.
+// Filtros (select): sem contorno no clique; linha fina só na navegação por teclado.
+.product-search:focus-within {
+  @include mixins.focus-visible(1px, 0);
+  box-shadow: none;
+}
+.product-search input:focus-visible { outline: none; }
+.product-select:focus-within { box-shadow: none; }
+.product-select:has(select:focus-visible) {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 28%, transparent);
+}
+.product-search input:focus,
+.product-select select:focus {
+  border-color: transparent;
+  box-shadow: none;
 }
 .products-tabs {
   display: flex;
@@ -294,9 +309,17 @@
   font-size: var(--font-size-xs);
 }
 .product-price {
+  // Com promoção (preço antigo + novo + selo) as peças quebram dentro da
+  // coluna em vez de invadir a coluna de estoque ao lado.
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px var(--spacing-1);
+  min-width: 0;
   color: var(--primary);
   font-size: var(--font-size-sm);
-  white-space: nowrap;
+
+  > * { white-space: nowrap; }
 }
 .product-controls {
   display: flex;
@@ -363,22 +386,6 @@
   background: var(--background);
   color: var(--primary);
   font-size: var(--font-size-xs);
-}
-.product-delete-button {
-  display: grid;
-  place-items: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  padding: 4px;
-  border: 0;
-  border-radius: var(--radius-small);
-  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
-  color: var(--accent);
-  svg {
-    width: 22px;
-    height: 22px;
-  }
 }
 .product-delete-action {
   background: var(--error-subtle);
@@ -599,7 +606,7 @@
 .product-form-modal .field select:focus,
 .product-form-modal .field textarea:focus {
   outline: none;
-  box-shadow: var(--focus-ring);
+  box-shadow: none; // sem anel verde de foco (pedido do usuário)
 }
 .new-product-category {
   position: relative;
@@ -687,7 +694,7 @@
     flex-shrink: 0;
   }
   &:focus-within {
-    box-shadow: var(--focus-ring);
+    box-shadow: none; // sem anel verde de foco (pedido do usuário)
   }
 }
 .product-modal-actions {
@@ -780,8 +787,7 @@
         input { width: 100%; min-height: 44px; font-size: 16px; }
       }
       .product-status { justify-self: end; min-width: 0; min-height: 44px; }
-      .btn, .product-delete-button { width: 100%; min-height: 44px; }
-      .product-delete-button { border: 1px solid var(--error-border); border-radius: var(--radius-medium); background: var(--error-subtle); }
+      .btn { width: 100%; min-height: 44px; }
     }
   }
 
@@ -793,6 +799,11 @@
     grid-template-columns: minmax(0, 1fr);
     .product-price { grid-column: 1; padding-top: 0; }
   }
+}
+
+.product-form-error {
+  color: var(--error);
+  font-size: var(--font-size-sm);
 }
 
 .new-product-additional-categories {
@@ -823,4 +834,341 @@
     height: 18px;
     accent-color: var(--primary);
   }
+}
+
+.product-quantity--untracked {
+  text-align: center;
+}
+.new-product-track-stock {
+  align-self: end;
+  min-height: 44px;
+}
+.new-product-preview {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--spacing-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  // Prévia centralizada no formulário (título e cartão).
+  justify-items: center;
+  text-align: center;
+
+  .product-card {
+    width: min(100%, 320px);
+    text-align: left;
+  }
+  // Cartão clicável: abre o cardápio rolado até o produto.
+  .new-product-preview-link {
+    display: block;
+    width: min(100%, 320px);
+    border-radius: var(--radius-large);
+    color: inherit;
+    text-decoration: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    .product-card { width: 100%; }
+    &:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
+    &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
+  }
+  .new-product-preview-photo {
+    display: block;
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+  }
+}
+
+/* Bloco "Promoção" (produto e categoria). */
+.promotion-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--spacing-3);
+  min-width: 0;
+  margin: 0;
+  padding: var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-medium);
+
+  legend {
+    padding-inline: var(--spacing-1);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
+  }
+  .field {
+    min-width: 0;
+  }
+  .promotion-fields-active {
+    grid-column: 1 / -1;
+  }
+  @media (max-width: 560px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.new-product-promo-inherited {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+.product-price .badge {
+  margin-left: 0;
+}
+
+/* Estados da lista: vazio com ação e filtro sem resultado. */
+.products-no-results {
+  display: grid;
+  justify-items: center;
+  gap: var(--spacing-3);
+  p {
+    margin: 0;
+  }
+}
+
+/* Estoque na linha: − [campo] +. */
+.product-stock {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-1);
+}
+.product-stock-step {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: var(--background);
+  color: var(--primary);
+  font-size: var(--font-size-lg);
+  line-height: 1;
+  cursor: pointer;
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  &:focus-visible {
+    @include mixins.focus-visible(2px, 2px);
+  }
+}
+@include mixins.down(workspace) {
+  .product-controls .product-stock {
+    align-items: flex-end;
+    .product-stock-step {
+      flex-basis: 44px;
+      width: 44px;
+      height: 44px;
+    }
+  }
+}
+
+/* Dinheiro: prefixo "R$" fixo dentro do campo. */
+.money-field {
+  position: relative;
+  &::after {
+    content: "R$";
+    position: absolute;
+    left: var(--spacing-3);
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    height: 42px;
+    color: var(--text-secondary);
+    font-size: var(--font-size-sm);
+    pointer-events: none;
+  }
+}
+label.field.money-field input {
+  padding-left: 38px;
+}
+
+/* Categoria principal + "+ Nova" (inline). */
+.new-product-category-group {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: var(--spacing-2);
+}
+.new-product-category-row,
+.new-product-new-category {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--spacing-2);
+  > :first-child {
+    flex: 1;
+  }
+  > .btn {
+    min-height: 42px;
+  }
+}
+.new-product-new-category > .product-modal-close {
+  align-self: center;
+  margin-top: var(--spacing-5);
+}
+
+/* Blocos recolhidos do formulário. */
+.promotion-fields-toggle {
+  grid-column: 1 / -1;
+  min-height: 44px;
+}
+.new-product-more {
+  grid-column: 1 / -1;
+  summary {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    color: var(--primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+  }
+  .new-product-additional-categories {
+    margin-top: var(--spacing-2);
+  }
+}
+
+/* Até 3 fotos: miniaturas com capa, "Definir como capa" e remover. */
+.product-photo-list {
+  display: grid;
+  gap: var(--spacing-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  &:empty {
+    display: none;
+  }
+}
+.product-photo-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-2);
+  border-radius: var(--radius-medium);
+  background: var(--background);
+  img {
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-small);
+    object-fit: cover;
+  }
+  .btn {
+    min-height: 44px;
+  }
+}
+
+.product-name-preview {
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  &:hover { text-decoration: underline; }
+}
+.product-name-mobile { display: none; }
+@include mixins.down(workspace) {
+  .product-name-preview { display: none; }
+  .product-name-mobile { display: inline; }
+}
+.product-row-preview {
+  width: min(380px, calc(100vw - 48px));
+  max-height: calc(100dvh - 48px);
+  margin: auto;
+  padding: 0;
+  overflow-y: auto;
+  border: 0;
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-large);
+  &::backdrop { background: var(--overlay); }
+  .food-photo {
+    display: block;
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+}
+.product-row-preview-content { padding: var(--spacing-4); }
+.product-row-preview-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 0 var(--spacing-2) auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+
+.product-featured-button {
+  display: grid;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+  margin-left: auto;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--radius-medium);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+
+  // Destacado: estrela PREENCHIDA e dourada. O fill precisa ser via CSS porque a
+  // regra global `svg { fill: none }` (styles/base/_global.scss) vence o atributo.
+  &[aria-pressed="true"] {
+    color: var(--warning);
+    svg { fill: currentColor; }
+  }
+  &:hover { color: var(--warning); }
+  &:focus-visible { @include mixins.focus-visible(2px, 3px); }
+}
+
+.products-heading-actions, .products-promotion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); }
+.products-promotion-actions { margin-block: var(--spacing-4); }
+.products-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); }
+.products-selectable-row > .check-control { min-height: var(--spacing-11); width: var(--spacing-11); justify-content: center; }
+.menu-access-modal {
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: var(--spacing-5);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  color: var(--text-primary);
+
+  &::backdrop { background: var(--overlay); }
+  &[open] { display: grid; gap: var(--spacing-4); }
+  header, h2, footer { display: flex; align-items: center; gap: var(--spacing-3); }
+  header { justify-content: space-between; }
+  h2 { font-size: var(--font-size-xl); }
+  h2 svg { flex-shrink: 0; }
+  p { color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.5; }
+  p:empty { display: none; }
+  footer { flex-wrap: wrap; }
+  footer .btn { flex: 1 1 auto; }
+}
+
+.menu-access-qr {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  img { display: block; width: 280px; max-width: 100%; height: auto; border-radius: var(--radius-medium); }
+}
+
+.menu-access-hint {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-medium);
+  background: var(--surface-muted);
 }

@@ -8,6 +8,11 @@ import "./styles.scss";
 
 type ReportsProps = { onNavigate: (id: string) => void };
 
+const trendLabel = (change: number | null, hasSales: boolean) =>
+  !hasSales ? "Sem dados no período"
+    : change === null ? "Sem base de comparação"
+      : `${change >= 0 ? "+ " : "− "}${Math.abs(change).toLocaleString("pt-BR")}%`;
+
 export default function Reports({ onNavigate }: ReportsProps) {
   const report = useReports();
   const negative = report.scenario === "negative";
@@ -22,7 +27,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
   return (
     <div className="reports-page">
       <AdminSidebar activeId="reports" brandSubtitle="GESTÃO DO RESTAURANTE" navigationLabel="MENU PRINCIPAL" showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} userName="Nome do usuário" userRole="Administrador" />
+        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} />
       <main className="reports-content">
         <header className="reports-topbar">
           <div className="reports-breadcrumb" aria-label="Página atual"><span>Visão geral</span><strong>/ &nbsp;Relatórios</strong></div>
@@ -46,7 +51,7 @@ export default function Reports({ onNavigate }: ReportsProps) {
             </div>
           </header>
           <div className="reports-context">
-            <p>Dados demonstrativos <span aria-hidden="true">·</span> {report.periodLabel}</p>
+            <p>{report.loading ? "Carregando..." : "Comparado ao período anterior"} <span aria-hidden="true">·</span> {report.periodLabel}</p>
             {report.selectedDay && <p className="reports-selected-context" role="status">Dia selecionado: {report.formatDate(report.selectedDay.date)}{negative ? " · Vendas muito baixas" : ""}</p>}
           </div>
           {report.period === "custom" && <div className="reports-dates">
@@ -55,8 +60,8 @@ export default function Reports({ onNavigate }: ReportsProps) {
           </div>}
           {report.error && <p className="reports-error" role="alert">{report.error}</p>}
           <section className="reports-indicators" key={report.selectedDay?.date ?? report.periodLabel} aria-label={report.selectedDay ? "Indicadores do dia selecionado" : "Indicadores do período"} aria-live="polite">
-            {metrics.map((metric, index) => <div key={metric.label} className={`reports-indicator${index === 3 ? " is-tables" : negative && report.days.length ? " is-negative" : ""}`}>
-              <StatCard {...metric} trend={index === 3 ? report.selectedDay ? "No dia selecionado" : "No período" : report.days.length ? `${report.summary.changes[index] > 0 ? "+ " : "− "}${Math.abs(report.summary.changes[index]).toLocaleString("pt-BR")}%` : "Sem dados no período"} />
+            {metrics.map((metric, index) => <div key={metric.label} className={`reports-indicator${index === 3 ? " is-tables" : negative && report.hasSales ? " is-negative" : ""}`}>
+              <StatCard {...metric} trend={index === 3 ? report.selectedDay ? "No dia selecionado" : "No período" : trendLabel(report.changes[index], report.hasSales)} />
             </div>)}
           </section>
           <div className="reports-grid">
@@ -75,16 +80,16 @@ export default function Reports({ onNavigate }: ReportsProps) {
                   </div>
                 </li>)}
               </ol>
-              {!report.products.length && <p className="reports-empty">{report.days.length ? "Nenhum produto encontrado para esta busca." : "Nenhum produto vendido no período."}</p>}
+              {!report.products.length && <p className="reports-empty">{report.days.length && report.search.trim() ? "Nenhum produto encontrado para esta busca." : "Nenhum produto vendido no período."}</p>}
             </section>
           </div>
           <section className={`reports-panel reports-summary${negative ? " is-negative" : ""}`} aria-labelledby="reports-summary-title">
             <header className="reports-panel-heading"><div><h2 id="reports-summary-title">Resumo operacional</h2><p>{report.selectedDay ? `Desempenho em ${report.formatDate(report.selectedDay.date)}` : "Uma leitura rápida do desempenho no período"}</p></div></header>
             <dl>
-              <div><dt>Taxa de ocupação</dt><dd>{report.days.length ? `${report.summary.occupancy}%` : "—"}</dd></div>
-              <div><dt>Tempo médio de preparo</dt><dd>{report.days.length ? `${report.summary.preparation} min` : "—"}</dd></div>
-              <div><dt>Cancelamentos</dt><dd>{String(report.cancellations).padStart(2, "0")}</dd></div>
-              <div><dt>Categorias ativas</dt><dd>{report.days.length ? "08" : "—"}</dd></div>
+              <div><dt>Taxa de serviço arrecadada</dt><dd>{report.hasSales ? report.formatCurrency(report.summary.serviceFee) : "—"}</dd></div>
+              <div><dt>Forma de pagamento mais usada</dt><dd>{report.summary.topMethod}</dd></div>
+              <div><dt>Pedidos cancelados</dt><dd>{String(report.summary.cancellations).padStart(2, "0")}</dd></div>
+              <div><dt>Categorias ativas</dt><dd>{report.days.length ? String(report.summary.activeCategories).padStart(2, "0") : "—"}</dd></div>
             </dl>
           </section>
         </div>

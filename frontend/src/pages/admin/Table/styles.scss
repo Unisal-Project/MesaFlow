@@ -38,9 +38,6 @@
   background: var(--background);
   color: var(--text);
 }
-.tables-topbar .table-search {
-  width: min(280px, 28vw);
-}
 .table-search svg {
   flex: 0 0 20px;
   width: 20px;
@@ -60,7 +57,8 @@
   color: var(--text-secondary);
 }
 .table-search:focus-within {
-  box-shadow: var(--focus-ring);
+  @include mixins.focus-visible(1px, 0);
+  box-shadow: none;
 }
 .tables-body {
   padding: var(--spacing-7) var(--spacing-9) var(--spacing-12);
@@ -843,7 +841,7 @@
   font-weight: var(--font-weight-regular);
 }
 .table-form-modal .field input:focus {
-  box-shadow: var(--focus-ring);
+  box-shadow: none; // sem anel verde de foco (pedido do usuário)
 }
 .table-form-note {
   margin-top: var(--spacing-3);
@@ -950,7 +948,6 @@
     .tables-topbar { flex-direction: row; }
     .tables-breadcrumb { display: none; }
     .tables-topbar-actions { gap: var(--spacing-3); }
-    .tables-topbar .table-search { min-height: 48px; }
     .tables-topbar input { font-size: 16px; }
     .table-search-map { display: none; }
     .tables-toolbar { display: block; }
@@ -977,5 +974,44 @@
     .table-options { padding: var(--spacing-4); }
     .table-detail-actions { padding-bottom: max(16px, env(safe-area-inset-bottom, 0px)); }
     .table-detail-actions .btn { min-height: 44px; }
+  }
+}
+
+.tables-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3);
+}
+
+/* Folha de QR Codes: invisível na tela, só ela aparece na impressão. */
+.tables-print-sheet {
+  display: none;
+}
+@media print {
+  /* Escopo: só enquanto a folha existe (portal no body); outras páginas
+     imprimem normalmente. Fluxo normal, sem position, para paginar. */
+  body:has(> .tables-print-sheet) > :not(.tables-print-sheet) {
+    display: none;
+  }
+  .tables-print-sheet {
+    display: block;
+    // A página não tem margem (sem cabeçalho/rodapé do navegador); o respiro fica aqui.
+    padding: 12mm;
+  }
+  .tables-print-sheet figure {
+    display: inline-block;
+    width: 33%;
+    margin: 0 0 10mm;
+    text-align: center;
+    vertical-align: top;
+    break-inside: avoid;
+  }
+  .tables-print-sheet img {
+    width: 100%;
+    max-width: 55mm;
+  }
+  .tables-print-sheet figcaption {
+    font: 700 16pt sans-serif;
+    color: #000;
   }
 }

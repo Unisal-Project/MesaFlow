@@ -34,7 +34,20 @@ export function registerProductRoutes(app: FastifyInstance) {
     productController.uploadProductImage(request, reply),
   );
 
+  app.delete("/products/:id/image/:slot", (request, reply) =>
+    productController.removeProductImage(request, reply),
+  );
+
+  app.patch("/products/:id/image/:slot/cover", (request, reply) =>
+    productController.setProductCover(request, reply),
+  );
+
   app.delete("/products/:id", (request, reply) =>
     productController.deleteProduct(request, reply),
+  );
+
+  // Promoção em lote (produtos + categorias) para a aba Promoções.
+  app.patch("/promotions", (request, reply) =>
+    productController.applyPromotions(request, reply),
   );
 }

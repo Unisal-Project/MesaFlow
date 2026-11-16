@@ -12,6 +12,11 @@ datasource db {
   provider = "mysql"
 }
 
+enum PromoType {
+  PERCENT
+  AMOUNT
+}
+
 enum UserRole {
   ADMIN
   EMPLOYEE
@@ -27,9 +32,6 @@ enum AttendanceStatus {
 
 enum OrderStatus {
   PENDING
-  PREPARING
-  READY
-  DELIVERED
   CANCELLED
 }
 
@@ -53,6 +55,13 @@ enum PaymentStatus {
   CANCELLED
 }
 
+enum PaymentMethod {
+  CASH
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
 enum PrintJobType {
   ORDER
   BILL
@@ -72,6 +81,8 @@ model User {
   passwordHash      String          @map("password_hash") @db.VarChar(255)
   role              UserRole        @default(EMPLOYEE)
   active            Boolean         @default(true)
+  /// Incrementado no logout, troca de senha, desativação e mudança de perfil: invalida os JWT emitidos.
+  tokenVersion      Int             @default(0) @map("token_version")
   createdAt         DateTime        @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt         DateTime        @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
   closedAttendances Attendance[]    @relation("AttendanceClosedBy")
@@ -87,6 +98,11 @@ model Category {
   id                 BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
   name               String            @unique(map: "uq_categories_name") @db.VarChar(100)
   description        String?           @db.VarChar(255)
+  promoType          PromoType?        @map("promo_type")
+  promoValue         Decimal?          @map("promo_value") @db.Decimal(10, 2)
+  promoActive        Boolean           @default(false) @map("promo_active")
+  promoStartsAt      DateTime?         @map("promo_starts_at") @db.DateTime(0)
+  promoEndsAt        DateTime?         @map("promo_ends_at") @db.DateTime(0)
   active             Boolean           @default(true)
   createdAt          DateTime          @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt          DateTime          @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
@@ -98,17 +114,26 @@ model Category {
 
 model Product {
   id                   BigInt            @id @default(autoincrement()) @db.UnsignedBigInt
-  categoryId           BigInt            @map("category_id") @db.UnsignedBigInt
+  categoryId           BigInt?           @map("category_id") @db.UnsignedBigInt
   name                 String            @db.VarChar(150)
   description          String?           @db.Text
   imageUrl             String?           @map("image_url") @db.VarChar(2048)
+  imageUrl2            String?           @map("image_url_2") @db.VarChar(2048)
+  imageUrl3            String?           @map("image_url_3") @db.VarChar(2048)
   price                Decimal           @db.Decimal(10, 2)
+  promoType            PromoType?        @map("promo_type")
+  promoValue           Decimal?          @map("promo_value") @db.Decimal(10, 2)
+  promoActive          Boolean           @default(false) @map("promo_active")
+  promoStartsAt        DateTime?         @map("promo_starts_at") @db.DateTime(0)
+  promoEndsAt          DateTime?         @map("promo_ends_at") @db.DateTime(0)
   stockQuantity        Int               @default(0) @map("stock_quantity")
+  trackStock           Boolean           @default(true) @map("track_stock")
+  featured             Boolean           @default(false)
   available            Boolean           @default(true)
   active               Boolean           @default(true)
   createdAt            DateTime          @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt            DateTime          @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
-  category             Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
+  category             Category?         @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_products_category")
   additionalCategories ProductCategory[]
   orderItems           OrderItem[]
   stockMovements       StockMovement[]
@@ -134,6 +159,7 @@ model RestaurantTable {
   number      Int          @unique(map: "uq_restaurant_tables_number") @db.UnsignedInt
   name        String?      @db.VarChar(100)
   qrToken     String       @unique(map: "uq_restaurant_tables_qr_token") @map("qr_token") @db.VarChar(120)
+  seats       Int          @default(4) @db.UnsignedSmallInt
   active      Boolean      @default(true)
   createdAt   DateTime     @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt   DateTime     @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
@@ -151,6 +177,7 @@ model Attendance {
   closingRequestedAt DateTime?        @map("closing_requested_at") @db.DateTime(0)
   closedAt           DateTime?        @map("closed_at") @db.DateTime(0)
   closedById         BigInt?          @map("closed_by") @db.UnsignedBigInt
+  serviceFee         Decimal          @default(0.00) @map("service_fee") @db.Decimal(10, 2)
   createdAt          DateTime         @default(now()) @map("created_at") @db.DateTime(0)
   updatedAt          DateTime         @default(now()) @updatedAt @map("updated_at") @db.DateTime(0)
   // Coluna STORED calculada pelo MariaDB; a expressão permanece no SQL-fonte.
@@ -236,15 +263,19 @@ model StockMovement {
 }
 
 model Payment {
-  id           BigInt        @id @default(autoincrement()) @db.UnsignedBigInt
-  attendanceId BigInt        @map("attendance_id") @db.UnsignedBigInt
-  amount       Decimal       @db.Decimal(10, 2)
-  status       PaymentStatus @default(PENDING)
-  paidAt       DateTime?     @map("paid_at") @db.DateTime(0)
-  createdById  BigInt?       @map("created_by") @db.UnsignedBigInt
-  createdAt    DateTime      @default(now()) @map("created_at") @db.DateTime(0)
-  attendance   Attendance    @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_payments_attendance")
-  createdBy    User?         @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_payments_created_by")
+  id             BigInt         @id @default(autoincrement()) @db.UnsignedBigInt
+  attendanceId   BigInt         @map("attendance_id") @db.UnsignedBigInt
+  amount         Decimal        @db.Decimal(10, 2)
+  method         PaymentMethod?
+  receivedAmount Decimal?       @map("received_amount") @db.Decimal(10, 2)
+  changeAmount   Decimal?       @map("change_amount") @db.Decimal(10, 2)
+  processingFee  Decimal?       @map("processing_fee") @db.Decimal(10, 2)
+  status         PaymentStatus  @default(PENDING)
+  paidAt         DateTime?      @map("paid_at") @db.DateTime(0)
+  createdById    BigInt?        @map("created_by") @db.UnsignedBigInt
+  createdAt      DateTime       @default(now()) @map("created_at") @db.DateTime(0)
+  attendance     Attendance     @relation(fields: [attendanceId], references: [id], onDelete: Restrict, onUpdate: Cascade, map: "fk_payments_attendance")
+  createdBy      User?          @relation(fields: [createdById], references: [id], onDelete: SetNull, onUpdate: Cascade, map: "fk_payments_created_by")
 
   @@index([attendanceId], map: "idx_payments_attendance_id")
   @@index([status], map: "idx_payments_status")
@@ -308,4 +339,16 @@ model WaiterCall {
 
   @@index([status, createdAt], map: "idx_waiter_calls_status_created")
   @@map("waiter_calls")
+}
+
+// Restaurante único; a linha id=1 é criada pelo SQL incremental.
+model RestaurantSettings {
+  id             Int      @id @default(1) @db.UnsignedTinyInt
+  serviceFeeRate Decimal  @default(10.00) @map("service_fee_rate") @db.Decimal(5, 2)
+  name           String?  @db.VarChar(120)
+  address        String?  @db.VarChar(255)
+  openingHours   String?  @map("opening_hours") @db.VarChar(255)
+  contact        String?  @db.VarChar(120)
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
+  @@map("restaurant_settings")
 }

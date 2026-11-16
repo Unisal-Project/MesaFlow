@@ -49,16 +49,31 @@ export function buildMenuSections(categories: Category[], products: Product[]) {
     {
       id: "menu-featured",
       name: "Destaque",
-      products: uniqueActiveProducts(
-        featured.flatMap((section) => section.products),
-      ),
+      products: uniqueActiveProducts([
+        ...products.filter(
+          (product) =>
+            product.featured === true &&
+            [product.categoryId, ...(product.additionalCategoryIds ?? [])].some(
+              (id) => categoryIds.has(id),
+            ),
+        ),
+        ...featured.flatMap((section) => section.products),
+      ]),
     },
     {
       id: "menu-promotions",
       name: "Promoções",
-      products: uniqueActiveProducts(
-        promotions.flatMap((section) => section.products),
-      ),
+      // União: produtos com promoção vigente + categoria chamada "Promoções".
+      products: uniqueActiveProducts([
+        ...products.filter(
+          (product) =>
+            product.promotion &&
+            [product.categoryId, ...(product.additionalCategoryIds ?? [])].some(
+              (id) => categoryIds.has(id),
+            ),
+        ),
+        ...promotions.flatMap((section) => section.products),
+      ]),
     },
     ...result.filter((section) => !specialIds.has(section.id)),
   ];

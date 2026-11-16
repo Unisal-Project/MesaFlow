@@ -1,10 +1,16 @@
+import { useState } from "react";
+import { PromotionsContent } from "../Promotions";
+import { usePromotions, type ItemKey } from "../Promotions/hooks/usePromotions";
 import { useContentTransition } from "@/hooks/useContentTransition";
 import { ArrowLeft, ChevronDown, Eye, List, Plus, Search } from "lucide-react";
-import { Button, AdminSidebar, Notifications } from "@/components";
+import { Button, AdminSidebar, Notifications, Checkbox, ConfirmationDialog } from "@/components";
+import { getSession } from "@/services/auth.service";
+import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 
 import { DeleteProductModal } from "./components/DeleteProductModal";
 import { ProductFormModal } from "./components/ProductFormModal";
 import { ProductRow } from "./components/ProductRow";
+import { MenuAccessModal } from "./components/MenuAccessModal";
 
 import Categories from "../Categories";
 
@@ -26,6 +32,11 @@ export default function Products({
   onShowAllCategories,
   onBackToMenu,
 }: ProductsProps) {
+  const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [menuAccessOpen, setMenuAccessOpen] = useState(false);
+  const isAdmin = getSession()?.user.role === "ADMIN";
+  const promotionState = usePromotions(() => Promise.all([productState.reload(), categoryState.reload()]));
   const { contentRef, transitionContent } =
     useContentTransition(".products-list");
 
@@ -43,6 +54,7 @@ export default function Products({
     editingProductId,
     newProduct,
     setNewProduct,
+    hasUnsavedChanges,
     searchQuery,
     setSearchQuery,
     availabilityFilter,
@@ -56,23 +68,53 @@ export default function Products({
     normalizedSearch,
     filteredProducts,
     updateAvailability,
+    updateFeatured,
     updateQuantity,
+    error: productError,
+    busy: productBusy,
+    loading: productLoading,
     closeProductModal,
     openNewProduct,
     openEditProduct,
     handlePhotoChange,
+    removePhoto,
+    setCoverPhoto,
     handleSaveProduct,
     requestProductDeletion,
     confirmProductDeletion,
   } = productState;
-  const productCategories = productState.categories.map(
-    (category) => category.name,
-  );
+  // Inclui a promoção da categoria para a prévia do formulário de produto.
+  const productCategories = categoryState.categories;
   const isCategories = activeTab === "categories";
-  const switchTab = (tab: "products" | "categories") => {
+  const selectedProductIds = selectedProducts.filter(id => products.some(product => product.id === id));
+  // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
+  const isFiltering =
+    normalizedSearch !== "" ||
+    categoryFilter !== "all" ||
+    availabilityFilter !== "all";
+  const clearFilters = () => {
+    setSearchQuery("");
+    setCategoryFilter("all");
+    setAvailabilityFilter("all");
+  };
+  const visibleProducts =
+    showAllProducts || isFiltering
+      ? filteredProducts
+      : filteredProducts.slice(0, 4);
+  const deleteSelected = async () => {
+    setConfirmBulkDelete(false);
+    // Ficam selecionados só os que falharam (se nenhum falhar, a seleção limpa).
+    setSelectedProducts(await productState.deleteProducts(selectedProductIds));
+  };
+  const switchTab = (tab: "products" | "categories" | "promotions") => {
     transitionContent(() => onSwitchTab(tab));
   };
 
+  const promote = (keys: ItemKey[]) => {
+    promotionState.defineFor(keys);
+    onSwitchTab("promotions");
+    setSelectedProducts([]);
+  };
   return (
     <div className="products-page">
       <AdminSidebar
@@ -82,34 +124,15 @@ export default function Products({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
       <main className="products-content">
-        {productState.error && <p role="alert">{productState.error}</p>}
-        {productState.isLoading && <p role="status">Carregando produtos…</p>}
         <div className="products-topbar">
           <div className="products-breadcrumb" aria-label="Página atual">
             <span>Visão geral</span>
             <strong>/ &nbsp;Cardápio</strong>
           </div>
           <div className="products-topbar-actions">
-            <label className="product-search product-header-search">
-              <Search aria-hidden="true" />
-              <input
-                type="search"
-                aria-label="Pesquisar no cardápio"
-                placeholder={
-                  isCategories ? "Buscar categorias..." : "Buscar produtos..."
-                }
-                value={isCategories ? categoryState.searchQuery : searchQuery}
-                onChange={(event) =>
-                  isCategories
-                    ? categoryState.setSearchQuery(event.target.value)
-                    : setSearchQuery(event.target.value)
-                }
-              />
-            </label>
+            {/* A busca fica só na barra de filtros de cada aba. */}
             <Notifications />
           </div>
         </div>
@@ -141,14 +164,15 @@ export default function Products({
                     : "Gerencie produtos e categorias do seu cardápio."}
               </p>
             </div>
-            <Button
+            <div className="products-heading-actions"><Button variant="secondary" onClick={() => setMenuAccessOpen(true)}><Eye aria-hidden="true" />Ver cardápio</Button>
+            {activeTab !== "promotions" && <Button
               onClick={
                 isCategories ? categoryState.openNewCategory : openNewProduct
               }
             >
               <Plus aria-hidden="true" />
               {isCategories ? "Nova categoria" : "Novo produto"}
-            </Button>
+            </Button>}</div>
           </header>
           {!showAllProducts && !showAllCategories && (
             <section
@@ -190,13 +214,19 @@ export default function Products({
               ))}
             </section>
           )}
-          {isCategories ? (
+          <nav className="products-tabs" aria-label="Seções do cardápio">
+            {[["products", "Produtos"], ["categories", "Categorias"], ["promotions", "Promoções"]].map(([id, label]) => <button key={id} type="button" className={activeTab === id ? "active" : ""} aria-current={activeTab === id ? "page" : undefined} onClick={() => switchTab(id as ProductsProps["activeTab"])}>{label}</button>)}
+          </nav>
+          {activeTab === "promotions" ? <PromotionsContent embedded state={promotionState} onNavigate={onNavigate ?? (() => undefined)} /> : isCategories ? (
             <Categories
+              hideTabs
+              onPromote={(id) => promote([`c:${id}`])}
               showAll={showAllCategories}
               onShowAll={onShowAllCategories}
               state={categoryState}
               products={products}
               onShowProducts={() => switchTab("products")}
+              onProductsChanged={() => void productState.reload()}
             />
           ) : (
             <>
@@ -219,8 +249,8 @@ export default function Products({
                   >
                     <option value="all">Todas as categorias</option>
                     {productCategories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
+                      <option key={category.id} value={category.name}>
+                        {category.name}
                       </option>
                     ))}
                   </select>
@@ -234,7 +264,7 @@ export default function Products({
                       setAvailabilityFilter(event.target.value)
                     }
                   >
-                    <option value="all">Disponibilidade</option>
+                    <option value="all">Todos</option>
                     <option value="available">Disponíveis</option>
                     <option value="unavailable">Indisponíveis</option>
                   </select>
@@ -253,21 +283,11 @@ export default function Products({
                   </select>
                 </label>
               </div>
-              {!showAllProducts && (
-                <nav className="products-tabs" aria-label="Seções do cardápio">
-                  <button
-                    type="button"
-                    className="active"
-                    aria-current="page"
-                    onClick={() => switchTab("products")}
-                  >
-                    Produtos
-                  </button>
-                  <button type="button" onClick={() => switchTab("categories")}>
-                    Categorias
-                  </button>
-                </nav>
-              )}
+              {selectedProductIds.length > 0 && <div className="products-promotion-actions"><span>{selectedProductIds.length} selecionados</span><Button variant="secondary" onClick={() => setSelectedProducts([])}>Limpar seleção</Button><Button onClick={() => promote(selectedProductIds.map(id => `p:${id}` as ItemKey))}>Colocar em promoção</Button>{isAdmin && <Button variant="danger" disabled={productBusy} onClick={() => setConfirmBulkDelete(true)}><AnimatedTrash />Excluir selecionados</Button>}</div>}
+              <ConfirmationDialog open={confirmBulkDelete && selectedProductIds.length > 0} variant="danger"
+                title={selectedProductIds.length === 1 ? "Excluir 1 produto?" : `Excluir ${selectedProductIds.length} produtos?`}
+                description={`⚠️ Atenção: ${selectedProductIds.length === 1 ? "1 produto será excluído" : `${selectedProductIds.length} produtos serão excluídos`} do cardápio. O histórico de pedidos e os relatórios são mantidos. Esta ação não pode ser desfeita.`}
+                confirmLabel="Excluir" onCancel={() => setConfirmBulkDelete(false)} onConfirm={() => void deleteSelected()} />
               <section
                 className={`products-list${showAllProducts ? " products-list-full" : ""}`}
                 aria-labelledby="products-list-title"
@@ -276,9 +296,7 @@ export default function Products({
                   <div>
                     <h2 id="products-list-title">Produtos cadastrados</h2>
                     <p>
-                      {normalizedSearch ||
-                      categoryFilter !== "all" ||
-                      availabilityFilter !== "all"
+                      {isFiltering
                         ? `${filteredProducts.length} de ${products.length} produtos`
                         : showAllProducts
                           ? `${products.length} produtos cadastrados`
@@ -292,24 +310,37 @@ export default function Products({
                     </Button>
                   )}
                 </div>
+                {productError && !isProductModalOpen && !productToDelete && (
+                  <p className="product-form-error" role="alert">{productError}</p>
+                )}
+                {productLoading && <p role="status">Carregando produtos...</p>}
                 <div className="products-list-body">
-                  {(showAllProducts
-                    ? filteredProducts
-                    : filteredProducts.slice(0, 4)
-                  ).map((product) => (
-                    <ProductRow
+                  {visibleProducts.map((product) => (
+                    <div key={product.id} className="products-selectable-row"><Checkbox label="" aria-label={`Selecionar ${product.name}`} disabled={promotionState.busy} checked={selectedProducts.includes(product.id)} onChange={() => setSelectedProducts(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])} /><ProductRow
                       key={product.id}
                       product={product}
                       onUpdateQuantity={updateQuantity}
                       onUpdateAvailability={updateAvailability}
+                      onUpdateFeatured={updateFeatured}
                       onEdit={openEditProduct}
-                      onDelete={setProductToDelete}
-                    />
+                    /></div>
                   ))}
-                  {filteredProducts.length === 0 && (
-                    <p className="products-no-results">
-                      Nenhum produto encontrado com os filtros selecionados.
-                    </p>
+                  {!productLoading && products.length === 0 && (
+                    <div className="products-no-results">
+                      <p>Nenhum produto ainda.</p>
+                      <Button size="small" onClick={openNewProduct}>
+                        <Plus aria-hidden="true" />
+                        Cadastrar primeiro produto
+                      </Button>
+                    </div>
+                  )}
+                  {products.length > 0 && filteredProducts.length === 0 && (
+                    <div className="products-no-results">
+                      <p>Nenhum produto encontrado com os filtros selecionados.</p>
+                      <Button size="small" variant="secondary" onClick={clearFilters}>
+                        Limpar filtros
+                      </Button>
+                    </div>
                   )}
                 </div>
               </section>
@@ -318,19 +349,25 @@ export default function Products({
         </div>
       </main>
 
+      {menuAccessOpen && <MenuAccessModal onClose={() => setMenuAccessOpen(false)} />}
+
       {isProductModalOpen && (
         <ProductFormModal
-          error={productState.error}
-          isSaving={productState.isSaving}
-          categories={productState.categories}
+          categories={productCategories}
           editingProductId={editingProductId}
+          hasUnsavedChanges={hasUnsavedChanges}
           newProduct={newProduct}
           setNewProduct={setNewProduct}
           products={products}
           onClose={closeProductModal}
           onSave={handleSaveProduct}
           onPhotoChange={handlePhotoChange}
+          onRemovePhoto={removePhoto}
+          onSetCoverPhoto={setCoverPhoto}
           onDelete={requestProductDeletion}
+          onCreateCategory={categoryState.createCategory}
+          error={productError}
+          busy={productBusy}
         />
       )}
 
@@ -339,6 +376,8 @@ export default function Products({
           product={productToDelete}
           onClose={() => setProductToDelete(null)}
           onConfirm={confirmProductDeletion}
+          error={productError}
+          busy={productBusy}
         />
       )}
     </div>

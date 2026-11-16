@@ -1,16 +1,15 @@
-
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  fetchOrdersByTableToken,
-  type AttendanceOrder,
-  type AttendanceOrdersResponse,
+  fetchTableBill,
+  type BillItem,
+  type TableBillResponse,
 } from "@/services/orders.service";
 
-type AttendanceStatus = AttendanceOrdersResponse["attendanceStatus"];
+type AttendanceStatus = TableBillResponse["attendanceStatus"];
 
 export function useBillOrders(tableToken: string) {
-  const [orders, setOrders] = useState<AttendanceOrder[]>([]);
+  const [items, setItems] = useState<BillItem[]>([]);
   const [attendanceId, setAttendanceId] = useState<string | null>(null);
   const [attendanceStatus, setAttendanceStatus] =
     useState<AttendanceStatus>(null);
@@ -28,7 +27,7 @@ export function useBillOrders(tableToken: string) {
     async function loadBill() {
       setIsLoading(true);
       setError(null);
-      setOrders([]);
+      setItems([]);
       setAttendanceId(null);
       setAttendanceStatus(null);
 
@@ -39,14 +38,11 @@ export function useBillOrders(tableToken: string) {
       }
 
       try {
-        const response = await fetchOrdersByTableToken(
-          tableToken,
-          controller.signal,
-        );
+        const response = await fetchTableBill(tableToken, controller.signal);
 
         if (controller.signal.aborted) return;
 
-        setOrders(response.orders);
+        setItems(response.items);
         setAttendanceId(response.attendanceId);
         setAttendanceStatus(response.attendanceStatus);
       } catch (reason) {
@@ -70,7 +66,7 @@ export function useBillOrders(tableToken: string) {
   }, [tableToken, refreshKey]);
 
   return {
-    orders,
+    items,
     attendanceId,
     attendanceStatus,
     isLoading,

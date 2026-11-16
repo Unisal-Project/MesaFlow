@@ -4,6 +4,8 @@ import {
   ProductIdSchema,
   ProductUpdateSchema,
   ProductCategoryUpdateSchema,
+  PromotionsBatchSchema,
+  ProductImageSlotSchema,
 } from "./dto/products.dto.js";
 import type {
   ProductOutput,
@@ -90,18 +92,78 @@ export default class ProductsController {
       });
     }
 
+    // ?slot=1|2|3; sem slot = capa.
+    const { slot: rawSlot = 1 } = request.query as { slot?: unknown };
+    const slot = this.parseSlot(rawSlot, reply);
+    if (slot === null) return;
+
     const image = await request.file();
     if (!image) {
       return reply.status(400).send({ message: "Imagem não enviada" });
     }
 
-    const product = await this.productService.uploadProductImage(id, {
-      buffer: await image.toBuffer(),
-      originalName: image.filename,
-      mimeType: image.mimetype,
-    });
+    const product = await this.productService.uploadProductImage(
+      id,
+      {
+        buffer: await image.toBuffer(),
+        originalName: image.filename,
+        mimeType: image.mimetype,
+      },
+      slot,
+    );
 
     return reply.status(200).send(this.toResponse(product));
+  }
+
+  async removeProductImage(request: FastifyRequest, reply: FastifyReply) {
+    const id = this.parseId(request, reply);
+    if (id === null) return;
+    const slot = this.parseSlot(
+      (request.params as { slot?: unknown }).slot,
+      reply,
+    );
+    if (slot === null) return;
+    const product = await this.productService.removeProductImage(id, slot);
+    return reply.status(200).send(this.toResponse(product));
+  }
+
+  async setProductCover(request: FastifyRequest, reply: FastifyReply) {
+    const id = this.parseId(request, reply);
+    if (id === null) return;
+    const slot = this.parseSlot(
+      (request.params as { slot?: unknown }).slot,
+      reply,
+    );
+    if (slot === null) return;
+    const product = await this.productService.setProductCover(id, slot);
+    return reply.status(200).send(this.toResponse(product));
+  }
+
+  private parseSlot(value: unknown, reply: FastifyReply): number | null {
+    const parsed = ProductImageSlotSchema.safeParse(value);
+    if (!parsed.success) {
+      this.sendValidationError(
+        reply,
+        parsed.error.issues,
+        "Posição da foto inválida",
+      );
+      return null;
+    }
+    return parsed.data;
+  }
+
+  async applyPromotions(request: FastifyRequest, reply: FastifyReply) {
+    const parsedBody = PromotionsBatchSchema.safeParse(request.body);
+    if (!parsedBody.success) {
+      return this.sendValidationError(
+        reply,
+        parsedBody.error.issues,
+        "Dados da promoção inválidos",
+      );
+    }
+    return reply
+      .status(200)
+      .send(await this.productService.applyPromotions(parsedBody.data));
   }
 
   private parseId(request: FastifyRequest, reply: FastifyReply): bigint | null {
@@ -132,7 +194,7 @@ export default class ProductsController {
     return {
       ...product,
       id: product.id.toString(),
-      categoryId: product.categoryId.toString(),
+      categoryId: product.categoryId?.toString() ?? null,
       additionalCategoryIds: (product.additionalCategoryIds ?? []).map(String),
       price: product.price.toString(),
     };

@@ -4,16 +4,24 @@ import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
 let server, service;
 const previousFetch = globalThis.fetch;
-const previousStorage = globalThis.sessionStorage;
+const previousStorage = globalThis.localStorage;
+const previousWindow = globalThis.window;
 before(async () => {
-  globalThis.sessionStorage = { getItem: () => "admin-token" };
+  // Sessão do admin no formato usado por auth.service (token lido pelo client central).
+  const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })).toString("base64url");
+  const accessToken = `h.${payload}.s`;
+  globalThis.adminToken = accessToken;
+  let session = JSON.stringify({ user: { id: "1", name: "Admin", email: "a@a.com", role: "ADMIN" }, accessToken });
+  globalThis.localStorage = { getItem: () => session, setItem: (_, value) => { session = value; }, removeItem: () => { session = null; } };
+  globalThis.window = { location: { assign: () => {} } };
   server = await createServer({ root: fileURLToPath(new URL("..", import.meta.url)), server: { middlewareMode: true, ws: false }, optimizeDeps: { noDiscovery: true } });
   service = await server.ssrLoadModule("/src/services/waiter-calls.service.ts");
 });
 after(async () => {
   await server?.close();
   globalThis.fetch = previousFetch;
-  globalThis.sessionStorage = previousStorage;
+  globalThis.localStorage = previousStorage;
+  globalThis.window = previousWindow;
 });
 
 test("chamar garçom usa token codificado, aguarda API e não envia alterações de pedidos", async () => {
@@ -45,7 +53,7 @@ test("falha da API, conexão e token ausente não viram sucesso", async () => {
 
 test("listagem e atendimento de chamadas enviam JWT do admin", async () => {
   globalThis.fetch = async (url, options) => {
-    assert.equal(options.headers.get("Authorization"), "Bearer admin-token");
+    assert.equal(options.headers.get("Authorization"), `Bearer ${globalThis.adminToken}`);
     if (url.endsWith("/waiter-calls")) return Response.json([]);
     assert.match(url, /\/waiter-calls\/1\/attend$/);
     assert.equal(options.method, "PATCH");

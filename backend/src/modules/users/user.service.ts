@@ -7,6 +7,7 @@ import type {
   PublicUser,
   CreateUserInput,
 } from "./entity/user.entity.js";
+import { toPublicUser } from "./entity/user.entity.js";
 import type { UserRepository } from "./repository/user.repository.js";
 
 export class UserService {
@@ -39,8 +40,16 @@ export class UserService {
 
   async updateUser(id: bigint, data: UpdateUserDTO): Promise<PublicUser> {
     const { password, email, ...rest } = data;
+    const current = await this.userRepository.findById(id);
+    if (!current) throw new AppError("Usuário não encontrado", 404);
+    // Nova senha, desativação ou mudança de perfil derrubam as sessões abertas.
+    const revoke =
+      password !== undefined ||
+      (rest.active !== undefined && rest.active !== current.active) ||
+      (rest.role !== undefined && rest.role !== current.role);
     const updateData = {
       ...rest,
+      ...(revoke && { tokenVersion: current.tokenVersion + 1 }),
       ...(email === undefined ? {} : { email: this.normalizeEmail(email) }),
       ...(password === undefined
         ? {}
@@ -52,7 +61,12 @@ export class UserService {
   }
 
   async deleteUser(id: bigint): Promise<void> {
-    await this.userRepository.update(id, { active: false });
+    const current = await this.userRepository.findById(id);
+    if (!current) throw new AppError("Usuário não encontrado", 404);
+    await this.userRepository.update(id, {
+      active: false,
+      tokenVersion: current.tokenVersion + 1,
+    });
   }
 
   private async create(data: CreateUserInput): Promise<PublicUser> {
@@ -71,7 +85,6 @@ export class UserService {
   }
 
   private toPublicUser(user: UserEntity): PublicUser {
-    const { passwordHash: _passwordHash, ...publicUser } = user;
-    return publicUser;
+    return toPublicUser(user);
   }
 }

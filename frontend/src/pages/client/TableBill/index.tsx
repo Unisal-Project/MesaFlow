@@ -1,9 +1,9 @@
-
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { ClientTabBar } from "@/components/layout/ClientTabBar";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, BellRing } from "lucide-react";
 import { SystemMessage, Button } from "@/components";
 
+import { useCallWaiter } from "./hooks/useCallWaiter";
 import { useBillOrders } from "./hooks/useBillOrders";
 import { useTableBill } from "./hooks/useTableBill";
 import type { TableBillProps } from "./types/tableBill.types";
@@ -15,40 +15,28 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
-const formatCurrency = (cents: number) =>
-  currency.format(cents / 100);
+const formatCurrency = (cents: number) => currency.format(cents / 100);
 
 export function TableBill({
   tableToken = "",
   onBack,
   onNavigate,
 }: TableBillProps) {
-  const {
-    orders,
-    attendanceStatus,
-    isLoading,
-    error,
+  const { items, attendanceStatus, isLoading, error, refreshBill } =
+    useBillOrders(tableToken);
+
+  const { isSubmitting, requestError, handleRequestClose } = useTableBill(
+    tableToken,
     refreshBill,
-  } = useBillOrders(tableToken);
-
-  const {
-    isSubmitting,
-    requestError,
-    handleRequestClose,
-  } = useTableBill(tableToken, refreshBill);
-
-  const activeOrders = orders.filter(
-    (order) => order.status !== "CANCELLED",
   );
 
-  const subtotalInCents = activeOrders
-    .flatMap((order) => order.items)
-    .reduce(
-      (total, item) =>
-        total +
-        Math.round(Number(item.unitPrice) * 100) * item.quantity,
-      0,
-    );
+  const waiter = useCallWaiter(tableToken);
+
+  const subtotalInCents = items.reduce(
+    (total, item) =>
+      total + Math.round(Number(item.unitPrice) * 100) * item.quantity,
+    0,
+  );
 
   const closingRequested =
     attendanceStatus === "CLOSING_REQUESTED" ||
@@ -58,9 +46,9 @@ export function TableBill({
     !isLoading &&
     !error &&
     attendanceStatus === "OPEN" &&
-    activeOrders.length > 0 &&
+    items.length > 0 &&
     !isSubmitting;
-  
+
   return (
     <div className="table-bill-page">
       <ClientTableHeader
@@ -76,10 +64,7 @@ export function TableBill({
         }
       />
 
-      <main
-        className="table-bill-main"
-        aria-labelledby="table-bill-title"
-      >
+      <main className="table-bill-main" aria-labelledby="table-bill-title">
         <div className="table-bill-heading">
           <h1 id="table-bill-title">Conta da mesa</h1>
 
@@ -90,6 +75,23 @@ export function TableBill({
           )}
         </div>
 
+        <section className="table-bill-waiter" aria-label="Atendimento da mesa">
+          <Button
+            variant="secondary"
+            onClick={waiter.handleCall}
+            loading={waiter.isCalling}
+            disabled={!tableToken || waiter.isCalling}
+          >
+            <BellRing aria-hidden="true" /> Chamar garçom
+          </Button>
+          {waiter.success && (
+            <p role="status">
+              Solicitação confirmada. Um garçom foi chamado para sua mesa.
+            </p>
+          )}
+          {waiter.error && <p role="alert">{waiter.error}</p>}
+        </section>
+
         <section
           className="table-bill-summary"
           aria-label="Resumo da conta"
@@ -99,38 +101,29 @@ export function TableBill({
             <p role="status">Carregando conta...</p>
           ) : error ? (
             <div role="alert">
-              <SystemMessage variant="error">
-                {error}
-              </SystemMessage>
+              <SystemMessage variant="error">{error}</SystemMessage>
 
               <button type="button" onClick={refreshBill}>
                 Tentar novamente
               </button>
             </div>
-          ) : activeOrders.length === 0 ? (
+          ) : items.length === 0 ? (
             <p>Nenhum pedido encontrado para esta mesa.</p>
           ) : (
             <dl>
-              {activeOrders.flatMap((order) =>
-                order.items.map((item) => (
-                  <div
-                    className="table-bill-row"
-                    key={`${order.id}-${item.id}`}
-                  >
-                    <dt>
-                      {item.quantity}x {item.productName}
-                    </dt>
+              {items.map((item) => (
+                <div className="table-bill-row" key={item.id}>
+                  <dt>
+                    {item.quantity}x {item.productName}
+                  </dt>
 
-                    <dd>
-                      {formatCurrency(
-                        Math.round(
-                          Number(item.unitPrice) * 100,
-                        ) * item.quantity,
-                      )}
-                    </dd>
-                  </div>
-                )),
-              )}
+                  <dd>
+                    {formatCurrency(
+                      Math.round(Number(item.unitPrice) * 100) * item.quantity,
+                    )}
+                  </dd>
+                </div>
+              ))}
 
               <div className="table-bill-row table-bill-total">
                 <dt>Total do consumo</dt>
@@ -139,7 +132,6 @@ export function TableBill({
             </dl>
           )}
         </section>
-
 
         {!isLoading && !error && attendanceStatus === "OPEN" && (
           <Button
@@ -155,9 +147,7 @@ export function TableBill({
 
         {requestError && (
           <div className="table-bill-feedback" role="alert">
-            <SystemMessage variant="error">
-              {requestError}
-            </SystemMessage>
+            <SystemMessage variant="error">{requestError}</SystemMessage>
           </div>
         )}
 

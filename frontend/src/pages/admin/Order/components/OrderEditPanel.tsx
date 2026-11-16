@@ -1,28 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Minus, Plus, Search, Trash2, X } from "lucide-react";
 import { Button } from "@/components";
-import {
-  orderProductCatalog,
-  orderTableOptions,
-} from "../mocks/orderCatalog.mocks";
-import type { OrderItem } from "../types/order.types";
+import type {
+  OrderCatalogProduct,
+  OrderFormChanges,
+  OrderItem,
+  OrderTableOption,
+} from "../types/order.types";
 
 export type EditableOrderItem = OrderItem;
 
 type OrderEditPanelProps = {
   orderId?: number;
   mode?: "create" | "edit";
-  table: string;
-  time: string;
+  tableId: string;
   items: EditableOrderItem[];
   observation?: string;
+  catalog: OrderCatalogProduct[];
+  tableOptions: OrderTableOption[];
+  busy?: boolean;
+  error?: string;
   onCancel: () => void;
-  onSave: (changes: {
-    table: string;
-    time: string;
-    items: EditableOrderItem[];
-    observation?: string;
-  }) => void;
+  onSave: (changes: OrderFormChanges) => void;
 };
 type DraftItem = EditableOrderItem & {
   draftId: number;
@@ -34,10 +33,13 @@ const formatCurrency = (value: number) =>
 export function OrderEditPanel({
   orderId,
   mode = "edit",
-  table: initialTable,
-  time: initialTime,
+  tableId: initialTable,
   items: initialItems,
   observation: initialObservation = "",
+  catalog,
+  tableOptions,
+  busy = false,
+  error,
   onCancel,
   onSave,
 }: OrderEditPanelProps) {
@@ -45,7 +47,6 @@ export function OrderEditPanel({
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [table, setTable] = useState(initialTable);
-  const [time, setTime] = useState(initialTime);
   const [observation, setObservation] = useState(initialObservation);
   const [items, setItems] = useState<DraftItem[]>(() =>
     initialItems
@@ -59,6 +60,17 @@ export function OrderEditPanel({
         ),
       })),
   );
+  // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
+  const draft = JSON.stringify({ table, observation, items });
+  const [initialDraft] = useState(draft);
+  const requestClose = () => {
+    if (draft === initialDraft || window.confirm("Descartar alterações?"))
+      onCancel();
+  };
+  const closeRef = useRef(requestClose);
+  useEffect(() => {
+    closeRef.current = requestClose;
+  });
   const [productSearch, setProductSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -70,21 +82,18 @@ export function OrderEditPanel({
         .replace(/[\u0300-\u036f]/g, "")
         .toLocaleLowerCase("pt-BR")
         .trim();
-    return orderProductCatalog.filter((product) =>
+    return catalog.filter((product) =>
       normalize(product.name).includes(normalize(productSearch)),
     );
-  }, [productSearch]);
+  }, [catalog, productSearch]);
   const total = items.reduce(
     (sum, item) => sum + item.quantity * Math.max(0, item.unitPrice),
     0,
   );
   const isValid =
-    table.trim().length > 0 &&
-    time.length > 0 &&
+    table.length > 0 &&
     items.length > 0 &&
-    items.every(
-      (item) => item.name.trim() && item.quantity >= 1 && item.unitPrice > 0,
-    );
+    items.every((item) => item.productId && item.quantity >= 1);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -93,7 +102,7 @@ export function OrderEditPanel({
     closeButtonRef.current?.focus();
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        onCancel();
+        closeRef.current();
         return;
       }
       if (event.key !== "Tab" || !modalRef.current) return;
@@ -119,7 +128,7 @@ export function OrderEditPanel({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [onCancel]);
+  }, []);
 
   useEffect(() => {
     if (!searchOpen) return;
@@ -150,10 +159,11 @@ export function OrderEditPanel({
       ),
     );
   };
-  const addProduct = (product: (typeof orderProductCatalog)[number]) => {
+  const addProduct = (product: OrderCatalogProduct) => {
     setItems((current) => [
       ...current,
       {
+        productId: product.id,
         name: product.name,
         unitPrice: product.unitPrice,
         quantity: 1,
@@ -167,8 +177,7 @@ export function OrderEditPanel({
   const saveChanges = () => {
     if (!isValid) return;
     onSave({
-      table: table.trim(),
-      time,
+      tableId: table,
       observation: observation.trim() || undefined,
       items: items.map(({ draftId: _draftId, ...item }) => ({
         ...item,
@@ -183,7 +192,7 @@ export function OrderEditPanel({
     <div
       className="order-edit-modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onCancel();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -209,7 +218,7 @@ export function OrderEditPanel({
             type="button"
             className="order-edit-modal-close"
             aria-label="Fechar edição do pedido"
-            onClick={onCancel}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -218,25 +227,19 @@ export function OrderEditPanel({
           <div className="order-edit-general">
             <label>
               <span>Mesa</span>
+              {/* Um pedido pertence ao atendimento da mesa: não muda de mesa. */}
               <select
                 value={table}
+                disabled={mode === "edit"}
                 onChange={(event) => setTable(event.target.value)}
               >
                 <option value="">Selecione uma mesa</option>
-                {orderTableOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
+                {tableOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
                   </option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span>Horário</span>
-              <input
-                type="time"
-                value={time}
-                onChange={(event) => setTime(event.target.value)}
-              />
             </label>
           </div>
           <section
@@ -281,7 +284,11 @@ export function OrderEditPanel({
                       >
                         <span>
                           <strong>{product.name}</strong>
-                          <small>{formatCurrency(product.unitPrice)}</small>
+                          <small>
+                            {formatCurrency(product.unitPrice)}
+                            {product.stock !== null &&
+                              ` · ${product.stock} em estoque`}
+                          </small>
                         </span>
                         <Plus aria-hidden="true" />
                       </button>
@@ -401,16 +408,21 @@ export function OrderEditPanel({
             />
           </label>
         </div>
+        {error && (
+          <p className="order-edit-error" role="alert">
+            {error}
+          </p>
+        )}
         <footer className="order-edit-modal-footer">
           <div className="order-edit-total">
             <span>Total do pedido</span>
             <strong>{formatCurrency(total)}</strong>
           </div>
           <div className="order-edit-actions">
-            <Button variant="secondary" onClick={onCancel}>
+            <Button variant="secondary" onClick={requestClose}>
               Cancelar
             </Button>
-            <Button disabled={!isValid} onClick={saveChanges}>
+            <Button disabled={!isValid} loading={busy} onClick={saveChanges}>
               {mode === "create" ? "Criar pedido" : "Salvar alterações"}
             </Button>
           </div>

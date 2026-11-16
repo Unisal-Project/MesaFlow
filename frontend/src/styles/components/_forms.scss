@@ -50,3 +50,44 @@ textarea::placeholder {
     background: var(--disabled-background);
   }
 }
+
+/* Somente controles textuais do ADMIN; checkbox/radio e toda a área cliente permanecem fora.
+   :where() zera a especificidade: é só o PADRÃO. Campos com estilo próprio (ícone, seta,
+   prefixo "R$") mantêm o padding deles — antes esta regra vencia e o texto ficava por baixo. */
+:where(html.admin-workspace-active) :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="submit"], [type="button"]), select, textarea) {
+  min-height: var(--spacing-11);
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+  outline: none;
+  &:focus { border-color: color-mix(in srgb, var(--text-primary) 35%, var(--border)); box-shadow: none; }
+  &::placeholder { color: var(--text-secondary); opacity: 1; }
+  &[aria-invalid="true"] { border-color: var(--error); }
+  &:disabled { background: var(--disabled-background); color: var(--disabled); }
+}
+
+/* Admin: campos de texto SEM o anel verde de foco (pedido do usuário). Vence a regra base
+   `input:focus` (que vale também para o cliente). Botões/links por teclado usam
+   :focus-visible e mantêm o anel. */
+html.admin-workspace-active :is(input, select, textarea):focus {
+  box-shadow: none;
+  // Borda neutra (cinza) em vez do verde; campos sem borda (border: 0) não mudam.
+  border-color: color-mix(in srgb, var(--text-primary) 35%, var(--border));
+}
+
+/* Fonte padronizada nos campos do ADMIN. Precisa de especificidade (as regras base de
+   reset/tipografia dão font-family de título aos inputs); só a FONTE — espaçamento, ícones
+   e prefixo "R$" continuam com os estilos de cada campo (o bloco :where acima). */
+html.admin-workspace-active :where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="hidden"], [type="submit"], [type="button"]), select, textarea) {
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-body);
+}

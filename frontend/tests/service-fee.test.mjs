@@ -16,14 +16,14 @@ before(async () => {
 after(async () => { await server?.close(); });
 
 test("calcula 10% sobre o consumo agregado com arredondamento em centavos", () => {
-  assert.deepEqual(calculateBill(1005 + 1005), {
+  assert.deepEqual(calculateBill(1005 + 1005, 10), {
     subtotalInCents: 2010, serviceInCents: 201, totalInCents: 2211,
   });
-  assert.equal(calculateBill(1005).serviceInCents, 101);
-  assert.equal(calculateBill(0).totalInCents, 0);
+  assert.equal(calculateBill(1005, 10).serviceInCents, 101);
+  assert.equal(calculateBill(0, 10).totalInCents, 0);
 });
 test("retira a taxa sem alterar o consumo", () => {
-  assert.deepEqual(calculateBill(2010, true), {
+  assert.deepEqual(calculateBill(2010, 10, true), {
     subtotalInCents: 2010, serviceInCents: 0, totalInCents: 2010,
   });
 });
@@ -37,4 +37,17 @@ test("fecha apenas os pedidos abertos do mesmo atendimento", () => {
   assert.deepEqual(getAccountOrders(orders, orders[0]).map(o => o.id), [1, 2]);
   const unlinked = { id: 5, status: "open" };
   assert.deepEqual(getAccountOrders([...orders, unlinked], unlinked), [unlinked]);
+});
+
+
+test("percentual recebido do banco: 5%, zero e fracionado", () => {
+  assert.equal(calculateBill(2010, 5).serviceInCents, 101);
+  assert.equal(calculateBill(2010, 0).totalInCents, 2010);
+  assert.equal(calculateBill(2010, 12.34).serviceInCents, 248);
+  assert.equal(calculateBill(2010, 5, true).serviceInCents, 0);
+});
+
+test("arredonda metade do centavo corretamente com percentuais decimais", () => {
+  assert.equal(calculateBill(375, 9.2).serviceInCents, 35);
+  assert.equal(calculateBill(1000, 16.15).serviceInCents, 162);
 });

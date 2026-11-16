@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import type { ProductDetailProps } from "../types/productDetail.types";
 import { useCart } from "@/contexts/useCart";
+import { stockLimit } from "@/services/menu.service";
 
 export function useProductDetail(
     product: ProductDetailProps["product"],
@@ -15,7 +16,7 @@ export function useProductDetail(
         return existingNotes.length ? existingNotes : [""];
     });
     const quantity = notes.length;
-    const maxQuantity = Math.max(0, product.stockQuantity);
+    const maxQuantity = stockLimit(product);
 
     function setQuantity(nextQuantity: number) {
         setNotes((current) => Array.from(

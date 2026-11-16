@@ -1,36 +1,34 @@
 import { useContentTransition } from "@/hooks/useContentTransition";
-import { useImperativeHandle, useRef } from "react";
+import { useImperativeHandle, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   List,
   Pencil,
   Plus,
-  RotateCcw,
   Search,
 } from "lucide-react";
 
-import { Button } from "@/components";
+import { Button, ConfirmationDialog, Tabs } from "@/components";
+import { getSession } from "@/services/auth.service";
+import { accountPaidTotal } from "./hooks/useOrder";
 import { AdminSidebar } from "@/components";
 
 import { PaymentModal } from "./components/PaymentModal.js";
 import { OrderEditPanel } from "./components/OrderEditPanel.js";
 import { Notifications } from "@/components";
 
-import {
-  paymentMethodLabels,
-  emptyOrderItems,
-} from "./constants/order.constants.js";
+import { paymentMethodLabels, orderPeriods, emptyPeriodMessages } from "./constants/order.constants.js";
 
 import {
   formatCurrency,
   getItemCount,
   getOrderTotal,
-  getCurrentTime,
 } from "./utils/order.utils";
 
-import type { OrdersProps, OrderSort } from "./types/order.types.js";
+import type { OrdersProps, OrderSort, OrderFilter, OrderPeriod } from "./types/order.types.js";
 
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { OrdersSummary } from "./components/OrdersSummary";
@@ -50,9 +48,9 @@ export default function Orders({
     paymentOrders,
     editingOrder,
     saveOrderChanges,
-    reopenOrder,
     completeOrder,
     cancelOrder,
+    reopenAccount,
     createOrder,
     selectOrder,
     filteredOrders,
@@ -62,6 +60,14 @@ export default function Orders({
     setSearchQuery,
     orders,
     todayOrders,
+    todayDate,
+    minimumDate,
+    period,
+    setPeriod,
+    specificDate,
+    setSpecificDate,
+    activeFilter,
+    setActiveFilter,
     sortOrder,
     setSortOrder,
     setIsCreatingOrder,
@@ -70,6 +76,15 @@ export default function Orders({
     selectedOrder,
     setEditingOrderId,
   } = state;
+
+  const isAdmin = getSession()?.user.role === "ADMIN";
+  // Confirmação de "Excluir pedido" / "Reabrir conta" do pedido aberto no painel.
+  const [confirm, setConfirm] = useState<{
+    kind: "delete" | "reopen";
+    orderId: number;
+  } | null>(null);
+  const [restoreStock, setRestoreStock] = useState(true);
+  const [deleteReason, setDeleteReason] = useState("");
 
   const detailsRef = useRef<HTMLElement>(null);
   const topbarRef = useRef<HTMLDivElement>(null);
@@ -111,8 +126,6 @@ export default function Orders({
         showAvatar
         brandImage={<img src={logoAlternativo} alt="" />}
         onChange={(id) => onNavigate?.(id)}
-        userName="Nome do usuário"
-        userRole="Administrador"
       />
 
       <main className="orders-content">
@@ -149,14 +162,30 @@ export default function Orders({
           <div className="orders-list-heading">
             <div>
               <h2 id="orders-list-title">Pedidos registrados</h2>
-              <p>{filteredOrders.length} {filteredOrders.length === 1 ? "pedido encontrado" : "pedidos encontrados"}</p>
+              <p>
+                {filteredOrders.length}{" "}
+                {filteredOrders.length === 1
+                  ? "pedido encontrado"
+                  : "pedidos encontrados"}
+              </p>
             </div>
             <div className="orders-list-controls">
+              <label className="orders-sort-control">
+                <span>Status</span>
+                <select aria-label="Filtrar por status" value={activeFilter}
+                  onChange={(event) => setActiveFilter(event.target.value as OrderFilter)}>
+                  <option value="all">Todos</option>
+                  <option value="open">Em aberto</option>
+                  <option value="closed">Fechados</option>
+                </select>
+              </label>
               <label className="orders-sort-control">
                 <span>Ordenar por</span>
                 <select
                   value={sortOrder}
-                  onChange={(event) => setSortOrder(event.target.value as OrderSort)}
+                  onChange={(event) =>
+                    setSortOrder(event.target.value as OrderSort)
+                  }
                 >
                   <option value="newest">Mais recentes</option>
                   <option value="oldest">Mais antigos</option>
@@ -172,8 +201,34 @@ export default function Orders({
             </div>
           </div>
 
-          <p className="order-activity-message" role="status" aria-live="polite">
+          <div className="orders-period-controls">
+            <Tabs items={orderPeriods.map((item) => item.id === "specific"
+              ? { ...item, label: <span className="orders-period-date-label"><CalendarDays size={16} aria-hidden="true" /><span>{item.label}</span></span> }
+              : item)} activeId={period}
+              onChange={(value) => setPeriod(value as OrderPeriod)} ariaLabel="Período dos pedidos" />
+            {period === "specific" && (
+              <label className="orders-sort-control">
+                <span>Data do pedido</span>
+                <input type="date" min={minimumDate} max={todayDate} value={specificDate}
+                  onChange={(event) => setSpecificDate(event.target.value)} />
+              </label>
+            )}
+          </div>
+
+          <p
+            className="order-activity-message"
+            role="status"
+            aria-live="polite"
+          >
             {activityMessage}
+          </p>
+          {state.error && !editingOrder && !state.isCreatingOrder && (
+            <p className="order-edit-error" role="alert">
+              {state.error}
+            </p>
+          )}
+          <p role="status" hidden={!state.loading}>
+            Carregando pedidos...
           </p>
 
           <div className="orders-workspace">
@@ -212,7 +267,6 @@ export default function Orders({
                             <span>{getItemCount(order)} itens</span>
                           </p>
                         </div>
-
                       </div>
                       <p className="order-card-description">
                         {order.items
@@ -226,10 +280,25 @@ export default function Orders({
                   );
                 })}
 
-                {filteredOrders.length === 0 && (
+                {/* Carregando já tem aviso próprio; separa vazio real de filtro. */}
+                {!state.loading && filteredOrders.length === 0 && (
                   <div className="orders-empty-state">
-                    <h3>Nenhum pedido encontrado</h3>
-                    <p>Ajuste a busca para encontrar o pedido.</p>
+                    {orders.length === 0 ? (
+                      <>
+                        <h3>{emptyPeriodMessages[period]}</h3>
+                        <Button onClick={() => setIsCreatingOrder(true)}>
+                          <Plus aria-hidden="true" />
+                          Lançar primeiro pedido
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <h3>{emptyPeriodMessages[period]}</h3>
+                        <Button variant="secondary" onClick={() => openOrder()}>
+                          Limpar filtros
+                        </Button>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -254,7 +323,6 @@ export default function Orders({
                         {selectedOrder.table} · Enviado às {selectedOrder.time}
                       </p>
                     </div>
-
                   </div>
 
                   <div className="order-details-tabs" role="group">
@@ -338,10 +406,14 @@ export default function Orders({
                           </div>
                           <div className="closed-payment-lines">
                             <div>
-                              <span>{selectedOrder.payment.serviceFeeWaived
-                                ? "Cliente optou por não pagar a taxa de serviço"
-                                : "Taxa de serviço (10%)"}</span>
-                              <strong>{formatCurrency(selectedOrder.payment.serviceFee ?? 0)}</strong>
+                              <span>
+                                Taxa de serviço
+                              </span>
+                              <strong>
+                                {formatCurrency(
+                                  selectedOrder.payment.serviceFee ?? 0,
+                                )}
+                              </strong>
                             </div>
                             {selectedOrder.payment.entries.map(
                               (entry, index) => (
@@ -372,24 +444,94 @@ export default function Orders({
                       )}
 
                     <div className="order-details-actions">
-                      {selectedOrder.status === "closed" ? (
+                      {/* Conta paga: só o ADMIN reabre (estorna os pagamentos). */}
+                      {selectedOrder.status !== "closed" && (
                         <Button
-                          className="order-details-reopen"
-                          variant="secondary"
-                          onClick={() => reopenOrder(selectedOrder.id)}
+                          onClick={() => setPaymentOrderId(selectedOrder.id)}
                         >
-                          <RotateCcw aria-hidden="true" />
-                          Reabrir pedido
-                        </Button>
-                      ) : (
-                        <Button onClick={() => setPaymentOrderId(selectedOrder.id)}>
                           Finalizar pedido
                         </Button>
                       )}
-                      <Button variant="secondary" onClick={cancelOrder}>
-                        Cancelar
-                      </Button>
+                      {isAdmin && selectedOrder.status === "closed" && (
+                        <Button
+                          variant="secondary"
+                          disabled={state.busy}
+                          onClick={() =>
+                            setConfirm({ kind: "reopen", orderId: selectedOrder.id })
+                          }
+                        >
+                          Reabrir conta
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <Button
+                          variant="secondary"
+                          disabled={state.busy || selectedOrder.status === "closed"}
+                          title={
+                            selectedOrder.status === "closed"
+                              ? "Reabra a conta para excluir este pedido"
+                              : undefined
+                          }
+                          onClick={() => {
+                            setRestoreStock(true);
+                            setConfirm({ kind: "delete", orderId: selectedOrder.id });
+                          }}
+                        >
+                          Excluir pedido
+                        </Button>
+                      )}
                     </div>
+                    <ConfirmationDialog
+                      open={confirm?.orderId === selectedOrder.id}
+                      variant="danger"
+                      title={
+                        confirm?.kind === "reopen"
+                          ? `Reabrir a conta de ${selectedOrder.table}?`
+                          : `Excluir o pedido #${selectedOrder.id}?`
+                      }
+                      description={
+                        confirm?.kind === "reopen"
+                          ? `⚠️ Atenção: os pagamentos registrados nesta conta (${formatCurrency(accountPaidTotal(orders, selectedOrder))}) serão desfeitos e a mesa volta a ficar ocupada. Você precisará registrar o pagamento de novo ao fechar.`
+                          : "⚠️ Atenção: este pedido será cancelado e sairá da lista e da conta da mesa. Esta ação não pode ser desfeita."
+                      }
+                      confirmLabel={
+                        confirm?.kind === "reopen" ? "Reabrir conta" : "Excluir pedido"
+                      }
+                      onCancel={() => {
+                        setConfirm(null);
+                        setDeleteReason("");
+                      }}
+                      onConfirm={() => {
+                        setConfirm(null);
+                        void (confirm?.kind === "reopen"
+                          ? reopenAccount()
+                          : cancelOrder(restoreStock, deleteReason));
+                        setDeleteReason("");
+                      }}
+                    >
+                      {confirm?.kind === "delete" && (
+                        <>
+                          <label className="field">
+                            <span>Motivo (opcional)</span>
+                            <input
+                              type="text"
+                              maxLength={500}
+                              value={deleteReason}
+                              placeholder="Excluído pelo administrador"
+                              onChange={(event) => setDeleteReason(event.target.value)}
+                            />
+                          </label>
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={restoreStock}
+                              onChange={(event) => setRestoreStock(event.target.checked)}
+                            />
+                            Devolver itens ao estoque
+                          </label>
+                        </>
+                      )}
+                    </ConfirmationDialog>
                   </>
                 </>
               ) : (
@@ -415,9 +557,16 @@ export default function Orders({
         <PaymentModal
           key={paymentOrder.id}
           orderId={paymentOrder.id}
-          total={paymentOrders.reduce((sum, order) => sum + Math.round(getOrderTotal(order) * 100), 0) / 100}
+          total={
+            paymentOrders.reduce(
+              (sum, order) => sum + Math.round(getOrderTotal(order) * 100),
+              0,
+            ) / 100
+          }
           onClose={() => setPaymentOrderId(null)}
-          onComplete={(payments, waived) => completeOrder(paymentOrder.id, payments, waived)}
+          onComplete={(payments, waived) =>
+            completeOrder(paymentOrder.id, payments, waived)
+          }
         />
       )}
 
@@ -425,11 +574,17 @@ export default function Orders({
         <OrderEditPanel
           key={editingOrder.id}
           orderId={editingOrder.id}
-          table={editingOrder.table}
-          time={editingOrder.time}
+          tableId={editingOrder.tableId ?? ""}
           items={editingOrder.items}
           observation={editingOrder.observation}
-          onCancel={() => setEditingOrderId(null)}
+          catalog={state.catalog}
+          tableOptions={state.tableOptions}
+          busy={state.busy}
+          error={state.error}
+          onCancel={() => {
+            state.setError("");
+            setEditingOrderId(null);
+          }}
           onSave={(changes) => saveOrderChanges(editingOrder.id, changes)}
         />
       )}
@@ -437,10 +592,16 @@ export default function Orders({
       {isCreatingOrder && (
         <OrderEditPanel
           mode="create"
-          table=""
-          time={getCurrentTime()}
-          items={emptyOrderItems}
-          onCancel={() => setIsCreatingOrder(false)}
+          tableId={state.newOrderTableId ?? ""}
+          items={[]}
+          catalog={state.catalog}
+          tableOptions={state.tableOptions}
+          busy={state.busy}
+          error={state.error}
+          onCancel={() => {
+            state.setError("");
+            setIsCreatingOrder(false);
+          }}
           onSave={createOrder}
         />
       )}

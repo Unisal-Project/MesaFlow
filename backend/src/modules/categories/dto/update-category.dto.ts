@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { promoIssue, promoSchemaFields } from "../../products/promotion.js";
 
 export const updateCategorySchema = z
   .object({
@@ -7,7 +8,14 @@ export const updateCategorySchema = z
     description: z.string().trim().max(255).nullable().optional(),
 
     active: z.boolean(),
+
+    // Ausentes no PUT mantêm o valor atual (o toggle de status não os envia).
+    ...promoSchemaFields,
   })
-  .strict();
+  .strict()
+  .superRefine((category, ctx) => {
+    const message = promoIssue(category);
+    if (message) ctx.addIssue({ code: "custom", message });
+  });
 
 export type UpdateCategoryDTO = z.infer<typeof updateCategorySchema>;

@@ -27,7 +27,6 @@ import { Menu } from "@/pages/client/Menu";
 import { Cart } from "@/pages/client/Cart";
 import { ProductDetail } from "@/pages/client/ProductDetail";
 import { ConfirmOrder } from "@/pages/client/ConfirmOrder";
-import { Orders } from "@/pages/client/Orders";
 import { TableBill } from "@/pages/client/TableBill";
 
 import { clientPaths, clientTarget } from "./paths";
@@ -217,15 +216,6 @@ function ClientPages() {
               onNavigate={goTo}
             />
           }
-        />
-        <Route 
-          path="pedidos" 
-          element={
-            <Orders 
-              tableToken={tableToken} 
-              onNavigate={goTo} 
-            />
-          } 
         />
         <Route
           path="conta"

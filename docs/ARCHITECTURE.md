@@ -119,7 +119,7 @@ Entre suas responsabilidades:
 - gerenciar funcionários;
 - controlar estoque;
 - visualizar todos os atendimentos;
-- acompanhar pedidos;
+- consultar o consumo da conta;
 - acompanhar vendas;
 - visualizar faturamento diário;
 - visualizar faturamento mensal;
@@ -453,37 +453,9 @@ Atendimento cancelado administrativamente.
 
 ## 11. Status do Pedido
 
-Status definidos:
-
-```text
-PENDING
-PREPARING
-READY
-DELIVERED
-CANCELLED
-```
-
-Fluxo normal:
-
-```text
-PENDING
-   ↓
-PREPARING
-   ↓
-READY
-   ↓
-DELIVERED
-```
-
-Fluxo alternativo:
-
-```text
-qualquer estado permitido
-        ↓
-CANCELLED
-```
-
-As transições devem ser validadas pelo Service.
+Os estados são `PENDING` (registrado) e `CANCELLED` (cancelado administrativamente).
+Não há acompanhamento de preparo ou entrega. O cliente consulta o consumo em
+`GET /tables/by-token/:token/bill`, sem estados de pedido.
 
 ---
 

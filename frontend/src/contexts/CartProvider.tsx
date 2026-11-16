@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { Product } from "@/services/menu.service";
+import { fetchProducts, unitPrice, type Product } from "@/services/menu.service";
 import { CartContext, type CartLine } from "./CartContext";
 
 const CART_STORAGE_KEY = "mesaflow:cart";
@@ -27,6 +27,22 @@ export function CartProvider({
   const [items, setItems] = useState<CartLine[]>(() =>
     loadInitialItems(storageKey),
   );
+
+  // O carrinho salvo guarda o produto da época; atualiza preço/promoção pelo
+  // catálogo atual. Só exibição: o backend sempre cobra o preço vigente.
+  useEffect(() => {
+    if (!loadInitialItems(storageKey).length) return;
+    const controller = new AbortController();
+    fetchProducts(controller.signal)
+      .then((products) => {
+        const byId = new Map(products.map((product) => [product.id, product]));
+        setItems((current) =>
+          current.map((line) => ({ ...line, product: byId.get(line.product.id) ?? line.product })),
+        );
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [storageKey]);
 
   useEffect(() => {
     try {
@@ -88,7 +104,7 @@ export function CartProvider({
 
   const itemCount = items.reduce((sum, line) => sum + line.quantity, 0);
   const subtotal = items.reduce(
-    (sum, line) => sum + Number(line.product.price) * line.quantity,
+    (sum, line) => sum + unitPrice(line.product) * line.quantity,
     0,
   );
   const total = subtotal;

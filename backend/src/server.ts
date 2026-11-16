@@ -14,8 +14,10 @@ import { mkdir } from "node:fs/promises";
 import { attendanceRoutes } from "./modules/attendance/attendance.routes.js";
 import { tableRoutes } from "./modules/tables/table.routers.js";
 import { paymentRoutes } from "./modules/payments/payment.routes.js";
+import { reportRoutes } from "./modules/reports/report.routes.js";
 import { registerAuthRoutes } from "./modules/auth/auth.router.js";
 import { registerUserRoutes } from "./modules/users/user.router.js";
+import { registerSettingsRoutes } from "./modules/settings/settings.routes.js";
 import { requireApiAuthentication } from "./shared/api-access.js";
 
 export const app = fastify({ logger: true, trustProxy: true });
@@ -23,8 +25,14 @@ export const app = fastify({ logger: true, trustProxy: true });
 await mkdir(uploadsRootDirectory, { recursive: true });
 
 //plugins
-app.register(swaggerPlugin);
-app.register(fastifyJwt, { secret: env.JWT_SECRET });
+// A documentação da API só existe fora de produção.
+if (process.env.NODE_ENV !== "production") app.register(swaggerPlugin);
+// Algoritmo fixo: nem a assinatura nem a verificação aceitam outro.
+app.register(fastifyJwt, {
+  secret: env.JWT_SECRET,
+  sign: { algorithm: "HS256" },
+  verify: { algorithms: ["HS256"] },
+});
 app.register(fastifyCors, {
   origin: env.FRONTEND_URL,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -59,6 +67,8 @@ app.register(
     await instance.register(attendanceRoutes);
     await instance.register(tableRoutes);
     await instance.register(paymentRoutes);
+    await instance.register(reportRoutes);
+    await instance.register(registerSettingsRoutes);
   },
   { prefix: "/api/v1" },
 );

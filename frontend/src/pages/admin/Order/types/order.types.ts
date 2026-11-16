@@ -13,6 +13,7 @@ export type CompletedPayment = {
 };
 
 export type OrderItem = {
+  productId?: string;
   name: string;
   quantity: number;
   unitPrice: number;
@@ -31,10 +32,28 @@ export type Order = OrderSummary & {
   payment?: {
     entries: CompletedPayment[];
     closedAt: string;
+    /** Dia do fechamento (AAAA-MM-DD), base dos indicadores de vendas. */
+    closedOn?: string;
     serviceFee?: number;
-    serviceFeeWaived?: boolean;
     orderIds?: number[];
   };
+};
+
+/** Produto do cardápio oferecido no formulário de pedido. */
+export type OrderCatalogProduct = {
+  id: string;
+  name: string;
+  unitPrice: number;
+  /** null = produto sem controle de estoque. */
+  stock: number | null;
+};
+
+export type OrderTableOption = { id: string; label: string };
+
+export type OrderFormChanges = {
+  tableId: string;
+  items: OrderItem[];
+  observation?: string;
 };
 
 export type OrdersHandle = {
@@ -55,7 +74,7 @@ export type OrderFilter = "all" | OrderStatus;
 
 export type OrderSort = "newest" | "oldest";
 
-export type OrderPeriod = "today" | "7days" | "30days" | "all" | "specific";
+export type OrderPeriod = "today" | "yesterday" | "7days" | "30days" | "all" | "specific";
 
 export type OrderSummary = {
   id: number;

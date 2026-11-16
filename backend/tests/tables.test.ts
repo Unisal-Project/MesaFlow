@@ -56,6 +56,7 @@ function fixture(initialStatus?: string) {
       );
   };
   const client: any = {
+    order: { count: async () => 0 },
     restaurantTable: {
       create: async ({ data }: any) => {
         assertLocked();
@@ -137,11 +138,32 @@ function fixture(initialStatus?: string) {
   };
 }
 
+test("table with consumption cannot bypass payment through status changes", async () => {
+  const { service, row, client, attendances } = fixture("AWAITING_PAYMENT");
+  client.order.count = async ({ where }: any) => {
+    assert.equal(where.attendanceId, 1n);
+    assert.deepEqual(where.status, { not: "CANCELLED" });
+    return 1;
+  };
+  await assert.rejects(
+    service.changeStatus(
+      { id: row().id },
+      { status: "available", attendanceId: 1n },
+    ),
+    {
+      statusCode: 409,
+      message: "Registre o pagamento para fechar uma conta com consumo.",
+    },
+  );
+  assert.equal(attendances()[0].status, "AWAITING_PAYMENT");
+});
+
 test("creation assigns unique tokens; editing preserves the QR URL", async () => {
   const { service, row } = fixture();
   const first = await service.createTable({
     number: 5,
     name: "Varanda",
+    seats: 4,
     active: true,
   });
   assert.match(row().qrToken, /^[0-9a-f-]{36}$/);
@@ -149,12 +171,13 @@ test("creation assigns unique tokens; editing preserves the QR URL", async () =>
   assert.equal(new URL(first.menuUrl).searchParams.get("mesa"), row().qrToken);
   const edited = await service.editTable(
     { id: row().id },
-    { number: 6, name: "Jardim", active: true },
+    { number: 6, name: "Jardim", seats: 2, active: true },
   );
   assert.equal(edited.menuUrl, first.menuUrl);
   const second = await service.createTable({
     number: 7,
     name: "Outra",
+    seats: 4,
     active: true,
   });
   assert.notEqual(first.menuUrl, second.menuUrl);
@@ -269,7 +292,7 @@ test("inactive and missing tables cannot start; occupied tables cannot be deacti
     await assert.rejects(
       occupied.service.editTable(
         { id: occupied.row().id },
-        { number: 5, name: "Varanda", active: false },
+        { number: 5, name: "Varanda", seats: 4, active: false },
       ),
       { statusCode: 409 },
     );
@@ -443,7 +466,7 @@ test("write errors keep their application messages and status codes", async () =
     client.restaurantTable[operation] = async () => {
       throw databaseError(code);
     };
-    const data = { number: 5, name: "Varanda", active: true };
+    const data = { number: 5, name: "Varanda", seats: 4, active: true };
     const result =
       operation === "create"
         ? service.createTable(data)
@@ -483,7 +506,7 @@ test("unexpected failures are preserved and status changes do not reuse CRUD err
     throw unexpected;
   };
   await assert.rejects(
-    service.createTable({ number: 5, name: "Varanda", active: true }),
+    service.createTable({ number: 5, name: "Varanda", seats: 4, active: true }),
     (actual: unknown) => actual === unexpected,
   );
 });
@@ -503,14 +526,19 @@ test("repository returns domain entities and copies attendance projections", asy
 
   const result = await repository.findByIdWithAttendance(row().id);
   assert.ok(result?.table instanceof TableEntity);
-  assert.deepEqual(result.attendance, { id: 1n, status: "OPEN" });
+  const { id, status } = result.attendance!;
+  assert.deepEqual({ id, status }, { id: 1n, status: "OPEN" });
   assert.notEqual(result.attendance, attendances()[0]);
   result.attendance!.status = "CANCELLED";
   assert.equal(attendances()[0].status, "OPEN");
-  assert.deepEqual((await repository.findAllWithAttendance())[0].attendance, {
-    id: 1n,
-    status: "OPEN",
-  });
+  const listed = (await repository.findAllWithAttendance())[0].attendance!;
+  assert.deepEqual(
+    { id: listed.id, status: listed.status },
+    {
+      id: 1n,
+      status: "OPEN",
+    },
+  );
   assert.equal(await repository.findById(99n), null);
   assert.equal(await repository.findByIdWithAttendance(99n), null);
 });

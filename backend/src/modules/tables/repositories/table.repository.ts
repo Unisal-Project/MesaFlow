@@ -33,6 +33,7 @@ export interface TableRepository {
 export interface CreateTableData {
   number: number;
   name: string;
+  seats: number;
   active: boolean;
   qrToken: string;
 }
@@ -40,5 +41,6 @@ export interface CreateTableData {
 export interface UpdateTableData {
   number: number;
   name: string;
+  seats: number;
   active: boolean;
 }

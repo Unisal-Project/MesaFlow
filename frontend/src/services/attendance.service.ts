@@ -1,4 +1,3 @@
-import { authHeaders } from "./auth.service";
 import { apiRequest } from "@/api/client";
 
 export type ClosingRequestedAttendance = {
@@ -31,7 +30,7 @@ export type CancelledRequestAttendance = {
 };
 
 export const findClosingRequestedAttendances= async () => {
-    return apiRequest<ClosingRequestedAttendance[]>(`/attendances/closing-requested`, { headers: authHeaders() });
+    return apiRequest<ClosingRequestedAttendance[]>(`/attendances/closing-requested`);
 };
 
 export const setClosingRequestedAttendances = async (attendanceId: string) => {
@@ -41,7 +40,7 @@ export const setClosingRequestedAttendances = async (attendanceId: string) => {
 }
 
 export const findCancelledAttendances= async () => {
-    return apiRequest<CancelledRequestAttendance[]>(`/attendances/cancelled`, { headers: authHeaders() });
+    return apiRequest<CancelledRequestAttendance[]>(`/attendances/cancelled`);
 }
 
 export const setCancelledRequestedAttendances = async (attendanceId: string) => {

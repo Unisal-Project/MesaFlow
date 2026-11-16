@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
@@ -13,7 +14,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
       for (const path of [
         "/health",
         "/auth/login",
-        "/auth/register",
         "/categories",
         "/categories/:id",
         "/products",
@@ -34,13 +34,12 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
         });
       }
       for (const [method, path] of [
-        ["POST", "/categories"],
-        ["PATCH", "/products/:id"],
         ["GET", "/tables"],
         ["POST", "/orders"],
         ["GET", "/attendances/:id/open"],
         ["POST", "/attendances/:id/confirm-payment"],
         ["GET", "/users"],
+        ["PATCH", "/auth/password"],
       ] as const)
         api.route({ method, url: path, handler: async () => ({ ok: true }) });
     },
@@ -51,7 +50,6 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
   for (const [method, path] of [
     ["GET", "/health"],
     ["POST", "/auth/login"],
-    ["POST", "/auth/register"],
     ["GET", "/categories"],
     ["GET", "/categories/1"],
     ["GET", "/products"],
@@ -67,18 +65,17 @@ test("API requires JWT except for auth, menu, health and QR token routes", async
     );
 
   const token = app.jwt.sign({
-    id: "1",
+    id: "2",
     email: "staff@example.com",
     role: "EMPLOYEE",
   });
   for (const [method, path] of [
-    ["POST", "/categories"],
-    ["PATCH", "/products/1"],
     ["GET", "/tables"],
     ["POST", "/orders"],
     ["GET", "/attendances/1/open"],
     ["POST", "/attendances/1/confirm-payment"],
     ["GET", "/users"],
+    ["PATCH", "/auth/password"],
   ] as const) {
     assert.equal(
       (await app.inject({ method, url: `/api/v1${path}` })).statusCode,

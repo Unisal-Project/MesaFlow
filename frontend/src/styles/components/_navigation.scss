@@ -131,7 +131,6 @@ small {
   color: var(--on-primary);
 }
 .profile-area {
-  margin-top: auto;
   padding: var(--spacing-4) var(--spacing-3) 0;
   border-top: 1px solid color-mix(in srgb, var(--sidebar-text) 16%, transparent);
   strong,
@@ -168,7 +167,9 @@ html.admin-workspace-active body {
 .orders-page,
 .tables-page,
 .products-page,
-.reports-page {
+.reports-page,
+.promotions-page,
+.settings-page {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   min-height: 100dvh;
@@ -193,7 +194,8 @@ html.admin-workspace-active body {
   .orders-topbar,
   .tables-topbar,
   .products-topbar,
-  .reports-topbar {
+  .reports-topbar,
+  .promotions-topbar {
     position: sticky;
     top: 0;
     z-index: 20;
@@ -202,7 +204,8 @@ html.admin-workspace-active body {
   .orders-body,
   .tables-body,
   .products-body,
-  .reports-body {
+  .reports-body,
+  .promotions-body {
     animation: admin-page-enter 420ms cubic-bezier(.22, .61, .36, 1);
   }
   .admin-brand {
@@ -259,6 +262,13 @@ html.admin-workspace-active body {
     background: var(--accent);
     color: var(--text-inverse);
     font-size: var(--font-size-xs);
+    overflow: hidden;
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
   .notifications-button {
     width: 40px;
@@ -294,4 +304,70 @@ html.admin-workspace-active body {
 .table-status-tabs button,
 .products-tabs button {
   transition: background-color variables.$transition-standard, color variables.$transition-standard;
+}
+/* Bloco do usuário vira botão do menu da conta, mantendo o visual. */
+.admin-profile {
+  position: relative;
+  margin-top: auto;
+}
+.admin-sidebar .admin-profile > button.profile-area {
+  display: grid;
+  gap: 0 var(--spacing-3);
+  width: 100%;
+  min-height: 0;
+  margin-bottom: 0;
+  padding: var(--spacing-6) var(--spacing-2) var(--spacing-3);
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--sidebar-text) 16%, transparent);
+  border-radius: 0;
+  background: transparent;
+  font-weight: inherit;
+  cursor: pointer;
+}
+.admin-sidebar .admin-profile-icon {
+  display: none;
+}
+.admin-profile-menu {
+  position: absolute;
+  z-index: 70;
+  right: 0;
+  bottom: calc(100% + var(--spacing-2));
+  left: 0;
+  display: grid;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  background: var(--surface);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--text) 16%, transparent);
+  &[hidden] {
+    display: none;
+  }
+}
+.admin-sidebar .admin-profile .admin-profile-menu > .admin-profile-menu-item {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: var(--spacing-3);
+  width: 100%;
+  min-height: 40px;
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-small);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  &:hover,
+  &:focus-visible {
+    background: var(--selected-background);
+    color: var(--primary);
+  }
+}
+
+.admin-menu-trigger,
+.admin-sidebar button.admin-menu-close,
+.admin-sidebar-backdrop {
+  display: none;
 }

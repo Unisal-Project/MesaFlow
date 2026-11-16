@@ -7,11 +7,19 @@ export type TableRecord = TableIdentity & {
   menuUrl: string;
   status: TableStatus;
   attendanceId: string | null;
+  seats: number;
+  openedAt: string | null;
+  closingRequestedAt: string | null;
 };
-export type TableInput = { number: number; name: string; active: boolean };
+export type TableInput = {
+  number: number;
+  name: string;
+  seats: number;
+  active: boolean;
+};
 
 export const fetchTables = () => apiRequest<TableRecord[]>("/tables");
-export const changeTableStatus = (table: TableRecord, status: TableStatus) => apiRequest<TableRecord>(`/tables/${table.id}/status`, {
+export const changeTableStatus = (table: Pick<TableRecord, "id" | "attendanceId">, status: TableStatus) => apiRequest<TableRecord>(`/tables/${table.id}/status`, {
   method: "PATCH",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ status, attendanceId: table.attendanceId }),

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 
+import { adminOrderRoutes } from "./admin-order.controller.js";
 import {
   createOrderController,
   findOrdersByAttendanceIdController,
@@ -12,4 +13,6 @@ export async function orderRoutes(app: FastifyInstance) {
   );
 
   app.post("/orders", createOrderController);
+
+  await adminOrderRoutes(app);
 }

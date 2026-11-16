@@ -75,10 +75,10 @@ Pode:
 
 - visualizar pedidos;
 - visualizar mesa de origem;
-- atualizar status dos pedidos;
+- consultar pedidos pendentes e cancelados;
 - alterar quantidade ou itens quando necessário;
 - personalizar pedidos;
-- cancelar pedidos;
+- solicitar ao administrador cancelamento/exclusão de pedidos;
 - visualizar comandas;
 - finalizar atendimentos;
 - registrar pagamentos;
@@ -89,6 +89,7 @@ Pode:
 
 Possui as permissões de funcionário e também pode:
 
+- cancelar/excluir pedidos com motivo opcional e devolução opcional ao estoque;
 - cadastrar e editar produtos;
 - cadastrar categorias;
 - cadastrar mesas;
@@ -167,6 +168,12 @@ CANCELLED
 - funcionário deve realizar fechamento/pagamento;
 - não deve ser tratado como atendimento encerrado.
 
+### AWAITING_PAYMENT
+
+- conta aguardando recebimento;
+- atendimento ainda não está encerrado e a mesa não está livre;
+- novos pedidos não são permitidos.
+
 ### CLOSED
 
 - atendimento finalizado;
@@ -190,6 +197,7 @@ Cada produto possui:
 - descrição;
 - preço atual;
 - quantidade em estoque;
+- `track_stock` (controlar estoque);
 - `available`;
 - `active`.
 
@@ -199,21 +207,41 @@ Indica se o produto faz parte do catálogo do estabelecimento.
 
 `active = false` significa que o produto foi descontinuado ou removido do cardápio.
 
+Produtos ativos precisam de uma categoria principal. Produtos inativos podem ter `category_id = NULL` depois da exclusão da categoria; criar, editar ou reativar um produto exige categoria válida. A exclusão simples de categoria com apenas inativos desvincula esses produtos e preserva os registros. Com produtos ativos, é necessário escolher entre mover para outra categoria ou excluir a categoria e retirar seus produtos do cardápio (`active=false`, categoria nula), após confirmação. Os produtos que tinham essa categoria apenas como adicional continuam no cardápio e perdem só a associação. Pedidos, itens vendidos e relatórios são preservados.
+
 ### `available`
 
 Indica disponibilidade operacional atual.
 
 Um produto pode continuar cadastrado e ativo, mas estar temporariamente indisponível.
 
+### `track_stock`
+
+Indica se o produto tem controle de estoque. Padrão `true` (produtos existentes continuam controlados).
+
+Com `track_stock = false` (ex.: itens feitos sob demanda):
+
+- o produto nunca esgota; a disponibilidade depende só de `available` e `active`;
+- pedidos não debitam nem repõem estoque e não geram `stock_movements`;
+- a quantidade por pedido fica limitada apenas pelos limites gerais do pedido (QR: até 99 por item e 100 itens por pedido).
+
+Ligar o controle exige informar uma quantidade válida.
+
+Limitação conhecida: trocar "Controlar estoque" com pedidos abertos não reconcilia retroativamente o estoque. Cancelamentos/edições seguem o modo atual do produto; evite essa troca até finalizar os pedidos envolvidos.
+
+### Destaques
+
+`products.featured` é um booleano, padrão false, escolhido pelo administrador. Destaque organiza a seção do cardápio; não altera preço, promoção, disponibilidade ou estoque.
+
 ### Estoque zero
 
-Quando:
+Quando o produto controla estoque e:
 
 ```text
 stock_quantity = 0
 ```
 
-o produto deve ser considerado indisponível para novos pedidos.
+o produto deve ser considerado indisponível para novos pedidos e aparece como "Esgotado" no cardápio.
 
 O backend deve impedir a inclusão do produto sem estoque.
 
@@ -226,6 +254,24 @@ O backend deve impedir a inclusão do produto sem estoque.
 `order_items.unit_price` representa o preço cobrado no momento da venda.
 
 Nunca recalcular uma venda antiga usando `products.price`.
+
+### Promoções
+
+Produto e categoria podem ter promoção: tipo `PERCENT` (inteiro de 1 a 90) ou `AMOUNT` (valor em R$), mais `promo_active` (liga/desliga sem perder a configuração) e datas opcionais `promo_starts_at`/`promo_ends_at`.
+
+A promoção vale quando está ligada e dentro da vigência: início vazio ou já passado, e fim vazio ou ainda não alcançado. Sem fim, vale até o administrador desligar.
+
+O preço efetivo de um produto é calculado sempre pelo servidor, no momento do pedido:
+
+- a promoção do produto, se vigente, vence a da categoria;
+- senão vale a promoção da categoria PRINCIPAL; categorias adicionais nunca aplicam promoção;
+- o cálculo é em centavos (percentual arredondado half-up) e o preço final mínimo é R$ 0,01;
+- promoção de produto em R$ maior ou igual ao preço é recusada no cadastro;
+- promoção de categoria em R$ maior ou igual ao preço de um produto é ignorada para aquele produto (ele fica com o preço cheio).
+
+O preço cobrado (`order_items.unit_price`) é o preço efetivo, nos pedidos via QR Code, via funcionário/admin e na inclusão de itens novos ao editar um pedido. Itens que já estavam no pedido mantêm o preço da venda. O cliente nunca envia preço nem desconto.
+
+Conta, fechamento e relatórios usam o `unit_price` gravado, por isso refletem a promoção sem cálculo adicional.
 
 Exemplo:
 
@@ -276,6 +322,8 @@ Se qualquer etapa falhar, toda a operação deve sofrer rollback.
 ## 10. Estoque
 
 O estoque é debitado no momento em que o pedido é confirmado/criado.
+
+As regras desta seção e das seções 11 e 16 valem apenas para produtos com `track_stock = true` (ver seção 7).
 
 Exemplo:
 
@@ -439,19 +487,11 @@ Pedido cancelado nunca deve ser excluído fisicamente.
 
 ---
 
-## 15. Cancelamento por funcionário ou administrador
+## 15. Cancelamento e exclusão administrativa
 
-Funcionário e administrador podem cancelar pedidos depois dos 5 minutos.
+Somente ADMIN cancela ou exclui pedidos pelo painel (`backend/src/shared/api-access.ts`). O motivo é opcional para o operador: a ação Excluir usa o padrão **"Excluído pelo administrador"**; o DTO recebe um motivo válido (3–500 caracteres). A devolução ao estoque é opcional e depende da confirmação de que os itens não foram usados. Funcionários não têm essa permissão.
 
-O cancelamento deve registrar:
-
-- `cancelled_at`;
-- `cancelled_by`;
-- `cancellation_source`;
-- `cancellation_reason`;
-- `restore_stock`.
-
-Para funcionário/admin, o motivo deve ser obrigatório na regra de negócio.
+Cancelamento preserva os registros históricos e grava `cancelled_at`, `cancelled_by`, `cancellation_source`, `cancellation_reason` e `restore_stock`. Não é uma exclusão física de itens vendidos.
 
 ---
 
@@ -508,31 +548,7 @@ A regra deve ser validada antes de qualquer movimentação.
 
 ## 18. Status de pedidos
 
-Status da V1:
-
-```text
-PENDING
-PREPARING
-READY
-DELIVERED
-CANCELLED
-```
-
-Fluxo esperado:
-
-```text
-PENDING
-   ↓
-PREPARING
-   ↓
-READY
-   ↓
-DELIVERED
-```
-
-`CANCELLED` representa saída excepcional do fluxo.
-
-Mudanças inválidas de estado devem ser rejeitadas pelo Service.
+Os únicos estados atuais são `PENDING` e `CANCELLED` (`backend/prisma/schema.prisma`, enum OrderStatus). Não existe fluxo de preparo ou entrega no sistema atual. O pedido pendente integra o consumo; o cancelado permanece no histórico e não integra o consumo cobrado. O fechamento pertence ao atendimento, não muda o pedido para um estado de preparo/entrega.
 
 ---
 
@@ -582,6 +598,10 @@ CREDIT_CARD: R$50
 
 ## 20. Fechamento do atendimento
 
+A taxa de serviço é configurável pelo administrador: de **0% a 20%**, com até duas casas decimais, padrão **10%**. O sistema possui um restaurante e uma configuração (`restaurant_settings`, id=1). Funcionários podem consultar a taxa, mas não alterá-la.
+
+O backend consulta o percentual do banco dentro da transação de fechamento. Calcula em centavos, arredondando a taxa, e exige que os pagamentos somem consumo + taxa. Taxa 0% ou isenção (`serviceFeeWaived`) cobram só o consumo. O valor efetivamente cobrado é gravado em `attendances.service_fee`; alterações futuras do percentual não mudam contas fechadas, histórico ou relatórios. Informações públicas do restaurante não incluem o percentual.
+
 Antes de fechar um atendimento, validar:
 
 - atendimento não está fechado;
@@ -597,6 +617,10 @@ closed_by = funcionário/admin
 ```
 
 A mesa automaticamente passa a ser considerada livre.
+
+### Reabrir uma conta
+
+A reabertura administrativa preserva o histórico: pagamentos PAID passam a CANCELLED (estorno lógico, não transferência financeira), o atendimento volta a OPEN e a mesa volta a ocupada. Os relatórios contabilizam somente pagamentos PAID. O fluxo segue lock mesa → atendimento (`prisma-admin-order.repository.ts`, reopen).
 
 ---
 
@@ -644,6 +668,16 @@ Isso permite obter:
 - ticket médio;
 - produtos mais vendidos;
 - quantidade vendida.
+
+Regra dos relatórios:
+
+- receita (faturamento) = soma dos pagamentos `PAID` − taxa de serviço dos
+  atendimentos fechados, ou seja, receita **líquida** da taxa;
+- ticket médio = receita líquida ÷ pedidos concluídos;
+- a taxa de serviço é exibida à parte ("Taxa de serviço arrecadada");
+- a distribuição por forma de pagamento usa os valores pagos (com taxa);
+  pagamentos sem forma registrada (ex.: fechamento pelo QR) aparecem como
+  "Não informado" (`UNKNOWN`), nunca como dinheiro.
 
 ---
 

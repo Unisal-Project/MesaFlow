@@ -4,13 +4,19 @@ export const adminPaths: Record<string, string> = {
   tables: "/admin/mesas",
   menu: "/admin/cardapio",
   reports: "/admin/relatorios",
+  promotions: "/admin/cardapio/promocoes",
+  menuPreview: "/admin/ver-cardapio",
+  menuPreviewFromProducts: "/admin/ver-cardapio?origem=produtos",
+  menuPreviewProduct: "/admin/ver-cardapio/produto",
+  menuPreviewCart: "/admin/ver-cardapio/carrinho",
+  menuPreviewBill: "/admin/ver-cardapio/conta",
+  settings: "/admin/configuracoes",
 };
 
 export const clientPaths: Record<string, string> = {
   home: "/cliente",
   menu: "/cardapio",
   order: "/carrinho",
-  orders: "/pedidos",
   bill: "/conta",
   review: "/confirmar-pedido",
 };

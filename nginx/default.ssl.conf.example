@@ -1,0 +1,51 @@
+# EXEMPLO DESLIGADO: substituir domínio e montar certificados antes de ativar.
+server {
+    listen 80;
+    server_name mesaflow.example.com;
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://mesaflow.example.com$request_uri; }
+}
+server {
+    # TLS termina neste Nginx; certificados montados somente para leitura.
+    listen 443 ssl;
+    # Substitua todas as ocorrências do domínio de exemplo.
+    server_name mesaflow.example.com;
+    ssl_certificate /etc/letsencrypt/live/mesaflow.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/mesaflow.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header X-Frame-Options DENY always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'" always;
+    # Multipart permite arquivos de 5 MB, mais o envelope da requisição.
+    client_max_body_size 6m;
+
+    # Arquivos gerados pelo build do React, copiados para a imagem do Nginx.
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Repassa a API ao serviço "backend" pela rede interna do Docker.
+    # Sem barra final em proxy_pass: preserva /api/v1/... na URL enviada ao Fastify.
+    location /api/v1/ {
+        proxy_pass http://backend:3333;
+        
+        # Mantém a origem e o IP do cliente disponíveis para o backend e seus logs.
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # As imagens enviadas pelo sistema são servidas pelo backend no mesmo domínio.
+    location /uploads/ {
+        proxy_pass http://backend:3333;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Entrega arquivos estáticos; rotas do React voltam ao index.html para a SPA.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

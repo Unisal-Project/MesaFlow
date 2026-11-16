@@ -1,0 +1,78 @@
+.settings-content {
+  min-width: 0;
+  padding: var(--spacing-7) var(--spacing-9) var(--spacing-10);
+  h1 {
+    margin: 0 0 var(--spacing-6);
+  }
+}
+.settings-card {
+  max-width: 560px;
+  padding: var(--spacing-6);
+  border-radius: 24px;
+  background: var(--surface);
+  box-shadow: 0 4px 20px color-mix(in srgb, var(--primary) 5%, transparent);
+  h2 {
+    margin: 0 0 var(--spacing-4);
+    font-size: var(--font-size-lg);
+  }
+  dl {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: var(--spacing-3) var(--spacing-6);
+    margin: 0;
+  }
+  dt {
+    color: var(--text-secondary);
+  }
+  dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+}
+.settings-card + .settings-card {
+  margin-top: var(--spacing-6);
+}
+.settings-password-form {
+  display: grid;
+  gap: var(--spacing-4);
+  justify-items: start;
+  .field {
+    width: 100%;
+  }
+}
+.settings-message {
+  margin: 0;
+  color: var(--success);
+  &--error {
+    color: var(--error);
+  }
+}
+.settings-soon {
+  color: var(--text-secondary);
+}
+@media (max-width: 640px) {
+  .settings-content {
+    padding: var(--spacing-6) var(--spacing-4);
+  }
+}
+
+.settings-restaurant-form {
+  display: grid;
+  gap: var(--spacing-6);
+  section { display: grid; gap: var(--spacing-4); }
+  section h2 { margin-bottom: var(--spacing-0); }
+  p { margin: var(--spacing-0); color: var(--text-secondary); font-size: var(--font-size-sm); }
+}
+.settings-fee-choices {
+  display: flex; flex-wrap: wrap; gap: var(--spacing-4);
+  margin: var(--spacing-0); padding: var(--spacing-3);
+  border: 1px solid var(--border); border-radius: var(--radius-medium);
+  legend { font-size: var(--font-size-sm); color: var(--text-secondary); }
+  .radio-control { min-height: var(--spacing-11); }
+}
+.settings-restaurant-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-3); }
+
+.settings-content { max-width: 1200px; width: 100%; margin-inline: auto; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--spacing-6); align-items: start; }
+.settings-content > h1 { grid-column: 1 / -1; margin: 0; }
+.settings-content .settings-card { max-width: none; min-width: 0; margin: 0; }
+@media (max-width: 800px) { .settings-content { grid-template-columns: minmax(0, 1fr); } }

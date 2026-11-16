@@ -1,185 +1,273 @@
-import { useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { initialCategories } from "../mocks/categories.mock";
+import {
+  fetchCategories,
+  removeCategory,
+  saveCategory,
+  saveProduct,
+  type Category as ApiCategory,
+} from "@/services/menu.service";
+
+import {
+  emptyPromoForm,
+  toPromoForm,
+  toPromoInput,
+} from "@/utils/promotion";
 
 import type {
   Category,
   CategoryForm,
+  CategoryProductMove,
 } from "../types/category.types";
+import { toDecimal } from "../../Products/utils/decimal";
 
 const emptyCategoryForm: CategoryForm = {
   name: "",
   description: "",
   active: true,
+  promo: emptyPromoForm,
 };
 
-export function useCategories(onRename?: (previousName: string, nextName: string) => void) {
-  // Estados
-  const [categories, setCategories] = useState<Category[]>(initialCategories);
+const message = (error: unknown) =>
+  error instanceof Error ? error.message : "Não foi possível acessar o servidor";
 
+// productCount é calculado pela tela a partir da lista de produtos.
+const toCategory = (record: ApiCategory): Category => ({
+  id: record.id,
+  name: record.name,
+  description: record.description ?? "",
+  active: record.active,
+  productCount: 0,
+  promoType: record.promoType ?? null,
+  promoValue: record.promoValue ?? null,
+  promoActive: record.promoActive ?? false,
+  promoStartsAt: record.promoStartsAt ?? null,
+  promoEndsAt: record.promoEndsAt ?? null,
+});
+
+export function useCategories(
+  onRename?: (previousName: string, nextName: string) => void,
+) {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  const [editingCategoryId, setEditingCategoryId] = useState<number | null>(
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(
     null,
   );
-
   const [categoryForm, setCategoryForm] =
     useState<CategoryForm>(emptyCategoryForm);
-
+  // Formulário como foi aberto; diferença = alterações não salvas.
+  const [savedForm, setSavedForm] = useState<CategoryForm>(emptyCategoryForm);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null,
   );
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Pesquisa
+  const reload = useCallback(
+    () =>
+      fetchCategories()
+        .then((records) => {
+          setCategories(records.map(toCategory));
+          setError("");
+        })
+        .catch((err: unknown) => setError(message(err)))
+        .finally(() => setLoading(false)),
+    [],
+  );
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const replaceCategory = (category: Category) =>
+    setCategories((current) =>
+      current.map((entry) => (entry.id === category.id ? category : entry)),
+    );
+
   const normalizedSearch = searchQuery.trim().toLocaleLowerCase("pt-BR");
-
   const filteredCategories = categories.filter((category) =>
     `${category.name} ${category.description}`
       .toLocaleLowerCase("pt-BR")
       .includes(normalizedSearch),
   );
 
-  // Fechar formulário
   const closeModal = () => {
     setIsModalOpen(false);
     setEditingCategoryId(null);
     setCategoryForm(emptyCategoryForm);
+    setError("");
   };
 
-  // Abrir formulário para cadastro
   const openNewCategory = () => {
     setEditingCategoryId(null);
     setCategoryForm(emptyCategoryForm);
+    setSavedForm(emptyCategoryForm);
+    setError("");
     setIsModalOpen(true);
   };
 
-  // Abrir formulário para edição
   const openEditCategory = (category: Category) => {
     setEditingCategoryId(category.id);
-
-    setCategoryForm({
+    const form: CategoryForm = {
       name: category.name,
       description: category.description,
       active: category.active,
-    });
-
+      promo: toPromoForm(category),
+    };
+    setCategoryForm(form);
+    setSavedForm(form);
+    setError("");
     setIsModalOpen(true);
   };
 
-  // Cadastrar ou editar categoria
-  const handleSaveCategory = (event: FormEvent<HTMLFormElement>) => {
+  const handleSaveCategory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const previousCategory = categories.find((category) => category.id === editingCategoryId);
-    if (previousCategory && previousCategory.name !== categoryForm.name.trim()) {
-      onRename?.(previousCategory.name, categoryForm.name.trim());
-    }
-    setCategories((currentCategories) => {
-      if (editingCategoryId !== null) {
-        return currentCategories.map((category) =>
-          category.id === editingCategoryId
-            ? {
-                ...category,
-                name: categoryForm.name.trim(),
-                description: categoryForm.description.trim(),
-                active: categoryForm.active,
-              }
-            : category,
-        );
-      }
-
-      const nextId =
-        Math.max(0, ...currentCategories.map((category) => category.id)) + 1;
-
-      return [
-        ...currentCategories,
-        {
-          id: nextId,
-          name: categoryForm.name.trim(),
-          description: categoryForm.description.trim(),
-          productCount: 0,
-          active: categoryForm.active,
-        },
-      ];
-    });
-
-    closeModal();
-  };
-
-  // Alterar status
-  const updateCategoryStatus = (categoryId: number, active: boolean) => {
-    setCategories((currentCategories) =>
-      currentCategories.map((category) =>
-        category.id === categoryId ? { ...category, active } : category,
-      ),
+    const previous = categories.find(
+      (category) => category.id === editingCategoryId,
     );
+    const description = categoryForm.description.trim();
+    setBusy(true);
+    try {
+      const saved = toCategory(
+        await saveCategory(
+          {
+            name: categoryForm.name.trim(),
+            description: description || null,
+            active: categoryForm.active,
+            ...toPromoInput({
+              ...categoryForm.promo,
+              promoValue: toDecimal(categoryForm.promo.promoValue),
+            }),
+          },
+          previous?.id,
+        ),
+      );
+      if (previous && previous.name !== saved.name) {
+        onRename?.(previous.name, saved.name);
+      }
+      if (previous) replaceCategory(saved);
+      else setCategories((current) => [...current, saved]);
+      closeModal();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
-  // Solicitar exclusão
+  /** "+ Nova" do formulário de produto: só o nome; o resto na tela própria. */
+  const createCategory = async (name: string) => {
+    const saved = toCategory(
+      await saveCategory({ name: name.trim(), description: null, active: true }),
+    );
+    setCategories((current) => [...current, saved]);
+    return saved;
+  };
+
+  const updateCategoryStatus = async (categoryId: string, active: boolean) => {
+    const category = categories.find((entry) => entry.id === categoryId);
+    if (!category) return;
+    // Atualiza na hora e desfaz se o backend recusar.
+    replaceCategory({ ...category, active });
+    try {
+      await saveCategory(
+        {
+          name: category.name,
+          description: category.description || null,
+          active,
+        },
+        category.id,
+      );
+      setError("");
+    } catch (err) {
+      replaceCategory(category);
+      setError(message(err));
+    }
+  };
+
   const requestCategoryDeletion = (category: Category) => {
+    setError("");
     setCategoryToDelete(category);
   };
 
-  // Solicitar exclusão a partir do formulário de edição
   const requestEditingCategoryDeletion = () => {
-    const category = categories.find(
-      (item) => item.id === editingCategoryId,
-    );
-
+    const category = categories.find((item) => item.id === editingCategoryId);
     if (category) {
       closeModal();
       setCategoryToDelete(category);
     }
   };
 
-  // Cancelar exclusão
   const cancelCategoryDeletion = () => {
     setCategoryToDelete(null);
+    setError("");
   };
 
-  // Confirmar exclusão
-  const confirmCategoryDeletion = () => {
+  /**
+   * Produtos com destino diferente de moveTo são movidos um a um; o DELETE com
+   * moveTo leva o restante (inclusive inativos, que a tela não mostra).
+   */
+  const confirmCategoryDeletion = async (
+    moveTo?: string,
+    moves: CategoryProductMove[] = [],
+    deleteProducts = false,
+  ) => {
     if (!categoryToDelete) return;
-
-    setCategories((currentCategories) =>
-      currentCategories.filter(
-        (category) => category.id !== categoryToDelete.id,
-      ),
-    );
-
-    setCategoryToDelete(null);
+    setBusy(true);
+    try {
+      for (const { product, categoryId } of deleteProducts ? [] : moves) {
+        if (categoryId === moveTo) continue;
+        await saveProduct(
+          {
+            categoryId,
+            additionalCategoryIds: product.additionalCategoryIds.filter(
+              (id) => id !== categoryId && id !== categoryToDelete.id,
+            ),
+          },
+          product.id,
+        );
+      }
+      await removeCategory(categoryToDelete.id, moveTo, deleteProducts);
+      setCategories((current) =>
+        current.filter((category) => category.id !== categoryToDelete.id),
+      );
+      setCategoryToDelete(null);
+      await reload();
+    } catch (err) {
+      setError(message(err));
+    } finally {
+      setBusy(false);
+    }
   };
 
   return {
-    // Dados
     categories,
     filteredCategories,
     normalizedSearch,
-
-    // Pesquisa
     searchQuery,
     setSearchQuery,
-
-    // Formulário
     isModalOpen,
     editingCategoryId,
     categoryForm,
     setCategoryForm,
+    hasUnsavedChanges:
+      JSON.stringify(categoryForm) !== JSON.stringify(savedForm),
+    createCategory,
     closeModal,
     openNewCategory,
     openEditCategory,
     handleSaveCategory,
-
-    // Status
     updateCategoryStatus,
-
-    // Exclusão
     categoryToDelete,
     requestCategoryDeletion,
     requestEditingCategoryDeletion,
     cancelCategoryDeletion,
     confirmCategoryDeletion,
+    error,
+    busy,
+    loading,
+    reload,
   };
 }

@@ -61,6 +61,6 @@ export const nextStatus: Record<
 
   awaiting_payment: {
     status: "available",
-    label: "Fechar atendimento e liberar mesa",
+    label: "Encerrar atendimento sem consumo",
   },
 };

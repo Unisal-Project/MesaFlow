@@ -1,5 +1,5 @@
 import { calculateBill } from "@/utils/serviceFee";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote,
   CheckCircle2,
@@ -13,7 +13,8 @@ import {
 
 import type { PaymentMethod, CompletedPayment } from "../types/order.types";
 
-import { Button } from "@/components";
+import { fetchSettings } from "@/services/settings.service";
+import { Button, SkeletonCard, SystemMessage } from "@/components";
 
 type PaymentDraft = {
   id: number;
@@ -53,20 +54,53 @@ const parseAmount = (value: string) => {
   return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
 };
 
-const toInputAmount = (cents: number) => (cents / 100).toFixed(2);
+const toInputAmount = (cents: number) =>
+  (cents / 100).toFixed(2).replace(".", ",");
+/** Percentual digitado com vírgula ou ponto. */
+const parseRate = (value: string) => Number(value.replace(",", "."));
 
-export function PaymentModal({
+/** Não monta o formulário nem permite confirmar com uma taxa presumida. */
+export function PaymentModal(props: PaymentModalProps) {
+  const [rate, setRate] = useState<number | null>(null);
+  const [error, setError] = useState("");
+  const pendingRef = useRef<HTMLDialogElement>(null);
+  const reload = useCallback(async () => {
+    setError("");
+    try { setRate((await fetchSettings()).serviceFeeRate); }
+    catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a taxa de serviço."); }
+  }, []);
+  useEffect(() => { void Promise.resolve().then(reload); }, [reload]);
+  useEffect(() => {
+    if (rate !== null) return;
+    const dialog = pendingRef.current;
+    const focus = document.activeElement as HTMLElement | null;
+    const overflow = document.body.style.overflow;
+    dialog?.showModal();
+    document.body.style.overflow = "hidden";
+    return () => { dialog?.close(); document.body.style.overflow = overflow; focus?.focus(); };
+  }, [rate]);
+  if (rate !== null) return <PaymentForm {...props} serviceFeeRate={rate} />;
+  return <dialog ref={pendingRef} className="payment-modal payment-settings-loading" aria-labelledby="payment-settings-title"
+    onCancel={event => { event.preventDefault(); props.onClose(); }}>
+    <h2 id="payment-settings-title">Carregando conta</h2>
+    {error ? <><SystemMessage variant="error">{error}</SystemMessage><Button variant="secondary" onClick={() => void reload()}>Tentar de novo</Button></> : <SkeletonCard />}
+    <Button variant="secondary" onClick={props.onClose}>Voltar</Button>
+  </dialog>;
+}
+
+export function PaymentForm({
   orderId,
   total,
   onClose,
   onComplete,
-}: PaymentModalProps) {
+  serviceFeeRate,
+}: PaymentModalProps & { serviceFeeRate: number }) {
   const modalRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [serviceFeeWaived, setServiceFeeWaived] = useState(false);
   const subtotalCents = Math.round(total * 100);
-  const { serviceInCents, totalInCents: totalCents } = calculateBill(subtotalCents, serviceFeeWaived);
+  const { serviceInCents, totalInCents: totalCents } = calculateBill(subtotalCents, serviceFeeRate, serviceFeeWaived);
   const [payments, setPayments] = useState<PaymentDraft[]>([
     {
       id: 1,
@@ -77,6 +111,18 @@ export function PaymentModal({
       feeRate: "",
     },
   ]);
+
+  // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
+  const draft = JSON.stringify({ payments, serviceFeeWaived });
+  const [initialDraft] = useState(draft);
+  const requestClose = () => {
+    if (draft === initialDraft || window.confirm("Descartar alterações?"))
+      onClose();
+  };
+  const closeRef = useRef(requestClose);
+  useEffect(() => {
+    closeRef.current = requestClose;
+  });
 
   const paidCents = useMemo(
     () =>
@@ -97,9 +143,9 @@ export function PaymentModal({
     payments.every(
       (payment) =>
         payment.method !== "credit" ||
-        (Number.isFinite(Number(payment.feeRate)) &&
-          Number(payment.feeRate) >= 0 &&
-          Number(payment.feeRate) <= 100),
+        (Number.isFinite(parseRate(payment.feeRate)) &&
+          parseRate(payment.feeRate) >= 0 &&
+          parseRate(payment.feeRate) <= 100),
     );
 
   useEffect(() => {
@@ -109,7 +155,7 @@ export function PaymentModal({
     closeButtonRef.current?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") closeRef.current();
       if (event.key !== "Tab" || !modalRef.current) return;
 
       const focusableElements = Array.from(
@@ -135,7 +181,7 @@ export function PaymentModal({
       document.removeEventListener("keydown", handleKeyDown);
       previousFocusRef.current?.focus();
     };
-  }, [onClose]);
+  }, []);
 
   const updatePayment = (id: number, changes: Partial<PaymentDraft>) => {
     setPayments((current) =>
@@ -183,12 +229,12 @@ export function PaymentModal({
         return {
           method: payment.method,
           amount,
-          ...(payment.method === "credit" && Number(payment.feeRate) > 0
+          ...(payment.method === "credit" && parseRate(payment.feeRate) > 0
             ? {
-                processingFeeRate: Number(payment.feeRate),
+                processingFeeRate: parseRate(payment.feeRate),
                 processingFee:
                   Math.round(
-                    (parseAmount(payment.amount) * Number(payment.feeRate)) /
+                    (parseAmount(payment.amount) * parseRate(payment.feeRate)) /
                       100,
                   ) / 100,
               }
@@ -209,7 +255,7 @@ export function PaymentModal({
     <div
       className="payment-modal-backdrop"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget) requestClose();
       }}
     >
       <section
@@ -229,7 +275,7 @@ export function PaymentModal({
             type="button"
             className="payment-modal-close"
             aria-label="Fechar pagamento"
-            onClick={onClose}
+            onClick={requestClose}
           >
             <X aria-hidden="true" />
           </button>
@@ -309,9 +355,7 @@ export function PaymentModal({
                         <div>
                           <span>R$</span>
                           <input
-                            type="number"
-                            min="0.01"
-                            step="0.01"
+                            type="text"
                             inputMode="decimal"
                             aria-label={`Valor do pagamento ${index + 1}`}
                             value={payment.amount}
@@ -330,9 +374,7 @@ export function PaymentModal({
                           <div>
                             <span>R$</span>
                             <input
-                              type="number"
-                              min={payment.amount || "0"}
-                              step="0.01"
+                              type="text"
                               inputMode="decimal"
                               aria-label={`Valor recebido do pagamento ${index + 1}`}
                               value={payment.receivedAmount}
@@ -351,10 +393,7 @@ export function PaymentModal({
                           <span>Taxa maquininha</span>
                           <div>
                             <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              step="0.01"
+                              type="text"
                               inputMode="decimal"
                               aria-label={`Taxa da maquininha do pagamento ${index + 1}`}
                               placeholder="0,00"
@@ -417,12 +456,12 @@ export function PaymentModal({
 
             <div className="payment-summary-breakdown">
               <div><span>Consumo</span><strong>{formatCurrency(subtotalCents / 100)}</strong></div>
-              <div><span>Taxa de serviço (10%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>
+              {serviceFeeRate > 0 && <div><span>Taxa de serviço ({serviceFeeRate.toLocaleString("pt-BR")}%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>}
             </div>
-            <label className="cash-change-toggle">
+            {serviceFeeRate > 0 && <label className="cash-change-toggle">
               <input type="checkbox" checked={serviceFeeWaived} onChange={(event) => {
                 const waived = event.target.checked;
-                const nextTotal = calculateBill(subtotalCents, waived).totalInCents;
+                const nextTotal = calculateBill(subtotalCents, serviceFeeRate, waived).totalInCents;
                 setServiceFeeWaived(waived);
                 // Só ajusta automaticamente quando há um pagamento que cobre o total atual.
                 setPayments((current) => current.length === 1 && parseAmount(current[0].amount) === totalCents
@@ -430,7 +469,7 @@ export function PaymentModal({
                   : current);
               }} />
               <span>Cliente optou por não pagar a taxa de serviço</span>
-            </label>
+            </label>}
             <div className="payment-summary-breakdown">
               {payments.map((payment) => (
                 <div key={payment.id}>
@@ -446,13 +485,13 @@ export function PaymentModal({
                     </small>
                   )}
                   {payment.method === "credit" &&
-                    Number(payment.feeRate) > 0 && (
+                    parseRate(payment.feeRate) > 0 && (
                       <small>
                         Taxa informativa:{" "}
                         {formatCurrency(
                           Math.round(
                             (parseAmount(payment.amount) *
-                              Number(payment.feeRate)) /
+                              parseRate(payment.feeRate)) /
                               100,
                           ) / 100,
                         )}
@@ -493,7 +532,7 @@ export function PaymentModal({
         </div>
 
         <footer className="payment-modal-footer">
-          <Button variant="secondary" onClick={onClose}>
+          <Button variant="secondary" onClick={requestClose}>
             Voltar
           </Button>
           <Button disabled={!canComplete} onClick={finishOrder}>
