@@ -18,7 +18,10 @@ export class PrismaPaymentRepository implements PaymentRepository {
     private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
   ) {}
 
-  async confirmFullPayment(attendanceId: bigint): Promise<ConfirmedPayment> {
+  async confirmFullPayment(
+    attendanceId: bigint,
+    userId: bigint,
+  ): Promise<ConfirmedPayment> {
     return this.prismaClient.$transaction(
       async (tx: Prisma.TransactionClient) => {
         // Bloqueia a conta para evitar duas confirmações simultâneas.
@@ -54,12 +57,25 @@ export class PrismaPaymentRepository implements PaymentRepository {
         const paidAt = new Date();
 
         await tx.payment.create({
-          data: { attendanceId, amount, status: "PAID", paidAt },
+          data: {
+            attendanceId,
+            createdById: userId,
+            amount,
+            status: "PAID",
+            paidAt,
+          },
         });
 
         const closed = await tx.attendance.updateMany({
-          where: { id: attendanceId, status: "CLOSING_REQUESTED" },
-          data: { status: "CLOSED", closedAt: paidAt },
+          where: {
+            id: attendanceId,
+            status: "CLOSING_REQUESTED",
+          },
+          data: {
+            status: "CLOSED",
+            closedAt: paidAt,
+            closedById: userId,
+          },
         });
 
         if (closed.count !== 1)
@@ -68,7 +84,7 @@ export class PrismaPaymentRepository implements PaymentRepository {
             409,
           );
 
-        return { attendanceId, amount, paidAt };
+        return { attendanceId, userId, amount, paidAt };
       },
     );
   }
@@ -80,7 +96,7 @@ export class PrismaPaymentRepository implements PaymentRepository {
   async closeWithPayments(
     attendanceId: bigint,
     data: CloseAttendanceDTO,
-    closedById: bigint | null,
+    closedById: bigint,
   ): Promise<ClosedAttendance> {
     // Apenas identifica a mesa, antes do snapshot que vai ler o consumo.
     const reference = await this.prismaClient.attendance.findUnique({

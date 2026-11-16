@@ -20,11 +20,16 @@ export interface ReopenedAttendance {
 }
 
 export interface PaymentRepository {
-  confirmFullPayment(attendanceId: bigint): Promise<ConfirmedPayment>;
+  confirmFullPayment(
+    attendanceId: bigint,
+    userId: bigint,
+  ): Promise<ConfirmedPayment>;
+
   closeWithPayments(
     attendanceId: bigint,
     data: CloseAttendanceDTO,
-    closedById: bigint | null,
+    closedById: bigint,
   ): Promise<ClosedAttendance>;
+
   reopen(attendanceId: bigint): Promise<ReopenedAttendance>;
 }

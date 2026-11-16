@@ -10,24 +10,34 @@ export class PaymentService {
   async closeAttendance(
     attendanceId: bigint,
     data: CloseAttendanceDTO,
-    closedById: bigint | null,
+    closedById: bigint,
   ) {
     const result = await this.paymentRepository.closeWithPayments(
       attendanceId,
       data,
       closedById,
     );
-    return { ...result, attendanceId: result.attendanceId.toString() };
+
+    return {
+      ...result,
+      attendanceId: result.attendanceId.toString(),
+    };
   }
 
   async reopenAttendance(attendanceId: bigint) {
     const result = await this.paymentRepository.reopen(attendanceId);
-    return { ...result, attendanceId: result.attendanceId.toString() };
+
+    return {
+      ...result,
+      attendanceId: result.attendanceId.toString(),
+    };
   }
 
-  async confirmAttendancePayment(attendanceId: bigint) {
-    const payment =
-      await this.paymentRepository.confirmFullPayment(attendanceId);
+  async confirmAttendancePayment(attendanceId: bigint, userId: bigint) {
+    const payment = await this.paymentRepository.confirmFullPayment(
+      attendanceId,
+      userId,
+    );
 
     return {
       attendanceId: payment.attendanceId.toString(),
