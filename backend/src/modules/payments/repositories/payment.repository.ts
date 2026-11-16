@@ -1,4 +1,3 @@
-
 import type { CloseAttendanceDTO } from "../dto/close-attendance.dto.js";
 
 export interface ConfirmedPayment {

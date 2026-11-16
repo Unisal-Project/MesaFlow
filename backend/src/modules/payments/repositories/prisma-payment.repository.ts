@@ -20,7 +20,7 @@ export class PrismaPaymentRepository implements PaymentRepository {
 
   async confirmFullPayment(
     attendanceId: bigint,
-    userId: bigint
+    userId: bigint,
   ): Promise<ConfirmedPayment> {
     return this.prismaClient.$transaction(
       async (tx: Prisma.TransactionClient) => {
@@ -62,14 +62,14 @@ export class PrismaPaymentRepository implements PaymentRepository {
             createdById: userId,
             amount,
             status: "PAID",
-            paidAt
+            paidAt,
           },
         });
 
         const closed = await tx.attendance.updateMany({
           where: {
             id: attendanceId,
-            status: "CLOSING_REQUESTED"
+            status: "CLOSING_REQUESTED",
           },
           data: {
             status: "CLOSED",

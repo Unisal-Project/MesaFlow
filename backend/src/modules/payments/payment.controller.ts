@@ -11,8 +11,9 @@ export class PaymentController {
   constructor(private readonly service: PaymentService) {}
 
   async close(request: FastifyRequest, reply: FastifyReply) {
-    const { attendanceId } =
-      confirmAttendancePaymentParamsSchema.parse(request.params);
+    const { attendanceId } = confirmAttendancePaymentParamsSchema.parse(
+      request.params,
+    );
 
     const data = closeAttendanceSchema.parse(request.body);
 
@@ -24,16 +25,13 @@ export class PaymentController {
       throw new AppError("Funcionário não identificado", 401);
     }
 
-    return this.service.closeAttendance(
-      attendanceId,
-      data,
-      actor.id,
-    );
+    return this.service.closeAttendance(attendanceId, data, actor.id);
   }
 
   async reopen(request: FastifyRequest, reply: FastifyReply) {
-    const { attendanceId } =
-      confirmAttendancePaymentParamsSchema.parse(request.params);
+    const { attendanceId } = confirmAttendancePaymentParamsSchema.parse(
+      request.params,
+    );
 
     reply.header("Cache-Control", "no-store");
 
@@ -41,8 +39,9 @@ export class PaymentController {
   }
 
   async confirm(request: FastifyRequest, reply: FastifyReply) {
-    const { attendanceId } =
-      confirmAttendancePaymentParamsSchema.parse(request.params);
+    const { attendanceId } = confirmAttendancePaymentParamsSchema.parse(
+      request.params,
+    );
 
     reply.header("Cache-Control", "no-store");
 
@@ -52,9 +51,6 @@ export class PaymentController {
       throw new AppError("Funcionário não identificado", 401);
     }
 
-    return this.service.confirmAttendancePayment(
-      attendanceId,
-      actor.id,
-    );
+    return this.service.confirmAttendancePayment(attendanceId, actor.id);
   }
 }

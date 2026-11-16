@@ -1,4 +1,3 @@
-
 import { PrismaPaymentRepository } from "./repositories/prisma-payment.repository.js";
 import type { CloseAttendanceDTO } from "./dto/close-attendance.dto.js";
 import type { PaymentRepository } from "./repositories/payment.repository.js";
@@ -34,10 +33,7 @@ export class PaymentService {
     };
   }
 
-  async confirmAttendancePayment(
-    attendanceId: bigint,
-    userId: bigint,
-  ) {
+  async confirmAttendancePayment(attendanceId: bigint, userId: bigint) {
     const payment = await this.paymentRepository.confirmFullPayment(
       attendanceId,
       userId,
