@@ -185,9 +185,13 @@
     padding-right: 16px;
   }
 }
-// Busca: sem contorno ao focar (pedido do usuário; o cursor indica a digitação).
+// O contorno envolve a busca inteira, incluindo ícone e espaçamento interno.
 // Filtros (select): sem contorno no clique; linha fina só na navegação por teclado.
-.product-search:focus-within { box-shadow: none; }
+.product-search:focus-within {
+  @include mixins.focus-visible(1px, 0);
+  box-shadow: none;
+}
+.product-search input:focus-visible { outline: none; }
 .product-select:focus-within { box-shadow: none; }
 .product-select:has(select:focus-visible) {
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--text-primary) 28%, transparent);
@@ -382,22 +386,6 @@
   background: var(--background);
   color: var(--primary);
   font-size: var(--font-size-xs);
-}
-.product-delete-button {
-  display: grid;
-  place-items: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  padding: 4px;
-  border: 0;
-  border-radius: var(--radius-small);
-  background: color-mix(in srgb, var(--accent) 28%, var(--surface));
-  color: var(--accent);
-  svg {
-    width: 22px;
-    height: 22px;
-  }
 }
 .product-delete-action {
   background: var(--error-subtle);
@@ -799,8 +787,7 @@
         input { width: 100%; min-height: 44px; font-size: 16px; }
       }
       .product-status { justify-self: end; min-width: 0; min-height: 44px; }
-      .btn, .product-delete-button { width: 100%; min-height: 44px; }
-      .product-delete-button { border: 1px solid var(--error-border); border-radius: var(--radius-medium); background: var(--error-subtle); }
+      .btn { width: 100%; min-height: 44px; }
     }
   }
 
@@ -1150,3 +1137,38 @@ label.field.money-field input {
 .products-promotion-actions { margin-block: var(--spacing-4); }
 .products-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); }
 .products-selectable-row > .check-control { min-height: var(--spacing-11); width: var(--spacing-11); justify-content: center; }
+.menu-access-modal {
+  width: min(480px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: var(--spacing-5);
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-large);
+  background: var(--surface);
+  color: var(--text-primary);
+
+  &::backdrop { background: var(--overlay); }
+  &[open] { display: grid; gap: var(--spacing-4); }
+  header, h2, footer { display: flex; align-items: center; gap: var(--spacing-3); }
+  header { justify-content: space-between; }
+  h2 { font-size: var(--font-size-xl); }
+  h2 svg { flex-shrink: 0; }
+  p { color: var(--text-secondary); font-size: var(--font-size-sm); line-height: 1.5; }
+  p:empty { display: none; }
+  footer { flex-wrap: wrap; }
+  footer .btn { flex: 1 1 auto; }
+}
+
+.menu-access-qr {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  img { display: block; width: 280px; max-width: 100%; height: auto; border-radius: var(--radius-medium); }
+}
+
+.menu-access-hint {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-medium);
+  background: var(--surface-muted);
+}

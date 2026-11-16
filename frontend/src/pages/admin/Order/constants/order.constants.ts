@@ -11,7 +11,7 @@ export const orderPeriods = [
   { id: "yesterday", label: "Ontem" },
   { id: "7days", label: "7 dias" },
   { id: "30days", label: "30 dias" },
-  { id: "specific", label: "📅 Data" },
+  { id: "specific", label: "Data" },
 ];
 
 export const emptyPeriodMessages = {

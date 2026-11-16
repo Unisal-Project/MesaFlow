@@ -57,7 +57,8 @@
   color: var(--text-secondary);
 }
 .table-search:focus-within {
-  box-shadow: none; // sem anel verde de foco (pedido do usuário)
+  @include mixins.focus-visible(1px, 0);
+  box-shadow: none;
 }
 .tables-body {
   padding: var(--spacing-7) var(--spacing-9) var(--spacing-12);

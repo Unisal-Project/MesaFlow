@@ -81,6 +81,9 @@ html.admin-workspace-active {
   :is(button, input, textarea, select, summary):focus-visible {
     @include mixins.focus-visible(2px, 3px);
   }
+  :is(.order-search, .product-search, .table-search) input:focus-visible {
+    outline: none;
+  }
 }
 @supports ((backdrop-filter: blur(20px)) or (-webkit-backdrop-filter: blur(20px))) {
   html.admin-workspace-active :is(.mf-dashboard-header, .orders-topbar, .tables-topbar, .products-topbar, .reports-topbar, .notifications-panel) {

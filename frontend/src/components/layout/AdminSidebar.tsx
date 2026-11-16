@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { classNames } from "@/utils/classNames";
 import { getSession, signOut } from "@/services/auth.service";
+import mesaFlowLogo from "@/assets/logotipo/logo_principal.png";
 import {
   LayoutDashboard,
   ChartColumnBig,
@@ -49,6 +50,7 @@ type AdminSidebarProps = {
   brandSubtitle?: string;
   navigationLabel?: string;
   showAvatar?: boolean;
+  avatarSrc?: string;
   brandImage?: ReactNode;
   items?: SidebarItem[];
   activeId: string;
@@ -61,6 +63,7 @@ export function AdminSidebar({
   brandSubtitle = "Administrativo",
   navigationLabel,
   showAvatar = false,
+  avatarSrc = mesaFlowLogo,
   brandImage,
   items = adminSidebarItems,
   activeId,
@@ -225,13 +228,7 @@ export function AdminSidebar({
           <UserRound className="admin-profile-icon" size={20} aria-hidden="true" />
           {showAvatar && (
             <span className="admin-profile-avatar" aria-hidden="true">
-              {userName
-                .split(" ")
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((part) => part[0])
-                .join("")
-                .toUpperCase()}
+              <img src={avatarSrc} alt="" />
             </span>
           )}
           <strong>{userName}</strong>

@@ -262,3 +262,13 @@ html.login-active body {
     }
   }
 }
+
+.login-recovery-switch { margin-top: var(--spacing-2); }
+.login-recovery-notice {
+  padding: var(--spacing-3);
+  border-radius: var(--radius-medium);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}

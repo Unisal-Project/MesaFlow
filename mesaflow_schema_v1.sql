@@ -296,6 +296,15 @@ CREATE TABLE IF NOT EXISTS orders (
     KEY idx_orders_cancelled_at (cancelled_at)
 ) ENGINE=InnoDB;
 
+-- CREATE TABLE IF NOT EXISTS não atualiza volumes existentes. Mantém a
+-- migração remove-order-tracking.sql também no bootstrap reaplicável local:
+-- estados antigos impedem o Prisma de carregar toda a lista de pedidos.
+UPDATE orders SET status = 'PENDING'
+WHERE status NOT IN ('PENDING', 'CANCELLED');
+
+ALTER TABLE orders
+    MODIFY COLUMN status ENUM('PENDING', 'CANCELLED') NOT NULL DEFAULT 'PENDING';
+
 
 -- ============================================================
 -- 7. Itens do Pedido

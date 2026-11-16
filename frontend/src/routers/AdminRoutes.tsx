@@ -28,6 +28,28 @@ import { useCategories } from "@/pages/admin/Categories/hooks/useCategories";
 import { useOrder } from "@/pages/admin/Order/hooks/useOrder";
 
 import { adminPaths } from "./paths";
+import type { TablesProps } from "@/pages/admin/Table/types/table.types";
+
+function TableRoute(props: TablesProps) {
+  const { search } = useLocation();
+  const openedTarget = useRef("");
+  const { state } = props;
+  useEffect(() => {
+    if (openedTarget.current === search) return;
+    const params = new URLSearchParams(search);
+    const id = params.get("mesa");
+    const number = params.get("numero");
+    if (!id && !number) { openedTarget.current = search; return; }
+    const table = state.tables.find((entry) => id ? entry.id === id : String(entry.number) === number);
+    if (!table) return; // O link pode chegar antes de as mesas carregarem.
+    openedTarget.current = search;
+    state.setSearchQuery("");
+    state.setStatusFilter("all");
+    state.setSelectedDetail(null);
+    state.setSelectedTable(table);
+  }, [search, state]);
+  return <Tables {...props} />;
+}
 
 function OrderRoute({
   state,
@@ -133,7 +155,7 @@ export function AdminRoutes() {
           <Route
             path="mesas"
             element={
-              <Tables
+              <TableRoute
                 state={tableState}
                 orders={orderState.orders}
                 onViewOrder={showOrder}

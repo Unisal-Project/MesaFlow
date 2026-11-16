@@ -6,18 +6,25 @@ import {
   markNotificationsRead,
   markOrderSeen,
   notificationKey,
+  notificationTarget,
+  notificationTitle,
+  takeUnannouncedNotifications,
   unreadNotifications,
   useAttendanceNotifications,
   visibleNotifications,
 } from "@/hooks/useAttendanceNotifications";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { NotificationToast } from "./NotificationToast";
 import "./style.scss";
 
 export type NotificationItem = {
   id: string;
   status: string;
   closingRequestedAt: string;
-  table: { number: number };
+  table: { id?: string; number: number };
+  tableId?: string;
+  orderId?: string;
 };
 
 type NotificationsProps = { items?: NotificationItem[] };
@@ -27,6 +34,7 @@ export function Notifications({ items }: NotificationsProps = {}) {
   const [attendingId, setAttendingId] = useState<string | null>(null);
   const [attendError, setAttendError] = useState<string | null>(null);
   const [attendedIds, setAttendedIds] = useState<Set<string>>(() => new Set());
+  const [toasts, setToasts] = useState<NotificationItem[]>([]);
   async function handleAttend(id: string) {
     if (attendingId) return;
     setAttendingId(id);
@@ -96,8 +104,26 @@ export function Notifications({ items }: NotificationsProps = {}) {
   };
   const clearNotifications = () => {
     dismissNotifications(allNotifications);
+    setToasts([]);
     refreshStored((value) => value + 1);
   };
+
+  const openNotification = (item: NotificationItem) => {
+    markNotificationsRead([...notifications.filter((entry) => !unread.has(notificationKey(entry))), item]);
+    if (item.status === "NEW_ORDER") markOrderSeen(item.id);
+    setNotificationsOpen(false);
+  };
+
+  useEffect(() => {
+    const fresh = takeUnannouncedNotifications(unreadNotifications(notifications));
+    const currentKeys = new Set(notifications.map(notificationKey));
+    setToasts((current) => [
+      ...current.filter((item) => currentKeys.has(notificationKey(item))),
+      ...fresh.reverse(),
+    ]);
+    // As respostas do polling são objetos novos, mas só eventos novos geram avisos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notificationKeys]);
 
   useEffect(() => {
     const keys: string[] = JSON.parse(notificationKeys);
@@ -160,24 +186,29 @@ export function Notifications({ items }: NotificationsProps = {}) {
                   key={`${request.status}-${request.id}`}
                   className={`notification-item${unread.has(notificationKey(request)) || freshKeys.has(notificationKey(request)) ? "" : " notification-item--read"} ${request.status === "WAITER_CALL" ? "notification-item--waiter" : request.status === "CANCELLED" ? "notification-item--cancelled" : "notification-item--closing"}`}
                 >
-                  <span className="notification-type">
-                    {request.status === "NEW_ORDER" ? "Novo pedido" : request.status === "WAITER_CALL" ? "Chamada de garçom" : request.status === "CANCELLED"
-                      ? "Solicitação cancelada"
-                      : "Fechamento solicitado"}
-                  </span>
-                  {request.status === "NEW_ORDER" && <a href={`/admin/pedidos/${encodeURIComponent(request.id)}`} onClick={() => markOrderSeen(request.id)}>Mesa {request.table.number} fez um pedido</a>}
-                  <strong>{request.status === "WAITER_CALL" ? `Mesa ${String(request.table.number).padStart(2, "0")} solicitou um garçom` : `Mesa ${request.table.number}`}</strong>
-                  <time dateTime={request.closingRequestedAt}>
+                  <a className="notification-link" href={notificationTarget(request)} onClick={() => openNotification(request)}>
+                    <span className="notification-type">{notificationTitle(request)}</span>
+                    <strong>{request.status === "NEW_ORDER" ? `Mesa ${request.table.number} fez um pedido` : request.status === "WAITER_CALL" ? `Mesa ${String(request.table.number).padStart(2, "0")} solicitou um garçom` : `Mesa ${request.table.number}`}</strong>
+                    <time dateTime={request.closingRequestedAt}>
                     {new Date(request.closingRequestedAt).toLocaleString(
                       "pt-BR",
                     )}
-                  </time>
+                    </time>
+                    <span className="notification-link-action">Ver detalhes</span>
+                  </a>
                   {request.status === "WAITER_CALL" && <Button variant="secondary" onClick={() => handleAttend(request.id)} loading={attendingId === request.id} disabled={attendingId !== null}>Marcar como atendida</Button>}
                 </li>
               ))}
             </ul>
           )}
         </div>
+      )}
+      {toasts.length > 0 && createPortal(
+        <div className="notification-toasts" role="region" aria-label="Novas notificações" aria-live="polite" aria-relevant="additions">
+          {toasts.slice(0, 3).map((item) => <NotificationToast key={notificationKey(item)} item={item}
+            onDismiss={() => setToasts((current) => current.filter((entry) => notificationKey(entry) !== notificationKey(item)))}
+            onOpen={() => openNotification(item)} />)}
+        </div>, document.body,
       )}
     </div>
   );

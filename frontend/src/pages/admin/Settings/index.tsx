@@ -3,7 +3,6 @@ import { ProfileForm } from "./components/ProfileForm";
 import { AdminSidebar } from "@/components";
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { getSession } from "@/services/auth.service";
-import { ChangePasswordForm } from "./components/ChangePasswordForm";
 import { useRestaurantSettings } from "./hooks/useRestaurantSettings";
 import { RestaurantSettingsForm } from "./components/RestaurantSettingsForm";
 import "./styles.scss";
@@ -22,7 +21,6 @@ export default function Settings({ onNavigate }: SettingsProps) {
       <main className="settings-content">
         <h1>Configurações</h1>
         <ProfileForm onSaved={() => refreshProfile(value => value + 1)} />
-        <ChangePasswordForm />
         <RestaurantSettingsForm state={settings} editable={editable} />
       </main>
     </div>

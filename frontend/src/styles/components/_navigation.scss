@@ -262,6 +262,13 @@ html.admin-workspace-active body {
     background: var(--accent);
     color: var(--text-inverse);
     font-size: var(--font-size-xs);
+    overflow: hidden;
+    img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
   }
   .notifications-button {
     width: 40px;

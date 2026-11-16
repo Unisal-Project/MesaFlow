@@ -1,5 +1,4 @@
 import { useCallback, useState } from "react";
-import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 import { Badge, Button, Switch, TextField } from "@/components";
 import { promotionLabel } from "@/utils/promotion";
 
@@ -15,7 +14,6 @@ type ProductRowProps = {
   onUpdateFeatured: (productId: string, featured: boolean) => void;
   onUpdateAvailability: (productId: string, available: boolean) => void;
   onEdit: (product: AdminProduct) => void;
-  onDelete: (product: AdminProduct) => void;
 };
 
 export function ProductRow({
@@ -24,7 +22,6 @@ export function ProductRow({
   onUpdateAvailability,
   onUpdateFeatured,
   onEdit,
-  onDelete,
 }: ProductRowProps) {
   // Texto em edição; vazio não é salvo e volta ao valor gravado ao sair do campo.
   const [draft, setDraft] = useState<string | null>(null);
@@ -142,14 +139,6 @@ export function ProductRow({
           Editar <Pencil aria-hidden="true" />
         </Button>
 
-        <button
-          type="button"
-          className="product-delete-button"
-          aria-label={`Excluir ${product.name}`}
-          onClick={() => onDelete(product)}
-        >
-          <AnimatedTrash />
-        </button>
       </div>
       {previewOpen && <ProductRowPreview product={product} onClose={closePreview} />}
     </article>

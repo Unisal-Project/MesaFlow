@@ -2,6 +2,7 @@ import { useContentTransition } from "@/hooks/useContentTransition";
 import { useImperativeHandle, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
+  CalendarDays,
   CheckCircle2,
   ClipboardList,
   List,
@@ -201,7 +202,9 @@ export default function Orders({
           </div>
 
           <div className="orders-period-controls">
-            <Tabs items={orderPeriods} activeId={period}
+            <Tabs items={orderPeriods.map((item) => item.id === "specific"
+              ? { ...item, label: <span className="orders-period-date-label"><CalendarDays size={16} aria-hidden="true" /><span>{item.label}</span></span> }
+              : item)} activeId={period}
               onChange={(value) => setPeriod(value as OrderPeriod)} ariaLabel="Período dos pedidos" />
             {period === "specific" && (
               <label className="orders-sort-control">

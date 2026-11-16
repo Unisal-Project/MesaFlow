@@ -18,7 +18,9 @@ type LoginProps = { onEnter: () => void };
 export default function Login({ onEnter }: LoginProps) {
   useDocumentClass("login-active");
 
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [mode, setMode] = useState<"login" | "register" | "recovery">("login");
+  const isRegistering = mode === "register";
+  const isRecovering = mode === "recovery";
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,6 +31,7 @@ export default function Login({ onEnter }: LoginProps) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isRecovering) return;
     if (isRegistering && password !== confirmPassword) {
       const confirmation = event.currentTarget.elements.namedItem(
         "confirmPassword",
@@ -66,8 +69,8 @@ export default function Login({ onEnter }: LoginProps) {
     setConfirmPassword(event.target.value);
   };
 
-  const switchMode = () => {
-    setIsRegistering((current) => !current);
+  const switchMode = (nextMode: typeof mode) => {
+    setMode(nextMode);
     setPassword("");
     setConfirmPassword("");
     setShowPassword(false);
@@ -116,15 +119,17 @@ export default function Login({ onEnter }: LoginProps) {
         <div className="login-card">
           <span className="login-access-label">ÁREA ADMINISTRATIVA</span>
           <h2 id="login-title">
-            {isRegistering ? "Comece com o MesaFlow" : "Bem-vindo de volta!"}
+            {isRecovering ? "Recuperar senha" : isRegistering ? "Comece com o MesaFlow" : "Bem-vindo de volta!"}
           </h2>
           <p className="login-description">
-            {isRegistering
+            {isRecovering
+              ? "Informe o e-mail da sua conta para recuperar o acesso ao MesaFlow."
+              : isRegistering
               ? "Cadastre seu estabelecimento e conheça uma gestão mais simples."
               : "Acesse o MesaFlow e acompanhe seu estabelecimento."}
           </p>
           <form
-            key={isRegistering ? "register" : "login"}
+            key={mode}
             className="login-form"
             onSubmit={handleSubmit}
           >
@@ -145,13 +150,13 @@ export default function Login({ onEnter }: LoginProps) {
               id="login-email"
               label="E-mail"
               type="email"
-              autoComplete="username"
+              autoComplete={isRecovering ? "email" : "username"}
               placeholder="seuemail@exemplo.com"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
             />
-            <div className="login-password">
+            {!isRecovering && <div className="login-password">
               <TextField
                 id="login-password"
                 label="Senha"
@@ -182,7 +187,7 @@ export default function Login({ onEnter }: LoginProps) {
                   <Eye aria-hidden="true" />
                 )}
               </button>
-            </div>
+            </div>}
             {isRegistering && (
               <TextField
                 id="register-confirm-password"
@@ -201,17 +206,24 @@ export default function Login({ onEnter }: LoginProps) {
                 {error}
               </p>
             )}
-            <Button type="submit" loading={loading}>
-              {isRegistering ? "Experimentar o MesaFlow" : "Entrar no painel"}
+            {isRecovering && <p id="login-recovery-notice" className="login-recovery-notice" role="status">
+              O envio do link de recuperação por e-mail estará disponível em breve.
+            </p>}
+            <Button type="submit" loading={loading} disabled={isRecovering}
+              aria-describedby={isRecovering ? "login-recovery-notice" : undefined}>
+              {isRecovering ? "Enviar link de recuperação" : isRegistering ? "Experimentar o MesaFlow" : "Entrar no painel"}
               <ArrowRight aria-hidden="true" />
             </Button>
           </form>
           <p className="login-switch">
-            {isRegistering ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
-            <button type="button" onClick={switchMode}>
-              {isRegistering ? "Entrar" : "Criar conta"}
+            {isRecovering ? "Lembrou sua senha?" : isRegistering ? "Já tem uma conta?" : "Ainda não tem uma conta?"}{" "}
+            <button type="button" disabled={loading} onClick={() => switchMode(isRegistering || isRecovering ? "login" : "register")}>
+              {isRecovering ? "Voltar para entrar" : isRegistering ? "Entrar" : "Criar conta"}
             </button>
           </p>
+          {mode === "login" && <p className="login-switch login-recovery-switch">
+            <button type="button" disabled={loading} onClick={() => switchMode("recovery")}>Esqueci minha senha</button>
+          </p>}
         </div>
         <footer className="login-footer">
           MesaFlow · Gestão que acompanha o seu ritmo.

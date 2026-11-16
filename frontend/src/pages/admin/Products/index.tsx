@@ -5,10 +5,12 @@ import { useContentTransition } from "@/hooks/useContentTransition";
 import { ArrowLeft, ChevronDown, Eye, List, Plus, Search } from "lucide-react";
 import { Button, AdminSidebar, Notifications, Checkbox, ConfirmationDialog } from "@/components";
 import { getSession } from "@/services/auth.service";
+import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 
 import { DeleteProductModal } from "./components/DeleteProductModal";
 import { ProductFormModal } from "./components/ProductFormModal";
 import { ProductRow } from "./components/ProductRow";
+import { MenuAccessModal } from "./components/MenuAccessModal";
 
 import Categories from "../Categories";
 
@@ -32,6 +34,7 @@ export default function Products({
 }: ProductsProps) {
   const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [menuAccessOpen, setMenuAccessOpen] = useState(false);
   const isAdmin = getSession()?.user.role === "ADMIN";
   const promotionState = usePromotions(() => Promise.all([productState.reload(), categoryState.reload()]));
   const { contentRef, transitionContent } =
@@ -161,7 +164,7 @@ export default function Products({
                     : "Gerencie produtos e categorias do seu cardápio."}
               </p>
             </div>
-            <div className="products-heading-actions"><Button variant="secondary" onClick={() => onNavigate?.("menuPreviewFromProducts")}><Eye aria-hidden="true" />Ver cardápio</Button>
+            <div className="products-heading-actions"><Button variant="secondary" onClick={() => setMenuAccessOpen(true)}><Eye aria-hidden="true" />Ver cardápio</Button>
             {activeTab !== "promotions" && <Button
               onClick={
                 isCategories ? categoryState.openNewCategory : openNewProduct
@@ -280,7 +283,7 @@ export default function Products({
                   </select>
                 </label>
               </div>
-              {selectedProductIds.length > 0 && <div className="products-promotion-actions"><span>{selectedProductIds.length} selecionados</span><Button variant="secondary" onClick={() => setSelectedProducts([])}>Limpar seleção</Button><Button onClick={() => promote(selectedProductIds.map(id => `p:${id}` as ItemKey))}>Colocar em promoção</Button>{isAdmin && <Button variant="danger" disabled={productBusy} onClick={() => setConfirmBulkDelete(true)}>Excluir selecionados</Button>}</div>}
+              {selectedProductIds.length > 0 && <div className="products-promotion-actions"><span>{selectedProductIds.length} selecionados</span><Button variant="secondary" onClick={() => setSelectedProducts([])}>Limpar seleção</Button><Button onClick={() => promote(selectedProductIds.map(id => `p:${id}` as ItemKey))}>Colocar em promoção</Button>{isAdmin && <Button variant="danger" disabled={productBusy} onClick={() => setConfirmBulkDelete(true)}><AnimatedTrash />Excluir selecionados</Button>}</div>}
               <ConfirmationDialog open={confirmBulkDelete && selectedProductIds.length > 0} variant="danger"
                 title={selectedProductIds.length === 1 ? "Excluir 1 produto?" : `Excluir ${selectedProductIds.length} produtos?`}
                 description={`⚠️ Atenção: ${selectedProductIds.length === 1 ? "1 produto será excluído" : `${selectedProductIds.length} produtos serão excluídos`} do cardápio. O histórico de pedidos e os relatórios são mantidos. Esta ação não pode ser desfeita.`}
@@ -320,7 +323,6 @@ export default function Products({
                       onUpdateAvailability={updateAvailability}
                       onUpdateFeatured={updateFeatured}
                       onEdit={openEditProduct}
-                      onDelete={setProductToDelete}
                     /></div>
                   ))}
                   {!productLoading && products.length === 0 && (
@@ -346,6 +348,8 @@ export default function Products({
           )}
         </div>
       </main>
+
+      {menuAccessOpen && <MenuAccessModal onClose={() => setMenuAccessOpen(false)} />}
 
       {isProductModalOpen && (
         <ProductFormModal

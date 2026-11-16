@@ -9,9 +9,40 @@ import {
 } from "@/services/attendance.service";
 import { getSession } from "@/services/auth.service";
 
-type AttendanceNotification = ClosingRequestedAttendance | CancelledRequestAttendance | {
-  id: string; status: "WAITER_CALL" | "NEW_ORDER"; closingRequestedAt: string; table: { number: number };
-};
+export type AttendanceNotification = (ClosingRequestedAttendance | CancelledRequestAttendance | {
+  id: string; status: "WAITER_CALL" | "NEW_ORDER"; closingRequestedAt: string; table: { id?: string; number: number };
+}) & { tableId?: string; orderId?: string };
+
+export function notificationTarget(item: NotificationRef & { table: { id?: string; number: number }; tableId?: string; orderId?: string }) {
+  if (item.status === "NEW_ORDER") return `/admin/pedidos/${encodeURIComponent(item.id)}`;
+  if (item.status === "CLOSING_REQUESTED" && item.orderId) return `/admin/pedidos/${encodeURIComponent(item.orderId)}`;
+  const tableId = item.tableId ?? item.table.id;
+  return tableId
+    ? `/admin/mesas?mesa=${encodeURIComponent(tableId)}`
+    : `/admin/mesas?numero=${item.table.number}`;
+}
+
+export function notificationTitle(item: NotificationRef) {
+  if (item.status === "NEW_ORDER") return "Novo pedido";
+  if (item.status === "WAITER_CALL") return "Chamada de garçom";
+  if (item.status === "CANCELLED") return "Solicitação cancelada";
+  return "Fechamento solicitado";
+}
+
+// Avisos temporários não se repetem ao trocar de tela ou recarregar a página.
+const announcedByUser = new Map<string, Set<string>>();
+export function takeUnannouncedNotifications<T extends NotificationRef>(items: T[]): T[] {
+  const key = `mesaflow.announcedNotifications.${getSession()?.user.id ?? "local"}`;
+  const announced = announcedByUser.get(key) ?? new Set<string>();
+  try {
+    for (const value of JSON.parse(sessionStorage.getItem(key) ?? "[]")) announced.add(value);
+  } catch { /* Mantém a deduplicação em memória quando o storage está indisponível. */ }
+  const fresh = items.filter((item) => !announced.has(notificationKey(item)));
+  fresh.forEach((item) => announced.add(notificationKey(item)));
+  announcedByUser.set(key, announced);
+  try { sessionStorage.setItem(key, JSON.stringify([...announced])); } catch { /* Segue em memória. */ }
+  return fresh;
+}
 
 const seenByUser = new Map<string, Set<string>>();
 const memorySeen = () => {
@@ -109,7 +140,15 @@ export function useAttendanceNotifications(enabled: boolean) {
         const [closing, cancelled, waiterCalls, orders] = await Promise.all([
           findClosingRequestedAttendances(), getSession()?.user.role === "ADMIN" ? findCancelledAttendances() : [], fetchWaiterCalls(), fetchAdminOrders(2), // pedido novo é sempre recente: 2 dias cobre a virada da meia-noite, sem buscar 90 dias a cada 5s
         ]);
-        if (!disposed) setNotifications([...newOrderNotifications(orders), ...closing, ...cancelled, ...waiterCalls.map((call) => ({ id: call.id, status: "WAITER_CALL" as const, closingRequestedAt: call.createdAt, table: call.table }))]);
+        if (!disposed) setNotifications([
+          ...newOrderNotifications(orders),
+          ...closing.map((attendance) => ({
+            ...attendance,
+            orderId: orders.find((order) => order.attendance.id === attendance.id && order.status !== "CANCELLED")?.id,
+          })),
+          ...cancelled,
+          ...waiterCalls.map((call) => ({ id: call.id, tableId: call.tableId, status: "WAITER_CALL" as const, closingRequestedAt: call.createdAt, table: call.table })),
+        ]);
       } catch (error) {
         if (!disposed) console.error("Erro ao buscar notificações:", error);
       } finally {
