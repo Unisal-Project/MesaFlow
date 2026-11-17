@@ -14,7 +14,6 @@
     "lint": "cd frontend && oxlint",
     "lint:backend": "cd backend && tsc -p tsconfig.tests.json && prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
     "test": "npm run test:backend && npm run test:frontend",
-    "test:db": "cd backend && RUN_TABLES_DB_TESTS=1 node --test-force-exit --import tsx --test tests/*.integration.test.ts",
     "install:all": "npm ci",
     "setup": "npm run install:all && npm run prisma:generate",
     "db:up": "docker compose up -d database",
@@ -23,7 +22,7 @@
     "prisma:generate": "cd backend && prisma generate",
     "prisma:migrate": "cd backend && prisma migrate dev",
     "start:backend": "cd backend && node dist/server.js",
-    "test:backend": "cd backend && JWT_SECRET=${JWT_SECRET:-test-jwt-secret} FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173} DATABASE_URL=${DATABASE_URL:-postgresql://test:test@localhost:5432/mesaflow_test} node --test-concurrency=1 --test-force-exit --import tsx --test tests/*.test.ts",
+    "test:backend": "cd backend && JWT_SECRET=${JWT_SECRET:-test-jwt-secret} FRONTEND_URL=${FRONTEND_URL:-http://localhost:5173} DATABASE_URL=${DATABASE_URL:-mysql://test:test@127.0.0.1:3308/mesaflow_test} node --test-concurrency=1 --test-force-exit --import tsx --test tests/*.test.ts",
     "test:unit": "cd backend && node --test-force-exit --import tsx --test tests/*.test.ts",
     "typecheck": "cd backend && tsc -p tsconfig.tests.json",
     "format": "cd backend && prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
@@ -31,7 +30,12 @@
     "preview": "cd frontend && vite preview",
     "images:thumbs": "cd backend && node --experimental-strip-types scripts/generate-thumbs.ts",
     "test:frontend": "cd frontend && node --test tests/*.test.mjs",
-    "check:backend": "npm run lint:backend && npm run test:backend"
+    "check:backend": "npm run lint:backend && npm run test:backend",
+    "db:test:up": "docker compose -p mesaflow-test -f docker-compose.test.yml up -d --wait",
+    "db:test:down": "docker compose -p mesaflow-test -f docker-compose.test.yml down",
+    "db:test:logs": "docker compose -p mesaflow-test -f docker-compose.test.yml logs -f",
+    "test:integration": "cd backend && node --import ./tests/helpers/integration-env.mjs --test-concurrency=1 --test-force-exit --import tsx --test tests/*.integration.test.ts tests/waiter-calls.test.ts",
+    "test:db": "npm run test:integration"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
