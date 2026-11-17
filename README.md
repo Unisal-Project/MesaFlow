@@ -396,3 +396,31 @@ Status do Projeto
 Projeto em fase inicial de implementação.
 
 A arquitetura, as principais regras de negócio e a estrutura inicial do banco já foram definidas.
+
+## Testes automatizados
+
+O MesaFlow possui testes automatizados para validar as regras de negócio, os endpoints da API e a persistência dos dados.
+
+### Testes do backend
+
+```bash
+npm run test:backend
+```
+
+### Testes do frontend
+
+```bash
+npm run test:frontend
+```
+
+### Testes de integração
+
+```bash
+npm run db:test:up
+npm run test:integration
+npm run db:test:down
+```
+
+Os testes de integração utilizam um ambiente Docker isolado e são executados automaticamente pelo pipeline de integração contínua do GitHub Actions.
+
+Para mais informações, consulte a [Documentação dos testes de integração](docs/integration-tests.md).
