@@ -151,3 +151,11 @@ export function getAccountOrders(orders: Order[], selected: Order): Order[] {
   return orders.filter((order) => order.status !== "closed" &&
     (selected.attendanceId ? order.attendanceId === selected.attendanceId : order.id === selected.id));
 }
+
+/** Aceita "12,5", "1.234,50" e "1.000" (ponto de milhar); "12.5" segue decimal. */
+export const parseAmount = (value: string) => {
+  const text = value.trim();
+  const thousands = text.includes(",") || /^\d{1,3}(\.\d{3})+$/.test(text);
+  const amount = Number(thousands ? text.replace(/\./g, "").replace(",", ".") : text);
+  return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+};

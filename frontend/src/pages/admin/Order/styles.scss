@@ -373,6 +373,11 @@
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
   overflow-wrap: anywhere;
+  // Pedido grande: no máximo 3 linhas no card (o detalhe mostra tudo).
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .order-card-total {
   grid-column: 1 / -1;
@@ -398,6 +403,10 @@
 .order-details-panel {
   position: sticky;
   top: var(--spacing-6);
+  // Pedido grande: o painel rola por dentro e as ações ficam sempre visíveis.
+  max-height: calc(100dvh - 2 * var(--spacing-6));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   min-width: 0;
   padding: var(--spacing-5);
   border-radius: var(--radius-large);
@@ -832,10 +841,18 @@
   font-size: var(--font-size-lg);
 }
 .order-details-actions {
+  position: sticky;
+  bottom: calc(-1 * var(--spacing-5));
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: var(--spacing-6);
+  padding: var(--spacing-3) 0 var(--spacing-5);
+  margin-bottom: calc(-1 * var(--spacing-5));
+  background: color-mix(in srgb, var(--action-primary) 5%, var(--surface));
+  // Indica que há itens passando por baixo da barra (no desktop o painel rola).
+  border-top: 1px solid var(--border);
 }
 .order-details-actions .btn {
   min-width: 0;
@@ -1179,6 +1196,11 @@
   }
   .order-details-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .order-details-actions {
+    border-top: 0;
   }
 }
 @include mixins.down(workspace) {
@@ -1336,6 +1358,11 @@
   }
   .order-details-panel {
     position: static;
+    max-height: none;
+    overflow-y: visible;
+  }
+  .order-details-actions {
+    border-top: 0;
   }
   .orders-body {
     padding: var(--spacing-6);
@@ -1517,7 +1544,7 @@
 @include mixins.down(workspace) {
   .orders-list-body {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
+    align-items: start;
     gap: var(--spacing-3);
   }
 

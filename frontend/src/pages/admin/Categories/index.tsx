@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckSquare, ChevronDown, Eye, List, Plus, Search, SquareMinus, Tag } from "lucide-react";
+import { CheckSquare, ChevronDown, List, Plus, Search, SquareMinus, Tag } from "lucide-react";
 import { Button, Checkbox, ConfirmationDialog, ListPager } from "@/components";
 import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 import { getSession } from "@/services/auth.service";
@@ -25,7 +25,7 @@ type CategoriesProps = {
   onProductsChanged?: () => void;
 };
 
-export default function Categories({ hideTabs, onPromote, state, products, onShowProducts, onProductsChanged, showAll, onShowAll }: CategoriesProps) {
+export default function Categories({ hideTabs, onPromote, state, products, onShowProducts, onProductsChanged, showAll }: CategoriesProps) {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
@@ -38,8 +38,18 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
       (availabilityFilter === "all" || category.active === (availabilityFilter === "available")))
     .sort((a, b) => sortOrder === "name" ? a.name.localeCompare(b.name, "pt-BR") : sortOrder === "products" ? b.productCount - a.productCount : 0);
 
-  const { pageItems: visible, pager } = usePagedList(categories);
-  const selectedIds = selected.filter((id) => state.categories.some((category) => category.id === id));
+  const listKey = [state.searchQuery, categoryFilter, availabilityFilter, sortOrder].join("|");
+  const { pageItems: visible, pager } = usePagedList(categories, listKey);
+  // Mudou busca/filtro/ordem/página: a seleção recomeça (sem "fantasmas" que voltam depois).
+  const viewKey = `${listKey}|${pager.page}|${pager.pageSize}`;
+  const [seenView, setSeenView] = useState(viewKey);
+  if (seenView !== viewKey) {
+    setSeenView(viewKey);
+    setSelected([]);
+  }
+  // Na renderização em que a chave muda a seleção antiga ainda está no estado:
+  // só o que está na tela conta.
+  const selectedIds = selected.filter((id) => visible.some((category) => category.id === id));
   const toggle = (id: string) =>
     setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const pageIds = visible.map((category) => category.id);
@@ -58,14 +68,6 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
     state.setSearchQuery("");
     setCategoryFilter("all");
     setAvailabilityFilter("all");
-  };
-
-  const openAll = () => {
-    state.setSearchQuery("");
-    setCategoryFilter("all");
-    setAvailabilityFilter("all");
-    setSortOrder("default");
-    onShowAll();
   };
 
   return (
@@ -117,7 +119,6 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
               {pageAllSelected ? <SquareMinus aria-hidden="true" /> : <CheckSquare aria-hidden="true" />}
               {pageAllSelected ? "Desmarcar todos" : `Selecionar todos (${visible.length})`}
             </Button>}
-            {!showAll && <Button size="small" onClick={openAll}><Eye aria-hidden="true" />Ver todos</Button>}
           </div>
         </div>
         {state.error && !state.isModalOpen && !state.categoryToDelete && (

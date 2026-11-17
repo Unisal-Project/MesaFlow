@@ -749,6 +749,11 @@
 }
 
 @include mixins.down(workspace) {
+  // A topbar fixa (~68px) cobriria o topo da lista ao trocar de página.
+  .products-list {
+    scroll-margin-top: calc(var(--spacing-20) + env(safe-area-inset-top));
+  }
+
   .products-list-body {
     display: grid;
     gap: var(--spacing-3);
@@ -756,7 +761,7 @@
   }
 
   .product-row {
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--spacing-4) var(--spacing-3);
     padding: var(--spacing-4);
     border: 1px solid var(--border);
@@ -767,7 +772,8 @@
     .product-identity h3 { overflow: visible; overflow-wrap: anywhere; line-height: 1.4; }
     .product-identity p { overflow-wrap: anywhere; }
     .product-initial { flex-basis: 48px; width: 48px; height: 48px; }
-    .product-price { align-self: start; padding-top: 3px; }
+    // Preço (com promoção ocupa ~170px) na linha de baixo: o nome não fica espremido.
+    .product-price { grid-column: 1 / -1; align-self: start; padding-top: 0; }
 
     .product-controls {
       display: grid;

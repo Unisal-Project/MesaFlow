@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 
 import type { PaymentMethod, CompletedPayment } from "../types/order.types";
-import { currentBusinessDate, orderNumber } from "../utils/order.utils";
+import { currentBusinessDate, orderNumber, parseAmount } from "../utils/order.utils";
 
 import { fetchSettings } from "@/services/settings.service";
 import { Button, SkeletonCard, SystemMessage } from "@/components";
@@ -44,7 +44,7 @@ type PaymentModalProps = {
   /** Pedidos incluídos na conta, para o resumo mostrar de onde vem o consumo. */
   accountOrders?: AccountOrder[];
   onClose: () => void;
-  onComplete: (payments: CompletedPayment[], serviceFeeWaived: boolean) => void;
+  onComplete: (payments: CompletedPayment[], serviceFeeWaived: boolean) => void | Promise<unknown>;
 };
 
 const paymentMethods = [
@@ -63,11 +63,6 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
 
 const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-
-const parseAmount = (value: string) => {
-  const amount = Number(value.replace(",", "."));
-  return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
-};
 
 const toInputAmount = (cents: number) =>
   (cents / 100).toFixed(2).replace(".", ",");
@@ -133,7 +128,12 @@ export function PaymentForm({
   // Fechar com alterações pede confirmação (Esc, fundo, X e Cancelar).
   const draft = JSON.stringify({ payments, serviceFeeWaived });
   const [initialDraft] = useState(draft);
+  // Trava o duplo clique: o modal só fecha depois do sucesso, então o 2º clique
+  // mandaria outro fechamento e mostraria "conta já encerrada" após o sucesso.
+  const finishing = useRef(false);
+  const [finishingNow, setFinishingNow] = useState(false);
   const requestClose = () => {
+    if (finishing.current) return; // fechando a conta: não deixa sair (X, Voltar, fundo, Esc)
     if (draft === initialDraft || window.confirm("Descartar alterações?"))
       onClose();
   };
@@ -238,9 +238,12 @@ export function PaymentForm({
     setPayments((current) => current.filter((payment) => payment.id !== id));
   };
 
-  const finishOrder = () => {
-    if (!canComplete) return;
-    onComplete(
+  const finishOrder = async () => {
+    if (!canComplete || finishing.current) return;
+    finishing.current = true;
+    setFinishingNow(true);
+    try {
+      await onComplete(
       payments.map((payment) => {
         const amount = parseAmount(payment.amount) / 100;
         const receivedAmount = parseAmount(payment.receivedAmount) / 100;
@@ -266,7 +269,11 @@ export function PaymentForm({
         };
       }),
       serviceFeeWaived,
-    );
+      );
+    } finally {
+      finishing.current = false;
+      setFinishingNow(false);
+    }
   };
 
   return (
@@ -297,6 +304,7 @@ export function PaymentForm({
             type="button"
             className="payment-modal-close"
             aria-label="Fechar pagamento"
+            disabled={finishingNow}
             onClick={requestClose}
           >
             <X aria-hidden="true" />
@@ -589,10 +597,10 @@ export function PaymentForm({
         </div>
 
         <footer className="payment-modal-footer">
-          <Button variant="secondary" onClick={requestClose}>
+          <Button variant="secondary" disabled={finishingNow} onClick={requestClose}>
             Voltar
           </Button>
-          <Button disabled={!canComplete} onClick={finishOrder}>
+          <Button loading={finishingNow} disabled={!canComplete} onClick={finishOrder}>
             <Check aria-hidden="true" />
             Confirmar e fechar
           </Button>
