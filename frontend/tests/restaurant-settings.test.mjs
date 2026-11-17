@@ -163,3 +163,14 @@ test("fechamento mostra a mesa e a aba com todos os pedidos e horários da conta
   assert.ok(html.includes("2× Suco"));
   assert.ok(!html.includes("Valor do pagamento 1"));
 });
+
+test("virada do dia: padrão 05:00 e salva a hora como número", async () => {
+  const hook = run(() => useRestaurantSettings(true));
+  await hook().reload();
+  // A resposta do teste não traz dayCutoffHour: cai no padrão 5.
+  assert.equal(hook().form.dayCutoffHour, "5");
+  hook().setForm({ ...hook().form, dayCutoffHour: "3" });
+  await hook().submit({ preventDefault() {} });
+  assert.equal(JSON.parse(requests.at(-1).body).dayCutoffHour, 3);
+  assert.equal(hook().form.dayCutoffHour, "3");
+});

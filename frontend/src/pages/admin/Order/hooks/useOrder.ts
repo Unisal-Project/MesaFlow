@@ -17,6 +17,7 @@ import type { AdminProduct } from "../../Products/types/product.types";
 
 import {
   getAccountOrders,
+  orderNumber,
   toDateKey,
   dateDaysAgo,
   filterOrdersByDate,
@@ -118,6 +119,8 @@ export function toOrder(
   const closed = attendance.status === "CLOSED";
   return {
     id: Number(response.id),
+    dailyNumber: response.dailyNumber,
+    businessDate: response.businessDate,
     table: tableLabel(response.table),
     tableId: response.table.id,
     attendanceId: attendance.id,
@@ -370,9 +373,11 @@ export function useOrder(
 
   const createOrder = async (changes: OrderFormChanges) => {
     let createdId: number | null = null;
+    let createdLabel = "";
     const ok = await run(async () => {
       const created = await createTableOrder(changes.tableId, toInput(changes));
       createdId = Number(created.id);
+      createdLabel = orderNumber({ id: createdId, dailyNumber: created.dailyNumber });
     }, "Pedido criado com sucesso.");
     if (!ok) return;
     setIsCreatingOrder(false);
@@ -382,7 +387,7 @@ export function useOrder(
     setSearchQuery("");
     if (createdId !== null) {
       setSelectedOrderId(createdId);
-      setActivityMessage(`Pedido #${createdId} criado com sucesso.`);
+      setActivityMessage(`Pedido ${createdLabel} criado com sucesso.`);
     }
   };
 
@@ -405,7 +410,7 @@ export function useOrder(
           reason: typed.length >= 3 ? typed : DELETE_ORDER_REASON,
           restoreStock,
         }),
-      `Pedido #${selectedOrder.id} excluído.`,
+      `Pedido ${orderNumber(selectedOrder)} excluído.`,
     );
     if (ok) setSelectedOrderId(null);
   };

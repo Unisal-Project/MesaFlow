@@ -2,6 +2,7 @@ import { PrismaConnector } from "../../../database/prisma.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
 import { byProductId, moveStock } from "../stock.js";
+import { nextDailyNumber } from "../daily-number.js";
 import { effectivePrice, promoSelect } from "../../products/promotion.js";
 
 type Tx = Prisma.TransactionClient;
@@ -100,12 +101,15 @@ export class PrismaAdminOrderRepository {
           409,
         );
 
+      // Contador antes dos produtos: mesma ordem de lock nos 3 caminhos.
+      const number = await nextDailyNumber(tx);
       const prices = await this.lockProducts(
         tx,
         items.map((item) => item.productId),
       );
       const order = await tx.order.create({
         data: {
+          ...number,
           attendanceId,
           notes: notes || null,
           createdById: actor.id,

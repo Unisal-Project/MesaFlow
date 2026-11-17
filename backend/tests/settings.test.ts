@@ -16,6 +16,7 @@ const initial = {
   address: null,
   openingHours: null,
   contact: null,
+  dayCutoffHour: 5,
 };
 
 test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e validação estrita", async () => {
@@ -27,6 +28,7 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
     address: string | null;
     openingHours: string | null;
     contact: string | null;
+    dayCutoffHour: number;
   };
   let writes = 0;
   let adminActive = true;
@@ -45,7 +47,11 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
           get: async () => saved,
           save: async (data) => {
             writes++;
-            saved = data;
+            // Omitido mantém a virada salva (como o repositório Prisma).
+            saved = {
+              ...data,
+              dayCutoffHour: data.dayCutoffHour ?? saved.dayCutoffHour,
+            };
             return saved;
           },
         },
@@ -118,8 +124,16 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
         address: null,
         openingHours: "18h–23h",
         contact: null,
+        dayCutoffHour: 5,
       });
     }
+    const cutoff = await app.inject({
+      method: "PUT",
+      url: "/api/v1/settings",
+      headers: admin,
+      payload: { ...initial, dayCutoffHour: 0 },
+    });
+    assert.equal(cutoff.json().dayCutoffHour, 0);
     for (const payload of [
       { ...initial, serviceFeeRate: -1 },
       { ...initial, serviceFeeRate: 21 },
@@ -130,6 +144,9 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
       { ...initial, address: "x".repeat(256) },
       { ...initial, openingHours: "x".repeat(256) },
       { ...initial, contact: "x".repeat(121) },
+      { ...initial, dayCutoffHour: 24 },
+      { ...initial, dayCutoffHour: -1 },
+      { ...initial, dayCutoffHour: 4.5 },
     ])
       assert.equal(
         (
@@ -142,7 +159,7 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
         ).statusCode,
         400,
       );
-    assert.equal(writes, 5);
+    assert.equal(writes, 6); // 5 taxas + virada do dia
     adminActive = false;
     assert.equal(
       (
@@ -155,7 +172,7 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
       ).statusCode,
       403,
     );
-    assert.equal(writes, 5);
+    assert.equal(writes, 6); // 5 taxas + virada do dia
     assert.equal(
       "serviceFeeRate" in
         (await app.inject({ url: "/api/v1/settings/public" })).json(),

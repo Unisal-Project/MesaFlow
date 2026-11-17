@@ -45,6 +45,39 @@ export const getCurrentTime = () =>
     minute: "2-digit",
   });
 
+type NumberedOrder = { id: number; dailyNumber?: number; businessDate?: string; date?: string };
+
+/**
+ * Dia de operação atual (AAAA-MM-DD), com a regra do backend: fuso de São Paulo
+ * e virada às 05:00 (padrão). O front não carrega a virada configurada, então
+ * vale o dia mais recente entre este cálculo e os pedidos recebidos: se a
+ * virada for antes das 05:00, o primeiro pedido do novo dia já corrige.
+ */
+export function currentBusinessDate(orders: NumberedOrder[] = [], now = new Date()) {
+  const computed = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(now.getTime() - 5 * 3_600_000));
+  return orders.reduce(
+    (latest, order) => (order.businessDate && order.businessDate > latest ? order.businessDate : latest),
+    computed,
+  );
+}
+
+/**
+ * Número exibido do pedido: `#27` (número do dia; cai para o id). Se o pedido
+ * não é do dia de operação `today`, vem com a data: `#27 · 17/11`.
+ */
+export function orderNumber(order: NumberedOrder, today?: string) {
+  const label = `#${order.dailyNumber ?? order.id}`;
+  const day = order.businessDate ?? order.date;
+  if (!today || !day || day === today) return label;
+  const [, month, date] = day.split("-");
+  return `${label} · ${date}/${month}`;
+}
+
 const normalizeSearchText = (value: string) =>
   value
     .normalize("NFD")
@@ -63,7 +96,8 @@ export function filterOrders<T extends OrderSummary>(
       status === "all" || order.status === status;
 
     const searchableContent = normalizeSearchText(
-      `${order.id} ${order.table}`
+      // Busca pelo número do dia (#27) e pelo id interno.
+      `${order.id} #${order.dailyNumber ?? order.id} ${order.table}`
     );
 
     return matchesStatus &&

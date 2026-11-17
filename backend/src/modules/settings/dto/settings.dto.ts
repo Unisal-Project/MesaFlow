@@ -13,6 +13,11 @@ export const settingsSchema = z
     address: text(255),
     openingHours: text(255),
     contact: text(120),
+    // Virada do dia de operação (número do pedido). Opcional: omitido mantém o salvo.
+    dayCutoffHour: z.number().int().min(0).max(23).optional(),
   })
   .strict();
 export type SettingsDTO = z.infer<typeof settingsSchema>;
+export type SettingsResponse = Omit<SettingsDTO, "dayCutoffHour"> & {
+  dayCutoffHour: number;
+};

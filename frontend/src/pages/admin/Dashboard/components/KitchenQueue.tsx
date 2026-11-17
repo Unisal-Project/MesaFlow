@@ -2,6 +2,7 @@ import { Eye, List } from "lucide-react";
 import { Button } from "@/components";
 
 import type { Order } from "../../Order/types/order.types";
+import { currentBusinessDate, orderNumber } from "../../Order/utils/order.utils";
 
 const describe = (order: Order) =>
   `${order.table} · ${order.items.map((item) => `${item.quantity}x ${item.name}`).join(", ")}`;
@@ -13,6 +14,7 @@ type KitchenQueueProps = {
 };
 
 export function KitchenQueue({ orders, onViewOrders, onViewOrder }: KitchenQueueProps) {
+  const today = currentBusinessDate(orders);
   return (
     <section
       className="mf-dashboard-panel"
@@ -38,12 +40,12 @@ export function KitchenQueue({ orders, onViewOrders, onViewOrder }: KitchenQueue
             type="button"
             className="mf-dashboard-order"
             key={order.id}
-            aria-label={`Visualizar pedido #${order.id}: ${describe(order)}`}
+            aria-label={`Visualizar pedido ${orderNumber(order, today)}: ${describe(order)}`}
             onClick={() => onViewOrder?.(order.id)}
           >
             <span className="mf-dashboard-order-icon"><List aria-hidden="true" size={24} /></span>
             <span className="mf-dashboard-order-description">
-              <strong className="mf-dashboard-order-title">Pedido #{order.id}</strong>
+              <strong className="mf-dashboard-order-title">Pedido {orderNumber(order, today)}</strong>
               <span className="mf-dashboard-order-meta">{describe(order)}</span>
             </span>
 

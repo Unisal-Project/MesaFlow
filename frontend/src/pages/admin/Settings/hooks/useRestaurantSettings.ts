@@ -11,6 +11,7 @@ const emptyForm = {
   contact: "",
   serviceFeeRate: "10",
   rateChoice: "10",
+  dayCutoffHour: "5",
 };
 const toForm = (data: RestaurantSettings) => ({
   name: data.name ?? "",
@@ -21,6 +22,7 @@ const toForm = (data: RestaurantSettings) => ({
   rateChoice: [0, 5, 10].includes(data.serviceFeeRate)
     ? String(data.serviceFeeRate)
     : "other",
+  dayCutoffHour: String(data.dayCutoffHour ?? 5),
 });
 export function useRestaurantSettings(editable: boolean) {
   const [form, setForm] = useState(emptyForm);
@@ -94,6 +96,7 @@ export function useRestaurantSettings(editable: boolean) {
           openingHours: text(form.openingHours),
           contact: text(form.contact),
           serviceFeeRate: rate,
+          dayCutoffHour: Number(form.dayCutoffHour),
         }),
       );
       setForm(data);

@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import type { PaymentMethod, CompletedPayment } from "../types/order.types";
+import { currentBusinessDate, orderNumber } from "../utils/order.utils";
 
 import { fetchSettings } from "@/services/settings.service";
 import { Button, SkeletonCard, SystemMessage } from "@/components";
@@ -28,6 +29,8 @@ type PaymentDraft = {
 /** Pedido que compõe a conta da mesa (aba "Pedidos da mesa"). */
 export type AccountOrder = {
   id: number;
+  dailyNumber?: number;
+  businessDate?: string;
   total: number;
   time?: string;
   items?: { name: string; quantity: number; unitPrice: number; observation?: string }[];
@@ -315,7 +318,7 @@ export function PaymentForm({
                 {accountOrders.map((order) => (
                   <li key={order.id}>
                     <header>
-                      <strong>Pedido #{order.id}</strong>
+                      <strong>Pedido {orderNumber(order, currentBusinessDate(accountOrders))}</strong>
                       {order.time && <span>Enviado às {order.time}</span>}
                       <strong className="payment-account-order-total">{formatCurrency(order.total)}</strong>
                     </header>
@@ -507,7 +510,7 @@ export function PaymentForm({
 
             <div className="payment-summary-breakdown">
               {accountOrders.length > 1 && accountOrders.map((order) => (
-                <div key={order.id} className="payment-summary-order"><span>Pedido #{order.id}</span><strong>{formatCurrency(order.total)}</strong></div>
+                <div key={order.id} className="payment-summary-order"><span>Pedido {orderNumber(order, currentBusinessDate(accountOrders))}</span><strong>{formatCurrency(order.total)}</strong></div>
               ))}
               <div><span>Consumo</span><strong>{formatCurrency(subtotalCents / 100)}</strong></div>
               {serviceFeeRate > 0 && <div><span>Taxa de serviço ({serviceFeeRate.toLocaleString("pt-BR")}%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>}

@@ -26,6 +26,8 @@ import {
   formatCurrency,
   getItemCount,
   getOrderTotal,
+  orderNumber,
+  currentBusinessDate,
 } from "./utils/order.utils";
 
 import type { OrdersProps, OrderSort, OrderFilter, OrderPeriod } from "./types/order.types.js";
@@ -85,6 +87,8 @@ export default function Orders({
   } | null>(null);
   const [restoreStock, setRestoreStock] = useState(true);
   const [deleteReason, setDeleteReason] = useState("");
+
+  const businessToday = currentBusinessDate(orders);
 
   const detailsRef = useRef<HTMLElement>(null);
   const topbarRef = useRef<HTMLDivElement>(null);
@@ -260,7 +264,7 @@ export default function Orders({
                           <List aria-hidden="true" />
                         </span>
                         <div>
-                          <h3>Pedido #{order.id}</h3>
+                          <h3>Pedido {orderNumber(order, businessToday)}</h3>
                           <p className="order-card-meta">
                             <span>{order.table}</span>
                             <span>{order.time}</span>
@@ -318,7 +322,7 @@ export default function Orders({
                       <List aria-hidden="true" />
                     </span>
                     <div>
-                      <h2>Pedido #{selectedOrder.id}</h2>
+                      <h2>Pedido {orderNumber(selectedOrder, businessToday)}</h2>
                       <p className="order-details-meta">
                         {selectedOrder.table} · Enviado às {selectedOrder.time}
                       </p>
@@ -487,7 +491,7 @@ export default function Orders({
                       title={
                         confirm?.kind === "reopen"
                           ? `Reabrir a conta de ${selectedOrder.table}?`
-                          : `Excluir o pedido #${selectedOrder.id}?`
+                          : `Excluir o pedido ${orderNumber(selectedOrder)}?`
                       }
                       description={
                         confirm?.kind === "reopen"
@@ -539,7 +543,7 @@ export default function Orders({
                   <h2>
                     {selectedOrderId === null
                       ? "Selecione um pedido"
-                      : `Pedido #${selectedOrderId} não encontrado`}
+                      : "Este pedido não foi encontrado"}
                   </h2>
                   <p>
                     {selectedOrderId === null
@@ -559,7 +563,7 @@ export default function Orders({
           orderId={paymentOrder.id}
           table={paymentOrder.table}
           accountOrders={paymentOrders
-            .map((order) => ({ id: order.id, total: getOrderTotal(order), time: order.time, items: order.items }))
+            .map((order) => ({ id: order.id, dailyNumber: order.dailyNumber, businessDate: order.businessDate, total: getOrderTotal(order), time: order.time, items: order.items }))
             .sort((a, b) => a.id - b.id)}
           total={
             paymentOrders.reduce(

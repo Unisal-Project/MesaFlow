@@ -13,6 +13,8 @@ import {
   type AdminOrderRecord,
 } from "./repositories/prisma-admin-order.repository.js";
 
+import { formatBusinessDate } from "./daily-number.js";
+
 const money = (value: { toString(): string } | null | undefined) =>
   value == null ? null : value.toString();
 
@@ -21,6 +23,8 @@ export function presentAdminOrder(order: AdminOrderRecord) {
   const { attendance } = order;
   return {
     id: order.id.toString(),
+    dailyNumber: order.dailyNumber,
+    businessDate: formatBusinessDate(order.businessDate),
     status: order.status,
     notes: order.notes,
     customerName: order.customerName,

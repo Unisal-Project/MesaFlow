@@ -78,6 +78,10 @@ export type PaymentMethodCode = "CASH" | "PIX" | "CREDIT_CARD" | "DEBIT_CARD";
 
 export type AdminOrderResponse = {
   id: string;
+  /** Número curto do pedido no dia de operação; `id` segue sendo o identificador. */
+  dailyNumber?: number;
+  /** Dia de operação (AAAA-MM-DD). */
+  businessDate?: string;
   status: "PENDING" | "CANCELLED";
   notes: string | null;
   customerName: string | null;

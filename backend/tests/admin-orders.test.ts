@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { withDailyNumber } from "./helpers/daily-number.js";
 import { test } from "node:test";
 
 process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:1/admin_orders_test";
@@ -67,7 +68,7 @@ function fakeDb() {
     };
   };
 
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async (parts: TemplateStringsArray, id: bigint) =>
       parts.join("?").includes("SELECT status FROM attendances")
@@ -176,7 +177,7 @@ function fakeDb() {
     payment: {
       create: async ({ data }: any) => payments.push(data),
     },
-  };
+  });
   return { client, products, attendances, movements, payments };
 }
 

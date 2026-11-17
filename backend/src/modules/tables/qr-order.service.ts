@@ -2,6 +2,7 @@ import { AppError } from "../../shared/errors/app-errors.js";
 import { PrismaConnector } from "../../database/prisma.js";
 import type { Prisma } from "../../generated/prisma/client.js";
 import { byProductId, moveStock } from "../orders/stock.js";
+import { formatBusinessDate, nextDailyNumber } from "../orders/daily-number.js";
 import { effectivePrice, promoSelect } from "../products/promotion.js";
 
 export interface QrOrderInput {
@@ -69,6 +70,9 @@ export class QrOrderService {
       items: orders.flatMap((order) =>
         order.items.map((item) => ({
           id: item.id.toString(),
+          // Pedido a que o item pertence (a conta lista itens, não pedidos).
+          dailyNumber: order.dailyNumber,
+          businessDate: formatBusinessDate(order.businessDate),
           productId: item.productId.toString(),
           productName: item.product.name,
           quantity: item.quantity,
@@ -191,6 +195,7 @@ export class QrOrderService {
           });
         }
 
+        const number = await nextDailyNumber(tx);
         const productIds = data.items.map(({ productId }) => BigInt(productId));
 
         const products = await tx.product.findMany({
@@ -223,6 +228,7 @@ export class QrOrderService {
 
         const order = await tx.order.create({
           data: {
+            ...number,
             attendanceId: attendance.id,
             customerName: data.customerName,
             notes: data.notes,
@@ -253,6 +259,8 @@ export class QrOrderService {
           attendanceId: attendance.id.toString(),
           order: {
             id: order.id.toString(),
+            dailyNumber: order.dailyNumber,
+            businessDate: formatBusinessDate(order.businessDate),
             attendanceId: order.attendanceId.toString(),
             customerName: order.customerName,
             notes: order.notes,

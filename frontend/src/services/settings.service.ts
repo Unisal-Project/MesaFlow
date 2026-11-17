@@ -7,6 +7,8 @@ export type PublicRestaurantSettings = {
 };
 export type RestaurantSettings = PublicRestaurantSettings & {
   serviceFeeRate: number;
+  /** Hora (0–23) em que começa um novo dia de operação (número do pedido). */
+  dayCutoffHour: number;
 };
 export const fetchSettings = () => apiRequest<RestaurantSettings>("/settings");
 export const fetchPublicSettings = () =>
