@@ -1596,3 +1596,75 @@
     font: inherit;
   }
 }
+/* Pedidos que compõem a conta: linhas compactas acima do consumo. */
+.payment-summary-breakdown > .payment-summary-order {
+  padding-block: var(--spacing-1);
+  border-top: 0;
+  strong {
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-regular);
+  }
+}
+/* Abas do fechamento: pagamento x pedidos que compõem a conta da mesa. */
+.payment-view-tabs {
+  display: flex;
+  gap: var(--spacing-1);
+  width: fit-content;
+  margin-bottom: var(--spacing-4);
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-control);
+  background: var(--surface-muted);
+  button {
+    min-height: 34px;
+    padding: 0 var(--spacing-3);
+    border: 0;
+    border-radius: var(--radius-card);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+  }
+  button.active {
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-soft);
+  }
+}
+.payment-account-orders {
+  display: grid;
+  gap: var(--spacing-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  > li {
+    padding: var(--spacing-4);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-large);
+    background: var(--surface);
+  }
+  header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--spacing-2) var(--spacing-3);
+    > span { color: var(--text-secondary); font-size: var(--font-size-xs); }
+  }
+  .payment-account-order-total { margin-left: auto; }
+  ul {
+    display: grid;
+    gap: var(--spacing-2);
+    margin: var(--spacing-3) 0 0;
+    padding: var(--spacing-3) 0 0;
+    border-top: 1px solid var(--border);
+    list-style: none;
+    font-size: var(--font-size-xs);
+  }
+  ul li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    small { color: var(--text-secondary); }
+  }
+}

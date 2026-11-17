@@ -146,3 +146,20 @@ test("pagamento aguarda GET settings e permite tentar novamente após falha", as
     assert.equal(form.props.serviceFeeRate, 5);
   } finally { globalThis.fetch = fetch; delete globalThis.settingsEffects; }
 });
+
+test("fechamento mostra a mesa e a aba com todos os pedidos e horários da conta", () => {
+  const accountOrders = [
+    { id: 40, total: 37.4, time: "08:20", items: [{ name: "Suco", quantity: 2, unitPrice: 18.7 }] },
+    { id: 41, total: 325.28, time: "08:32", items: [{ name: "Pizza", quantity: 1, unitPrice: 325.28 }] },
+  ];
+  const render = run(() => PaymentForm({ orderId: 41, total: 362.68, table: "Mesa 5", accountOrders, serviceFeeRate: 0, onClose() {}, onComplete() {} }));
+  let html = renderToStaticMarkup(render());
+  assert.ok(html.includes("Fechar conta · Mesa 5"));
+  assert.ok(html.includes("Pedido #40") && html.includes("Pedido #41"));
+  assert.ok(html.includes("Valor do pagamento 1"));
+  find(render(), n => n.props?.role === "tab" && String(n.props.children).startsWith("Pedidos da mesa")).props.onClick();
+  html = renderToStaticMarkup(render());
+  assert.ok(html.includes("Enviado às 08:20") && html.includes("Enviado às 08:32"));
+  assert.ok(html.includes("2× Suco"));
+  assert.ok(!html.includes("Valor do pagamento 1"));
+});

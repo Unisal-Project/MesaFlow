@@ -108,7 +108,7 @@ test("aviso some após 7 segundos, sem reiniciar no polling, e pausa durante int
     const run = createHookRunner(() => toast.NotificationToast({ item: closing, onDismiss: () => { dismissed++; }, onOpen() {} }));
     let tree = run(); runtime.flush();
     assert.equal(timers.size, 1);
-    assert.equal([...timers.values()][0].duration, 7000);
+    assert.equal([...timers.values()][0].duration, 3000);
     run(); runtime.flush();
     assert.equal(nextId, 1, "render causado por polling preserva o temporizador");
     tree.props.onMouseEnter(); tree = run(); runtime.flush();

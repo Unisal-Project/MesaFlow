@@ -557,6 +557,10 @@ export default function Orders({
         <PaymentModal
           key={paymentOrder.id}
           orderId={paymentOrder.id}
+          table={paymentOrder.table}
+          accountOrders={paymentOrders
+            .map((order) => ({ id: order.id, total: getOrderTotal(order), time: order.time, items: order.items }))
+            .sort((a, b) => a.id - b.id)}
           total={
             paymentOrders.reduce(
               (sum, order) => sum + Math.round(getOrderTotal(order) * 100),

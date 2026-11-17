@@ -25,9 +25,21 @@ type PaymentDraft = {
   feeRate: string;
 };
 
+/** Pedido que compõe a conta da mesa (aba "Pedidos da mesa"). */
+export type AccountOrder = {
+  id: number;
+  total: number;
+  time?: string;
+  items?: { name: string; quantity: number; unitPrice: number; observation?: string }[];
+};
+
 type PaymentModalProps = {
   orderId: number;
   total: number;
+  /** Mesa da conta (ex.: "Mesa 5"); a conta fecha todos os pedidos dela. */
+  table?: string;
+  /** Pedidos incluídos na conta, para o resumo mostrar de onde vem o consumo. */
+  accountOrders?: AccountOrder[];
   onClose: () => void;
   onComplete: (payments: CompletedPayment[], serviceFeeWaived: boolean) => void;
 };
@@ -91,11 +103,14 @@ export function PaymentModal(props: PaymentModalProps) {
 export function PaymentForm({
   orderId,
   total,
+  table,
+  accountOrders = [],
   onClose,
   onComplete,
   serviceFeeRate,
 }: PaymentModalProps & { serviceFeeRate: number }) {
   const modalRef = useRef<HTMLElement>(null);
+  const [view, setView] = useState<"payment" | "orders">("payment");
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
   const [serviceFeeWaived, setServiceFeeWaived] = useState(false);
@@ -267,8 +282,12 @@ export function PaymentForm({
       >
         <header className="payment-modal-header">
           <div>
-            <h2 id="payment-modal-title">Fechar conta · pedido #{orderId}</h2>
-            <p>Informe como o cliente realizou o pagamento.</p>
+            <h2 id="payment-modal-title">Fechar conta · {table || `pedido #${orderId}`}</h2>
+            <p>
+              {accountOrders.length > 1
+                ? `A conta inclui ${accountOrders.length} pedidos desta mesa. Informe como o cliente realizou o pagamento.`
+                : "Informe como o cliente realizou o pagamento."}
+            </p>
           </div>
           <button
             ref={closeButtonRef}
@@ -283,6 +302,37 @@ export function PaymentForm({
 
         <div className="payment-modal-body">
           <div className="payment-modal-main">
+            {accountOrders.length > 0 && (
+              <div className="payment-view-tabs" role="tablist" aria-label="Fechamento da conta">
+                {([["payment", "Pagamento"], ["orders", `Pedidos da mesa (${accountOrders.length})`]] as const).map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={view === id}
+                    className={view === id ? "active" : ""} onClick={() => setView(id)}>{label}</button>
+                ))}
+              </div>
+            )}
+            {view === "orders" ? (
+              <ol className="payment-account-orders" aria-label="Pedidos incluídos na conta">
+                {accountOrders.map((order) => (
+                  <li key={order.id}>
+                    <header>
+                      <strong>Pedido #{order.id}</strong>
+                      {order.time && <span>Enviado às {order.time}</span>}
+                      <strong className="payment-account-order-total">{formatCurrency(order.total)}</strong>
+                    </header>
+                    {order.items && order.items.length > 0 && (
+                      <ul>
+                        {order.items.map((item, index) => (
+                          <li key={`${item.name}-${index}`}>
+                            <span>{item.quantity}× {item.name}{item.observation ? <small> · {item.observation}</small> : null}</span>
+                            <span>{formatCurrency(item.quantity * item.unitPrice)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            ) : (<>
             <div className="payment-section-heading">
               <div>
                 <h3>Formas de pagamento</h3>
@@ -445,6 +495,7 @@ export function PaymentForm({
                 );
               })}
             </div>
+            </>)}
           </div>
 
           <aside className="payment-summary">
@@ -455,6 +506,9 @@ export function PaymentForm({
             </strong>
 
             <div className="payment-summary-breakdown">
+              {accountOrders.length > 1 && accountOrders.map((order) => (
+                <div key={order.id} className="payment-summary-order"><span>Pedido #{order.id}</span><strong>{formatCurrency(order.total)}</strong></div>
+              ))}
               <div><span>Consumo</span><strong>{formatCurrency(subtotalCents / 100)}</strong></div>
               {serviceFeeRate > 0 && <div><span>Taxa de serviço ({serviceFeeRate.toLocaleString("pt-BR")}%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>}
             </div>

@@ -3,7 +3,8 @@ import { BellRing, X } from "lucide-react";
 import type { NotificationItem } from "./Notifications";
 import { notificationTarget, notificationTitle } from "@/hooks/useAttendanceNotifications";
 
-const NOTIFICATION_TOAST_DURATION_MS = 7000;
+// Some sozinho em 3 s (pausa enquanto o mouse ou o foco estão no aviso).
+const NOTIFICATION_TOAST_DURATION_MS = 3000;
 
 export function NotificationToast({ item, onDismiss, onOpen }: {
   item: NotificationItem;
