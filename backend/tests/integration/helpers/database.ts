@@ -21,3 +21,60 @@ export async function connectDatabase() {
 export async function disconnectDatabase() {
   await db.$disconnect();
 }
+
+export async function cleanupTable(tableId: bigint) {
+  await db.$transaction(async (tx) => {
+    const attendances = await tx.attendance.findMany({
+      where: { tableId },
+      select: { id: true },
+    });
+
+    const attendanceIds = attendances.map(({ id }) => id);
+
+    const orders = await tx.order.findMany({
+      where: {
+        attendanceId: { in: attendanceIds },
+      },
+      select: { id: true },
+    });
+
+    const orderIds = orders.map(({ id }) => id);
+
+    await tx.printJob.deleteMany({
+      where: {
+        OR: [
+          { attendanceId: { in: attendanceIds } },
+          { orderId: { in: orderIds } },
+        ],
+      },
+    });
+
+    await tx.stockMovement.deleteMany({
+      where: { orderId: { in: orderIds } },
+    });
+
+    await tx.payment.deleteMany({
+      where: { attendanceId: { in: attendanceIds } },
+    });
+
+    await tx.orderItem.deleteMany({
+      where: { orderId: { in: orderIds } },
+    });
+
+    await tx.order.deleteMany({
+      where: { id: { in: orderIds } },
+    });
+
+    await tx.attendance.deleteMany({
+      where: { tableId },
+    });
+
+    await tx.waiterCall.deleteMany({
+      where: { tableId },
+    });
+
+    await tx.restaurantTable.delete({
+      where: { id: tableId },
+    });
+  });
+}
