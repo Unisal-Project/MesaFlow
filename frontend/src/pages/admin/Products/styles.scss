@@ -1135,7 +1135,8 @@ label.field.money-field input {
 
 .products-heading-actions, .products-promotion-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-3); }
 .products-promotion-actions { margin-block: var(--spacing-4); }
-.products-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); }
+.products-list-actions { display: flex; flex-wrap: wrap; gap: var(--spacing-2); }
+.products-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); padding-inline: var(--spacing-2); }
 .products-selectable-row > .check-control { min-height: var(--spacing-11); width: var(--spacing-11); justify-content: center; }
 .menu-access-modal {
   width: min(480px, calc(100% - 32px));

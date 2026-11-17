@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PromotionsContent } from "../Promotions";
 import { usePromotions, type ItemKey } from "../Promotions/hooks/usePromotions";
 import { useContentTransition } from "@/hooks/useContentTransition";
-import { ArrowLeft, ChevronDown, Eye, List, Plus, Search } from "lucide-react";
-import { Button, AdminSidebar, Notifications, Checkbox, ConfirmationDialog } from "@/components";
+import { ArrowLeft, CheckSquare, ChevronDown, Eye, List, Plus, Search, SquareMinus } from "lucide-react";
+import { Button, AdminSidebar, Notifications, Checkbox, ConfirmationDialog, ListPager } from "@/components";
+import { usePagedList } from "@/hooks/usePagedList";
 import { getSession } from "@/services/auth.service";
 import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
 
@@ -18,6 +19,7 @@ import type { ProductsProps } from "./types/product.types";
 
 import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 
+import { isRowAreaClick } from "@/utils/selectableRow";
 import "./styles.scss";
 
 export default function Products({
@@ -39,6 +41,12 @@ export default function Products({
   const promotionState = usePromotions(() => Promise.all([productState.reload(), categoryState.reload()]));
   const { contentRef, transitionContent } =
     useContentTransition(".products-list");
+  const reloadPromotions = promotionState.reload;
+  // A aba Promoções guarda sua própria cópia dos produtos: recarrega ao entrar nela
+  // para refletir exclusões, cadastros e edições feitas nas outras abas.
+  useEffect(() => {
+    if (activeTab === "promotions") void Promise.resolve().then(reloadPromotions);
+  }, [activeTab, reloadPromotions]);
 
   const openAllProducts = () => {
     setSearchQuery("");
@@ -97,10 +105,15 @@ export default function Products({
     setCategoryFilter("all");
     setAvailabilityFilter("all");
   };
-  const visibleProducts =
-    showAllProducts || isFiltering
-      ? filteredProducts
-      : filteredProducts.slice(0, 4);
+  const { pageItems: visibleProducts, pager } = usePagedList(filteredProducts);
+  const toggleProduct = (id: string) =>
+    setSelectedProducts((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const pageIds = visibleProducts.map((product) => product.id);
+  const pageAllSelected = pageIds.length > 0 && pageIds.every((id) => selectedProducts.includes(id));
+  const togglePage = () =>
+    setSelectedProducts((current) => pageAllSelected
+      ? current.filter((id) => !pageIds.includes(id))
+      : [...new Set([...current, ...pageIds])]);
   const deleteSelected = async () => {
     setConfirmBulkDelete(false);
     // Ficam selecionados só os que falharam (se nenhum falhar, a seleção limpa).
@@ -220,7 +233,7 @@ export default function Products({
           {activeTab === "promotions" ? <PromotionsContent embedded state={promotionState} onNavigate={onNavigate ?? (() => undefined)} /> : isCategories ? (
             <Categories
               hideTabs
-              onPromote={(id) => promote([`c:${id}`])}
+              onPromote={(ids) => promote(ids.map((id) => `c:${id}` as ItemKey))}
               showAll={showAllCategories}
               onShowAll={onShowAllCategories}
               state={categoryState}
@@ -298,17 +311,23 @@ export default function Products({
                     <p>
                       {isFiltering
                         ? `${filteredProducts.length} de ${products.length} produtos`
-                        : showAllProducts
-                          ? `${products.length} produtos cadastrados`
-                          : `${Math.min(4, filteredProducts.length)} de ${products.length} produtos cadastrados`}
+                        : `${products.length} produtos cadastrados`}
                     </p>
                   </div>
+                  <div className="products-list-actions">
+                  {visibleProducts.length > 0 && (
+                    <Button size="small" variant="secondary" disabled={promotionState.busy} onClick={togglePage}>
+                      {pageAllSelected ? <SquareMinus aria-hidden="true" /> : <CheckSquare aria-hidden="true" />}
+                      {pageAllSelected ? "Desmarcar todos" : `Selecionar todos (${visibleProducts.length})`}
+                    </Button>
+                  )}
                   {!showAllProducts && (
                     <Button size="small" onClick={openAllProducts}>
                       <Eye aria-hidden="true" />
                       Ver todos
                     </Button>
                   )}
+                  </div>
                 </div>
                 {productError && !isProductModalOpen && !productToDelete && (
                   <p className="product-form-error" role="alert">{productError}</p>
@@ -316,7 +335,8 @@ export default function Products({
                 {productLoading && <p role="status">Carregando produtos...</p>}
                 <div className="products-list-body">
                   {visibleProducts.map((product) => (
-                    <div key={product.id} className="products-selectable-row"><Checkbox label="" aria-label={`Selecionar ${product.name}`} disabled={promotionState.busy} checked={selectedProducts.includes(product.id)} onChange={() => setSelectedProducts(current => current.includes(product.id) ? current.filter(id => id !== product.id) : [...current, product.id])} /><ProductRow
+                    <div key={product.id} className={`products-selectable-row selectable-row${selectedProducts.includes(product.id) ? " is-selected" : ""}`}
+                      onClick={(event) => { if (!promotionState.busy && isRowAreaClick(event)) toggleProduct(product.id); }}><Checkbox label="" aria-label={`Selecionar ${product.name}`} disabled={promotionState.busy} checked={selectedProducts.includes(product.id)} onChange={() => toggleProduct(product.id)} /><ProductRow
                       key={product.id}
                       product={product}
                       onUpdateQuantity={updateQuantity}
@@ -343,6 +363,7 @@ export default function Products({
                     </div>
                   )}
                 </div>
+                <ListPager {...pager} label="Produtos" />
               </section>
             </>
           )}

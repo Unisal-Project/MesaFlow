@@ -12,7 +12,7 @@ before(async () => {
   globalThis.localStorage = { getItem: () => null };
   server = await createServer({ root: fileURLToPath(new URL('..', import.meta.url)), server: { middlewareMode: true, ws: false }, optimizeDeps: { noDiscovery: true }, plugins: [{ name:'unified-menu-hooks', enforce:'pre', transform(code,id) {
     if (id.endsWith('/Promotions/hooks/usePromotions.ts')) return 'export const usePromotions = () => globalThis.menuPromotionState;';
-    if (id.endsWith('/Products/index.tsx') || id.endsWith('/hooks/useContentTransition.ts')) return code.replace('from "react"','from "/tests/helpers/hook-runtime.mjs"');
+    if (id.endsWith('/Products/index.tsx') || id.endsWith('/hooks/useContentTransition.ts') || id.endsWith('/hooks/usePagedList.ts')) return code.replace('from "react"','from "/tests/helpers/hook-runtime.mjs"');
   } }] });
   ({ createHookRunner:run } = await server.ssrLoadModule('/tests/helpers/hook-runtime.mjs'));
   ({ default:Products } = await server.ssrLoadModule('/src/pages/admin/Products/index.tsx'));
@@ -54,7 +54,7 @@ test('aba Promoções embute conteúdo sem sidebar/topbar próprios',()=>{
 test('atalho da categoria seleciona c: e conteúdo embutido não duplica o shell', async()=>{
  globalThis.menuPromotionState=promotionState();const calls=[];globalThis.menuPromotionState.defineFor=keys=>calls.push(keys);
  const current=props();current.activeTab='categories';const tabs=[];current.onSwitchTab=tab=>tabs.push(tab);
- const tree=run(()=>Products(current))();find(tree,n=>n.props?.onPromote).props.onPromote('c');
+ const tree=run(()=>Products(current))();find(tree,n=>n.props?.onPromote).props.onPromote(['c']);
  assert.deepEqual(calls,[['c:c']]);assert.equal(tabs.at(-1),'promotions');
  const { CategoryRow }=await server.ssrLoadModule('/src/pages/admin/Categories/components/CategoryRow.tsx');
  let chosen;const row=CategoryRow({category:{id:'c',name:'Bebidas'},onPromote:id=>chosen=id});
@@ -71,4 +71,28 @@ test('rota integrada renderiza um único shell e o legado redireciona',()=>{
  assert.equal((html.match(/class="admin-sidebar"/g)??[]).length,1);
  assert.ok(!html.includes('promotions-topbar'));assert.ok(html.includes('<h2>Promoções</h2>'));
  assert.equal(renderAt('/admin/promocoes'),'');
+});
+
+test('lista de produtos pagina em 25/50/100/todos em vez de cortar em 4', () => {
+ globalThis.menuPromotionState = promotionState();
+ const current = props();
+ const many = Array.from({ length: 120 }, (_, i) => ({ id: String(i), name: `P${i}`, categoryId: 'c', price: '1', quantity: 1 }));
+ Object.assign(current.productState, { products: many, filteredProducts: many });
+ const render = run(() => Products(current));
+ const rows = tree => (find(tree, n => n.props?.className === 'products-list-body').props.children[0]).length;
+ let tree = render();
+ assert.equal(rows(tree), 25);
+ const pager = () => find(render(), n => n.type?.name === 'ListPager').props;
+ assert.equal(pager().totalPages, 5);
+ pager().onPage(5); assert.equal(rows(render()), 20);
+ pager().onPageSize(100); assert.equal(pager().page, 1); assert.equal(rows(render()), 100);
+ pager().onPageSize(999); assert.equal(rows(render()), 120); assert.equal(pager().totalPages, 1); assert.equal(pager().last, 120);
+});
+
+test('paginação compacta: 1 2 3 4 5 … 26 e janela no meio/fim', async () => {
+ const { pageItems } = await server.ssrLoadModule('/src/utils/pagination.ts');
+ assert.deepEqual(pageItems(1, 5), [1, 2, 3, 4, 5]);
+ assert.deepEqual(pageItems(1, 26), [1, 2, 3, 4, 5, '…', 26]);
+ assert.deepEqual(pageItems(10, 26), [1, '…', 9, 10, 11, '…', 26]);
+ assert.deepEqual(pageItems(26, 26), [1, '…', 22, 23, 24, 25, 26]);
 });

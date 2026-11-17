@@ -16,6 +16,7 @@ import { promotionLabel, type PromoFields } from "@/utils/promotion";
 import { usePromotions, type ItemKey } from "./hooks/usePromotions";
 import { promotionStatus } from "./promotionStatus";
 import { PromotionPanel } from "./PromotionPanel";
+import { isRowAreaClick } from "@/utils/selectableRow";
 import "./styles.scss";
 
 type PromotionsProps = { onNavigate: (id: string) => void };
@@ -259,7 +260,10 @@ export function PromotionsContent({ onNavigate, embedded = false, state: promoti
                   {visible.map((product) => (
                     <li
                       key={product.id}
-                      className="product-row promotions-product-row"
+                      className={`product-row promotions-product-row selectable-row${state.selected.includes(`p:${product.id}`) ? " is-selected" : ""}`}
+                      onClick={(event) => {
+                        if (!state.busy && isRowAreaClick(event)) state.toggle(`p:${product.id}`);
+                      }}
                     >
                       {select(`p:${product.id}`, product.name)}
                       {product.imageUrl && (

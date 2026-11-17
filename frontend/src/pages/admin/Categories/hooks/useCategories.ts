@@ -242,7 +242,36 @@ export function useCategories(
     }
   };
 
+  /** Exclui várias categorias; as que falharem (ex.: com produtos ativos) são devolvidas. */
+  const deleteCategories = async (ids: string[]) => {
+    setBusy(true);
+    setError("");
+    const failed: string[] = [];
+    let lastError = "";
+    try {
+      for (const id of ids) {
+        try {
+          await removeCategory(id);
+        } catch (err) {
+          failed.push(id);
+          lastError = message(err);
+        }
+      }
+      await reload();
+    } finally {
+      setBusy(false);
+    }
+    if (failed.length) {
+      const done = ids.length - failed.length;
+      setError(
+        `${done} de ${ids.length} ${ids.length === 1 ? "categoria excluída" : "categorias excluídas"}. ${lastError.replace(/\.$/, "")}. Exclua essas uma por vez para escolher o destino dos produtos.`,
+      );
+    }
+    return failed;
+  };
+
   return {
+    deleteCategories,
     categories,
     filteredCategories,
     normalizedSearch,

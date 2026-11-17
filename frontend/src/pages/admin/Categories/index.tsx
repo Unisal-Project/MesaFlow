@@ -1,6 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Eye, List, Plus, Search, Tag } from "lucide-react";
-import { Button } from "@/components";
+import { CheckSquare, ChevronDown, Eye, List, Plus, Search, SquareMinus, Tag } from "lucide-react";
+import { Button, Checkbox, ConfirmationDialog, ListPager } from "@/components";
+import { AnimatedTrash } from "@/components/ui/icons/AnimatedTrash";
+import { getSession } from "@/services/auth.service";
+import { isRowAreaClick } from "@/utils/selectableRow";
+import { usePagedList } from "@/hooks/usePagedList";
 import { CategoryRow } from "./components/CategoryRow";
 import { CategoryFormModal } from "./components/CategoryFormModal";
 import { DeleteCategoryModal } from "./components/DeleteCategoryModal";
@@ -10,7 +14,8 @@ import "./styles.scss";
 
 type CategoriesProps = {
   hideTabs?: boolean;
-  onPromote?: (categoryId: string) => void;
+  /** Coloca uma ou mais categorias em promoção. */
+  onPromote?: (categoryIds: string[]) => void;
   showAll: boolean;
   onShowAll: () => void;
   state: ReturnType<typeof useCategories>;
@@ -24,15 +29,31 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [availabilityFilter, setAvailabilityFilter] = useState("all");
   const [sortOrder, setSortOrder] = useState("default");
+  const [selected, setSelected] = useState<string[]>([]);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const isAdmin = getSession()?.user.role === "ADMIN";
   const categories = state.filteredCategories
     .map((category) => ({ ...category, productCount: products.filter((product) => product.categoryId === category.id).length }))
     .filter((category) => (categoryFilter === "all" || String(category.id) === categoryFilter) &&
       (availabilityFilter === "all" || category.active === (availabilityFilter === "available")))
     .sort((a, b) => sortOrder === "name" ? a.name.localeCompare(b.name, "pt-BR") : sortOrder === "products" ? b.productCount - a.productCount : 0);
 
-  // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
-  const isFiltering = state.normalizedSearch !== "" || categoryFilter !== "all" || availabilityFilter !== "all";
-  const visible = showAll || isFiltering ? categories : categories.slice(0, 4);
+  const { pageItems: visible, pager } = usePagedList(categories);
+  const selectedIds = selected.filter((id) => state.categories.some((category) => category.id === id));
+  const toggle = (id: string) =>
+    setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const pageIds = visible.map((category) => category.id);
+  const pageAllSelected = pageIds.length > 0 && pageIds.every((id) => selected.includes(id));
+  const deleteSelected = async () => {
+    setConfirmBulkDelete(false);
+    // Ficam selecionadas só as que falharam (ex.: categorias com produtos).
+    setSelected(await state.deleteCategories(selectedIds));
+    onProductsChanged?.();
+  };
+  const togglePage = () =>
+    setSelected((current) => pageAllSelected
+      ? current.filter((id) => !pageIds.includes(id))
+      : [...new Set([...current, ...pageIds])]);
   const clearFilters = () => {
     state.setSearchQuery("");
     setCategoryFilter("all");
@@ -77,13 +98,27 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
         <button type="button" onClick={onShowProducts}>Produtos</button>
         <button type="button" className="active" aria-current="page">Categorias</button>
       </nav>}
+      {onPromote && selectedIds.length > 0 && <div className="products-promotion-actions"><span>{selectedIds.length} {selectedIds.length === 1 ? "selecionada" : "selecionadas"}</span>
+        <Button variant="secondary" onClick={() => setSelected([])}>Limpar seleção</Button>
+        <Button onClick={() => { onPromote(selectedIds); setSelected([]); }}>Colocar em promoção</Button>
+        {isAdmin && <Button variant="danger" disabled={state.busy} onClick={() => setConfirmBulkDelete(true)}><AnimatedTrash />Excluir selecionadas</Button>}</div>}
+      <ConfirmationDialog open={confirmBulkDelete && selectedIds.length > 0} variant="danger"
+        title={selectedIds.length === 1 ? "Excluir 1 categoria?" : `Excluir ${selectedIds.length} categorias?`}
+        description="⚠️ Só categorias sem produtos ativos são excluídas. As que ainda têm produtos continuam selecionadas para você excluir uma por vez e escolher para onde mover os produtos. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir" onCancel={() => setConfirmBulkDelete(false)} onConfirm={() => void deleteSelected()} />
       <section className={`products-list categories-list${showAll ? " products-list-full" : ""}`} aria-labelledby="categories-list-title">
         <div className="products-list-heading">
           <div>
             <h2 id="categories-list-title">{showAll ? "Todas as categorias" : "Categorias cadastradas"}</h2>
-            <p>{visible.length} de {state.categories.length} categorias organizam o cardápio</p>
+            <p>{categories.length} de {state.categories.length} categorias organizam o cardápio</p>
           </div>
-          {!showAll && <Button size="small" onClick={openAll}><Eye aria-hidden="true" />Ver todos</Button>}
+          <div className="products-list-actions">
+            {onPromote && visible.length > 0 && <Button size="small" variant="secondary" onClick={togglePage}>
+              {pageAllSelected ? <SquareMinus aria-hidden="true" /> : <CheckSquare aria-hidden="true" />}
+              {pageAllSelected ? "Desmarcar todos" : `Selecionar todos (${visible.length})`}
+            </Button>}
+            {!showAll && <Button size="small" onClick={openAll}><Eye aria-hidden="true" />Ver todos</Button>}
+          </div>
         </div>
         {state.error && !state.isModalOpen && !state.categoryToDelete && (
           <p className="category-form-error" role="alert">{state.error}</p>
@@ -91,14 +126,20 @@ export default function Categories({ hideTabs, onPromote, state, products, onSho
         {state.loading && <p role="status">Carregando categorias...</p>}
         <div className="categories-list-body">
           {visible.map((category) => (
-            <CategoryRow key={category.id} category={category} onStatusChange={state.updateCategoryStatus}
-              onPromote={onPromote} onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
+            onPromote ? <div key={category.id} className={`categories-selectable-row selectable-row${selected.includes(category.id) ? " is-selected" : ""}`}
+              onClick={(event) => { if (isRowAreaClick(event)) toggle(category.id); }}>
+              <Checkbox label="" aria-label={`Selecionar ${category.name}`} checked={selected.includes(category.id)} onChange={() => toggle(category.id)} />
+              <CategoryRow category={category} onStatusChange={state.updateCategoryStatus}
+                onPromote={(id) => onPromote([id])} onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
+            </div> : <CategoryRow key={category.id} category={category} onStatusChange={state.updateCategoryStatus}
+              onEdit={state.openEditCategory} onDelete={state.requestCategoryDeletion} />
           ))}
           {!state.loading && state.categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria ainda.</p>
             <Button size="small" onClick={state.openNewCategory}><Plus aria-hidden="true" />Cadastrar primeira categoria</Button></div>}
           {state.categories.length > 0 && categories.length === 0 && <div className="categories-no-results"><Tag aria-hidden="true" /><p>Nenhuma categoria encontrada com os filtros selecionados.</p>
             <Button size="small" variant="secondary" onClick={clearFilters}>Limpar filtros</Button></div>}
         </div>
+        <ListPager {...pager} label="Categorias" />
       </section>
       {state.isModalOpen && <CategoryFormModal isOpen editingCategoryId={state.editingCategoryId} form={state.categoryForm}
         hasUnsavedChanges={state.hasUnsavedChanges}

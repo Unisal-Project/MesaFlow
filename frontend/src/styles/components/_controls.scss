@@ -182,15 +182,39 @@ button.active {
   gap: 6px;
   align-items: center;
   button {
+    display: grid;
+    place-items: center;
     width: 38px;
-    border-color: var(--border);
-    background: var(--surface);
+    padding: 0;
+    background: transparent;
     color: var(--text);
+    cursor: pointer;
+  }
+  button:not(.active, .pagination-arrow):hover {
+    background: var(--surface-muted);
   }
   button.active {
-    border-color: var(--primary);
-    background: var(--primary);
-    color: var(--on-primary);
+    background: var(--text);
+    color: var(--surface);
+  }
+  .pagination-arrow {
+    border-color: var(--text);
+    background: var(--surface);
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+    &:disabled {
+      border-color: var(--border);
+      color: var(--text-secondary);
+      opacity: 0.6;
+      cursor: default;
+    }
+  }
+  .pagination-gap {
+    width: 24px;
+    color: var(--text-secondary);
+    text-align: center;
   }
 }
 .tooltip-demo {
@@ -219,5 +243,54 @@ button.active {
   &:focus-within::after {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+.list-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-3) var(--spacing-5);
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--spacing-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  label {
+    display: flex;
+    gap: var(--spacing-2);
+    align-items: center;
+  }
+  select {
+    min-height: 38px;
+    padding: 0 var(--spacing-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--surface);
+    color: var(--text);
+  }
+  .pagination {
+    flex-wrap: wrap;
+  }
+}
+/* Linha selecionável: clique na área livre marca o item; cresce e destaca no hover. */
+.selectable-row {
+  border-radius: var(--radius-large);
+  cursor: pointer;
+  transition: transform 150ms ease, background-color 150ms ease, box-shadow 150ms ease;
+  &:hover {
+    position: relative;
+    z-index: 1;
+    transform: scale(1.012);
+    background: var(--surface-muted);
+    box-shadow: var(--shadow-soft);
+  }
+  &.is-selected {
+    background: color-mix(in srgb, var(--primary) 8%, var(--surface));
+  }
+  &.is-selected:hover {
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface));
+  }
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    &:hover { transform: none; }
   }
 }

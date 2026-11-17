@@ -429,3 +429,7 @@
   legend { font-size: var(--font-size-sm); color: var(--text-secondary); }
   .radio-control { min-height: var(--spacing-11); }
 }
+
+.categories-selectable-row { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--spacing-3); padding-inline: var(--spacing-2); }
+.categories-selectable-row > .check-control { min-height: var(--spacing-11); width: var(--spacing-11); justify-content: center; }
+.categories-selectable-row + .categories-selectable-row { border-top: 1px solid var(--border); }
