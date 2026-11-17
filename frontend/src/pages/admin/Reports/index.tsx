@@ -8,6 +8,9 @@ import "./styles.scss";
 
 type ReportsProps = { onNavigate: (id: string) => void };
 
+/** O painel mostra só os mais vendidos, para não crescer com o cardápio. */
+const TOP_PRODUCTS = 8;
+
 const trendLabel = (change: number | null, hasSales: boolean) =>
   !hasSales ? "Sem dados no período"
     : change === null ? "Sem base de comparação"
@@ -15,6 +18,8 @@ const trendLabel = (change: number | null, hasSales: boolean) =>
 
 export default function Reports({ onNavigate }: ReportsProps) {
   const report = useReports();
+  const rankedProducts = report.products.slice(0, TOP_PRODUCTS);
+  const topQuantity = Math.max(1, ...report.products.map((item) => item.quantity));
   const negative = report.scenario === "negative";
   const Direction = negative ? ArrowDown : ArrowUp;
   const TicketDirection = negative ? ArrowDownLeft : ArrowUpRight;
@@ -73,10 +78,10 @@ export default function Reports({ onNavigate }: ReportsProps) {
                 <button type="button" onClick={report.clearSelectedDay}>Ver período completo</button>
               </div>}
               <ol className="reports-ranking" key={report.selectedDay?.date ?? report.periodLabel}>
-                {report.products.map((product, index) => <li key={product.name}>
+                {rankedProducts.map((product, index) => <li key={product.name}>
                   <span className="reports-rank">{String(index + 1).padStart(2, "0")}</span>
                   <div><div className="reports-ranking-label"><strong>{product.name}</strong><span>{product.quantity} un.</span></div>
-                    <progress max={Math.max(1, ...report.products.map((item) => item.quantity))} value={product.quantity} aria-label={`${product.name}: ${product.quantity} unidades`} />
+                    <progress max={topQuantity} value={product.quantity} aria-label={`${product.name}: ${product.quantity} unidades`} />
                   </div>
                 </li>)}
               </ol>
