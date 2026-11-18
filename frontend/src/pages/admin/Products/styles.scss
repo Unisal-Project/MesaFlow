@@ -865,34 +865,26 @@
   grid-column: 1 / -1;
   display: grid;
   gap: var(--spacing-1);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  // Prévia centralizada no formulário (título e cartão).
+  // Prévia centralizada no formulário (cartão e dica).
   justify-items: center;
   text-align: center;
-
-  .product-card {
-    width: min(100%, 320px);
-    text-align: left;
+  // Só a dica é texto do admin; o cartão (cliente) não herda tamanho/peso daqui.
+  > small {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
   }
+
   // Cartão clicável: abre o cardápio rolado até o produto.
   .new-product-preview-link {
     display: block;
-    width: min(100%, 320px);
+    width: min(100%, 366px);
     border-radius: var(--radius-large);
     color: inherit;
     text-decoration: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
-    .product-card { width: 100%; }
     &:hover { transform: translateY(-2px); box-shadow: var(--shadow-soft); }
     &:focus-visible { outline: none; box-shadow: var(--focus-ring); }
     @media (prefers-reduced-motion: reduce) { transition: none; &:hover { transform: none; } }
-  }
-  .new-product-preview-photo {
-    display: block;
-    width: 100%;
-    height: 160px;
-    object-fit: cover;
   }
 }
 
@@ -1103,12 +1095,6 @@ label.field.money-field input {
   color: var(--text);
   box-shadow: var(--shadow-large);
   &::backdrop { background: var(--overlay); }
-  .food-photo {
-    display: block;
-    width: 100%;
-    height: 180px;
-    object-fit: cover;
-  }
 }
 .product-row-preview-content { padding: var(--spacing-4); }
 .product-row-preview-close {
@@ -1190,4 +1176,20 @@ label.field.money-field input {
   padding: var(--spacing-3);
   border-radius: var(--radius-medium);
   background: var(--surface-muted);
+}
+
+/* Prévia = card do cardápio do cliente (components/MenuProductCard). As classes do
+   cliente vêm de pages/client/Menu e layouts/clientWorkspace (só importados); aqui
+   só se desfaz o contexto de página (altura de tela, cabeçalho fixo, fundo) e a
+   largura vira a de um celular. */
+.menu-card-preview.client-workspace {
+  width: min(100%, 366px);
+  text-align: left;
+  min-height: 0;
+  padding-top: 0;
+  background: transparent;
+  > .client-menu {
+    min-height: 0;
+    background: transparent;
+  }
 }

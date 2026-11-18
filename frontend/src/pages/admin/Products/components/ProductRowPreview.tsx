@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { X } from "lucide-react";
-import { ProductCard } from "@/components";
-import { promotionLabel } from "@/utils/promotion";
+import { MenuProductCard } from "./MenuProductCard";
 import type { AdminProduct } from "../types/product.types";
 
 export function ProductRowPreview({ product, onClose }: {
@@ -31,7 +30,6 @@ export function ProductRowPreview({ product, onClose }: {
     };
   }, [onClose]);
 
-  const soldOut = product.trackStock && product.quantity <= 0;
   return (
     <dialog ref={dialogRef} className="product-modal product-row-preview"
       aria-label={`Prévia de ${product.name}`} tabIndex={-1}
@@ -41,15 +39,16 @@ export function ProductRowPreview({ product, onClose }: {
         <button type="button" className="product-row-preview-close" aria-label="Fechar prévia" onClick={onClose}>
           <X size={20} aria-hidden="true" />
         </button>
-        <ProductCard
+        <MenuProductCard
           name={product.name}
-          description={product.observation ?? ""}
-          price={product.finalPrice}
-          originalPrice={product.promotion ? product.price : undefined}
-          badge={product.promotion ? promotionLabel(product.promotion) : undefined}
-          available={product.available && !soldOut}
-          unavailableLabel={product.available ? "Esgotado" : "Indisponível"}
-          image={product.imageUrl ? <img className="food-photo" src={product.imageUrl} alt="" /> : undefined}
+          description={product.observation}
+          finalPrice={product.finalPriceValue}
+          price={product.priceValue}
+          promotion={product.promotion}
+          imageUrl={product.imageUrl}
+          available={product.available}
+          trackStock={product.trackStock}
+          quantity={product.quantity}
         />
       </div>
     </dialog>
