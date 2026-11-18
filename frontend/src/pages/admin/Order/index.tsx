@@ -1,5 +1,5 @@
 import { useContentTransition } from "@/hooks/useContentTransition";
-import { useImperativeHandle, useRef, useState } from "react";
+import { useImperativeHandle, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import {
   CalendarDays,
@@ -8,6 +8,7 @@ import {
   List,
   Pencil,
   Plus,
+  Printer,
   Search,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ import { AdminSidebar } from "@/components";
 import { PaymentModal } from "./components/PaymentModal.js";
 import { OrderEditPanel } from "./components/OrderEditPanel.js";
 import { Notifications } from "@/components";
+import { printOrder, formatPrintTimestamp } from "@/services/print.service";
 
 import { paymentMethodLabels, orderPeriods, emptyPeriodMessages } from "./constants/order.constants.js";
 
@@ -76,6 +78,7 @@ export default function Orders({
     setPaymentOrderId,
     selectedOrder,
     setEditingOrderId,
+    catalog,
   } = state;
 
   const isAdmin = getSession()?.user.role === "ADMIN";
@@ -88,6 +91,58 @@ export default function Orders({
   const [deleteReason, setDeleteReason] = useState("");
 
   const businessToday = currentBusinessDate();
+
+  // Impressão: fala direto com a ponte local (Java), fora do fluxo normal
+  // de ações do pedido (não mexe no estado do pedido em si, só manda imprimir).
+  const [printingOrderId, setPrintingOrderId] = useState<number | null>(null);
+  const [printedOrderIds, setPrintedOrderIds] = useState<Set<number>>(new Set());
+
+  // Mapa productId -> categoria, pra imprimir o resumo por categoria no
+  // ticket (o pedido em si não guarda a categoria, só o produto).
+  const categoryByProductId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const product of catalog) {
+      if (product.category) map.set(product.id, product.category);
+    }
+    return map;
+  }, [catalog]);
+
+  const printSingleOrder = async (orderToPrint: typeof orders[number]) => {
+    setPrintingOrderId(orderToPrint.id);
+    try {
+      await printOrder({
+        orderId: String(orderToPrint.id),
+        orderLabel: orderNumber(orderToPrint, businessToday),
+        tableLabel: orderToPrint.table,
+        observation: orderToPrint.observation,
+        printedAt: formatPrintTimestamp(
+          orderToPrint.createdAt ? new Date(orderToPrint.createdAt) : new Date(),
+        ),
+        items: orderToPrint.items.map((item) => ({
+          name: item.name,
+          quantity: item.quantity,
+          notes: item.observation,
+          category: item.productId
+            ? categoryByProductId.get(item.productId)
+            : undefined,
+        })),
+      });
+      setPrintedOrderIds((prev) => {
+        const next = new Set(prev);
+        next.add(orderToPrint.id);
+        return next;
+      });
+      setActivityMessage(
+        `Pedido ${orderNumber(orderToPrint, businessToday)} enviado para a impressora.`,
+      );
+    } catch (err) {
+      setActivityMessage(
+        err instanceof Error ? err.message : "Não foi possível imprimir o pedido.",
+      );
+    } finally {
+      setPrintingOrderId(null);
+    }
+  };
 
   const detailsRef = useRef<HTMLElement>(null);
   const topbarRef = useRef<HTMLDivElement>(null);
@@ -348,6 +403,18 @@ export default function Orders({
                     >
                       <Pencil aria-hidden="true" />
                       Editar pedido
+                    </button>
+                    <button
+                      type="button"
+                      disabled={printingOrderId === selectedOrder.id}
+                      onClick={() => printSingleOrder(selectedOrder)}
+                    >
+                      <Printer aria-hidden="true" />
+                      {printingOrderId === selectedOrder.id
+                        ? "Imprimindo..."
+                        : printedOrderIds.has(selectedOrder.id)
+                          ? "Reimprimir"
+                          : "Imprimir"}
                     </button>
                   </div>
 

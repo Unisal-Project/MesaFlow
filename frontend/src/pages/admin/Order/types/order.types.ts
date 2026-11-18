@@ -48,6 +48,8 @@ export type OrderCatalogProduct = {
   unitPrice: number;
   /** null = produto sem controle de estoque. */
   stock: number | null;
+  /** Nome da categoria do produto, usado no resumo do ticket impresso. */
+  category?: string;
 };
 
 export type OrderTableOption = { id: string; label: string };

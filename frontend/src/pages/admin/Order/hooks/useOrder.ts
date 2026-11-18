@@ -362,6 +362,7 @@ export function useOrder(
           // Estimativa: quem cobra é o backend (preço efetivo com promoção).
           unitPrice: product.finalPriceValue,
           stock: product.trackStock ? product.quantity : null,
+          category: product.category,
         })),
     [products],
   );
