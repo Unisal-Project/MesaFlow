@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { statusInfo } from "../constants/table.constants";
 import type { RestaurantTable } from "../types/table.types";
+import { formatElapsed } from "../utils/table.utils";
 
 type TableCardProps = {
   table: RestaurantTable;
@@ -40,7 +41,7 @@ export function TableCard({ table, onSelect }: TableCardProps) {
           </span>
           <span>
             {table.openedAt
-              ? `Há ${Math.max(0, Math.floor((now - Date.parse(table.openedAt)) / 60_000))} min`
+              ? formatElapsed((now - Date.parse(table.openedAt)) / 60_000)
               : "—"}
           </span>
         </div>

@@ -180,6 +180,11 @@
     font-size: var(--font-size-xs);
     line-height: 1.5;
     overflow-wrap: anywhere;
+    // Pedido grande: no máximo 3 linhas na fila.
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
   .badge {
     justify-content: center;
@@ -429,6 +434,7 @@
 @include mixins.down(workspace) {
   .mf-dashboard-orders {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4) var(--spacing-5);
   }

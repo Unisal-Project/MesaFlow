@@ -319,6 +319,23 @@
   font-weight: var(--font-weight-regular);
   text-transform: capitalize;
 }
+// Rótulos do eixo: no desktop os "wide"; no celular só os "narrow" (menos, e maiores).
+.reports-chart text[data-narrow]:not([data-wide]) {
+  display: none;
+}
+@include mixins.down(phone) {
+  // O SVG (700 de largura) encolhe ~0,4× em 360px: 28px viram ~11px na tela.
+  .reports-chart text[data-wide],
+  .reports-chart text[data-narrow] {
+    font-size: 28px;
+  }
+  .reports-chart text[data-narrow]:not([data-wide]) {
+    display: initial;
+  }
+  .reports-chart text[data-wide]:not([data-narrow]) {
+    display: none;
+  }
+}
 .reports-ranking {
   display: grid;
   gap: var(--spacing-5);

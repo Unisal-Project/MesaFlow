@@ -38,3 +38,10 @@ export function withLabel(qr: HTMLCanvasElement, label: string) {
   ctx.fillText(label, out.width / 2, qr.height + band / 2);
   return out;
 }
+
+/** Tempo desde a abertura: "Há 45 min" até 59 min; depois "Há 6 h 05". */
+export function formatElapsed(minutes: number) {
+  const total = Math.max(0, Math.floor(minutes));
+  if (total < 60) return `Há ${total} min`;
+  return `Há ${Math.floor(total / 60)} h ${String(total % 60).padStart(2, "0")}`;
+}

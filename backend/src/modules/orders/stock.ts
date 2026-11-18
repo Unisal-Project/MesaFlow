@@ -54,6 +54,42 @@ export async function moveStock(
 }
 
 /**
+ * Movimenta o estoque dos itens de um pedido: UM movimento por produto (soma das
+ * linhas; o carrinho cria 1 linha por unidade), em ordem de productId, com o 1º
+ * item do produto como referência (orderItemId). `sign` -1 debita, 1 devolve.
+ */
+export async function moveItemsStock(
+  tx: Prisma.TransactionClient,
+  items: { id: bigint; productId: bigint; quantity: number }[],
+  sign: 1 | -1,
+  movement: Omit<StockMovementInput, "orderItemId">,
+) {
+  const byProduct = new Map<
+    bigint,
+    { orderItemId: bigint; quantity: number }
+  >();
+  for (const item of items) {
+    const group = byProduct.get(item.productId);
+    if (group) group.quantity += item.quantity;
+    else
+      byProduct.set(item.productId, {
+        orderItemId: item.id,
+        quantity: item.quantity,
+      });
+  }
+  const groups = [...byProduct].map(([productId, group]) => ({
+    productId,
+    ...group,
+  }));
+  for (const { productId, orderItemId, quantity } of groups.sort(byProductId)) {
+    await moveStock(tx, productId, sign * quantity, {
+      ...movement,
+      orderItemId,
+    });
+  }
+}
+
+/**
  * Ordena por productId crescente. Toda transação que mexe em estoque deve
  * atualizar os produtos nessa ordem para que pedidos simultâneos travem as
  * linhas na mesma sequência e não entrem em deadlock.

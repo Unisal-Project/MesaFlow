@@ -1,5 +1,5 @@
-import type { SettingsDTO } from "../dto/settings.dto.js";
+import type { SettingsDTO, SettingsResponse } from "../dto/settings.dto.js";
 export interface SettingsRepository {
-  get(): Promise<SettingsDTO>;
-  save(data: SettingsDTO): Promise<SettingsDTO>;
+  get(): Promise<SettingsResponse>;
+  save(data: SettingsDTO): Promise<SettingsResponse>;
 }

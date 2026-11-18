@@ -89,6 +89,62 @@ test('lista de produtos pagina em 25/50/100/todos em vez de cortar em 4', () => 
  pager().onPageSize(999); assert.equal(rows(render()), 120); assert.equal(pager().totalPages, 1); assert.equal(pager().last, 120);
 });
 
+test('B07: mudar busca/filtro volta à página 1 (mesmo vindo da página 2)', () => {
+ globalThis.menuPromotionState = promotionState();
+ const current = props();
+ const items = n => Array.from({ length: n }, (_, i) => ({ id: String(i), name: `P${i}`, categoryId: 'c', price: '1', quantity: 1 }));
+ Object.assign(current.productState, { products: items(60), filteredProducts: items(60) });
+ const render = run(() => Products(current));
+ const pager = () => find(render(), n => n.type?.name === 'ListPager').props;
+ const rows = () => find(render(), n => n.props?.className === 'products-list-body').props.children[0].length;
+ pager().onPage(3); assert.equal(pager().page, 3);
+ // Mesma busca: a página escolhida é mantida.
+ assert.equal(pager().page, 3);
+ // Busca nova com 30 resultados: mostra os 25 primeiros, não os itens 26–30.
+ Object.assign(current.productState, { normalizedSearch: 'x', filteredProducts: items(30) });
+ assert.equal(pager().page, 1); assert.equal(rows(), 25);
+ pager().onPage(2); assert.equal(pager().page, 2); assert.equal(rows(), 5);
+ // Trocar o filtro também reinicia.
+ current.productState.categoryFilter = 'c';
+ assert.equal(pager().page, 1);
+});
+
+test('B02: excluir selecionados só alcança o que está na tela (filtro/busca/página)', () => {
+ globalThis.menuPromotionState = promotionState();
+ const token = 'h.' + btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 })) + '.s';
+ const before = globalThis.localStorage;
+ globalThis.localStorage = { getItem: key => key === 'mesaflow.session' ? JSON.stringify({ accessToken: token, user: { id: '1', role: 'ADMIN' } }) : null };
+ try {
+  const current = props();
+  const item = id => ({ id, name: `P${id}`, categoryId: 'c', price: '1', quantity: 1 });
+  const lanches = ['1', '2'].map(item), bebidas = ['10'].map(item);
+  const deleted = [];
+  Object.assign(current.productState, { products: [...lanches, ...bebidas], filteredProducts: lanches, deleteProducts: async ids => { deleted.push(ids); return []; } });
+  const render = run(() => Products(current));
+  find(render(), n => n.props?.['aria-label'] === 'Selecionar P1').props.onChange();
+  find(render(), n => n.props?.['aria-label'] === 'Selecionar P2').props.onChange();
+  // Troca o filtro: P1 e P2 saem da tela e não contam mais.
+  current.productState.filteredProducts = bebidas;
+  current.productState.categoryFilter = 'b';
+  assert.ok(!find(render(), n => [n.props?.children].flat().includes('Excluir selecionados')), 'seleção escondida não aparece');
+  // Voltar ao filtro anterior não ressuscita a seleção antiga.
+  render();
+  current.productState.filteredProducts = lanches;
+  current.productState.categoryFilter = 'all';
+  render();
+  assert.ok(!find(render(), n => [n.props?.children].flat().includes('Excluir selecionados')), 'sem seleção fantasma');
+  current.productState.filteredProducts = bebidas;
+  current.productState.categoryFilter = 'b';
+  render();
+  find(render(), n => n.props?.['aria-label'] === 'Selecionar P10').props.onChange();
+  find(render(), n => [n.props?.children].flat().includes('Excluir selecionados')).props.onClick();
+  const dialog = find(render(), n => n.type?.name === 'ConfirmationDialog');
+  assert.match(dialog.props.title, /^Excluir 1 produto\?/);
+  dialog.props.onConfirm();
+  assert.deepEqual(deleted, [['10']], 'só o visível é excluído');
+ } finally { globalThis.localStorage = before; }
+});
+
 test('paginação compacta: 1 2 3 4 5 … 26 e janela no meio/fim', async () => {
  const { pageItems } = await server.ssrLoadModule('/src/utils/pagination.ts');
  assert.deepEqual(pageItems(1, 5), [1, 2, 3, 4, 5]);

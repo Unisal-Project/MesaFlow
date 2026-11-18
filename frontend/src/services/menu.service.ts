@@ -38,7 +38,7 @@ export const unitPrice = (product: Product) =>
 export const stockLimit = (product: Product) =>
   product.trackStock ? Math.max(0, product.stockQuantity) : 99;
 
-export const isSoldOut = (product: Product) =>
+export const isSoldOut = (product: Pick<Product, "trackStock" | "stockQuantity">) =>
   product.trackStock && product.stockQuantity <= 0;
 
 export type MenuCatalog = { categories: Category[]; products: Product[] };

@@ -65,3 +65,13 @@ test('sem localStorage: o primeiro pedido novo após a semente vazia notifica', 
   assert.equal(notifications.newOrderNotifications([{id: '80', status: 'PENDING', attendance: {status: 'OPEN'}, table: {number: 1}}]).length, 1);
  } finally { globalThis.localStorage = original; }
 });
+
+test('B11: reabrir conta antiga em outro aparelho não vira "pedido novo" (anterior a ontem)',()=>{
+ storage.set('mesaflow.session',JSON.stringify({accessToken:'h.'+btoa(JSON.stringify({exp:Math.floor(Date.now()/1000)+3600}))+'.s',user:{id:'reopen-user',role:'ADMIN'}}));
+ notifications.newOrderNotifications([]); // primeira visita (semente vazia)
+ const today=new Date().toISOString().slice(0,10);
+ const old={id:'900',status:'PENDING',businessDate:'2020-01-01',attendance:{status:'OPEN'},table:{number:1}};
+ const recent={id:'901',status:'PENDING',businessDate:today,attendance:{status:'OPEN'},table:{number:2}};
+ const result=notifications.newOrderNotifications([old,recent]);
+ assert.deepEqual(result.map(o=>o.id),['901']);
+});

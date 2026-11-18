@@ -1,3 +1,4 @@
+import { businessDaysAgo, businessToday } from "@/utils/businessDay";
 import type {
   Order,
   OrderSummary,
@@ -15,11 +16,8 @@ export const toDateKey = (date: Date) =>
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
 
-export const dateDaysAgo = (days: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return toDateKey(date);
-};
+/** Data (AAAA-MM-DD) do dia de operação de `days` dias atrás; 0 = hoje. */
+export const dateDaysAgo = (days: number) => businessDaysAgo(days);
 
 export const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", {
@@ -45,6 +43,23 @@ export const getCurrentTime = () =>
     minute: "2-digit",
   });
 
+type NumberedOrder = { id: number; dailyNumber?: number; businessDate?: string; date?: string };
+
+/** Dia de operação atual (AAAA-MM-DD), com a virada configurada em Configurações. */
+export const currentBusinessDate = (now = new Date()) => businessToday(now);
+
+/**
+ * Número exibido do pedido: `#27` (número do dia; cai para o id). Se o pedido
+ * não é do dia de operação `today`, vem com a data: `#27 · 17/11`.
+ */
+export function orderNumber(order: NumberedOrder, today?: string) {
+  const label = `#${order.dailyNumber ?? order.id}`;
+  const day = order.businessDate ?? order.date;
+  if (!today || !day || day === today) return label;
+  const [, month, date] = day.split("-");
+  return `${label} · ${date}/${month}`;
+}
+
 const normalizeSearchText = (value: string) =>
   value
     .normalize("NFD")
@@ -63,7 +78,8 @@ export function filterOrders<T extends OrderSummary>(
       status === "all" || order.status === status;
 
     const searchableContent = normalizeSearchText(
-      `${order.id} ${order.table}`
+      // Busca pelo número do dia (#27) e pelo id interno.
+      `${order.id} #${order.dailyNumber ?? order.id} ${order.table}`
     );
 
     return matchesStatus &&
@@ -100,15 +116,20 @@ export function filterOrdersByDate<T extends DatedOrderSummary>(
     : order.date >= firstDate && order.date <= todayDate);
 
 }
-export function sortOrders<T extends DatedOrderSummary & { time: string }>(
+/**
+ * Ordena pelo instante de criação (createdAt) e desempata por id. Dia + "HH:MM"
+ * como texto erra num turno que passa da meia-noite: no mesmo dia de operação,
+ * "23:59" > "00:47". Sem createdAt (dados antigos) cai no dia + hora.
+ */
+export function sortOrders<T extends DatedOrderSummary & { time: string; createdAt?: string }>(
   orders: T[],
   sort: OrderSort,
 ): T[] {
   const direction = sort === "newest" ? -1 : 1;
   return [...orders].sort((a, b) => {
-    const dateComparison = a.date.localeCompare(b.date);
-    const timeComparison = a.time.localeCompare(b.time);
-    return direction * (dateComparison || timeComparison || a.id - b.id);
+    const instant = a.createdAt && b.createdAt ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : 0;
+    const fallback = a.date.localeCompare(b.date) || a.time.localeCompare(b.time);
+    return direction * (instant || fallback || a.id - b.id);
   });
 }
 
@@ -117,3 +138,11 @@ export function getAccountOrders(orders: Order[], selected: Order): Order[] {
   return orders.filter((order) => order.status !== "closed" &&
     (selected.attendanceId ? order.attendanceId === selected.attendanceId : order.id === selected.id));
 }
+
+/** Aceita "12,5", "1.234,50" e "1.000" (ponto de milhar); "12.5" segue decimal. */
+export const parseAmount = (value: string) => {
+  const text = value.trim();
+  const thousands = text.includes(",") || /^\d{1,3}(\.\d{3})+$/.test(text);
+  const amount = Number(thousands ? text.replace(/\./g, "").replace(",", ".") : text);
+  return Number.isFinite(amount) ? Math.round(amount * 100) : 0;
+};

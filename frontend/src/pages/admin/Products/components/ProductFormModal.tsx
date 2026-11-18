@@ -1,18 +1,17 @@
 import {
   Badge,
   Button,
-  ProductCard,
   SelectField,
   Switch,
   TextAreaField,
   TextField,
 } from "@/components";
-import { formatPriceMenu } from "@/utils/formatPrice";
 import {
   previewPrice,
   promotionLabel,
   type PromoFields,
 } from "@/utils/promotion";
+import { MenuProductCard } from "./MenuProductCard";
 import { PromotionFields } from "./PromotionFields";
 
 import { ChevronDown, Plus, Trash, X } from "lucide-react";
@@ -490,30 +489,16 @@ export function ProductFormModal({
           <div className="new-product-preview">
             {(() => {
               const card = (
-                <ProductCard
+                <MenuProductCard
                   name={newProduct.name || "Nome do produto"}
                   description={newProduct.observation}
-                  price={formatPriceMenu(preview.finalPrice)}
-                  originalPrice={
-                    preview.promotion
-                      ? formatPriceMenu(toDecimal(newProduct.price) || "0")
-                      : undefined
-                  }
-                  badge={
-                    preview.promotion
-                      ? promotionLabel(preview.promotion)
-                      : undefined
-                  }
+                  finalPrice={preview.finalPrice}
+                  price={toDecimal(newProduct.price) || "0"}
+                  promotion={preview.promotion}
+                  imageUrl={newProduct.imageUrl || undefined}
                   available={newProduct.available}
-                  image={
-                    newProduct.imageUrl ? (
-                      <img
-                        className="food-photo new-product-preview-photo"
-                        src={newProduct.imageUrl}
-                        alt=""
-                      />
-                    ) : undefined
-                  }
+                  trackStock={newProduct.trackStock}
+                  quantity={Number(newProduct.quantity) || 0}
                 />
               );
               // Produto salvo e sem alterações: o próprio cartão abre o cardápio real

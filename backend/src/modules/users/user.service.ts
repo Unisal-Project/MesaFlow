@@ -49,7 +49,7 @@ export class UserService {
       (rest.role !== undefined && rest.role !== current.role);
     const updateData = {
       ...rest,
-      ...(revoke && { tokenVersion: current.tokenVersion + 1 }),
+      ...(revoke && { tokenVersion: { increment: 1 } as const }),
       ...(email === undefined ? {} : { email: this.normalizeEmail(email) }),
       ...(password === undefined
         ? {}
@@ -61,11 +61,9 @@ export class UserService {
   }
 
   async deleteUser(id: bigint): Promise<void> {
-    const current = await this.userRepository.findById(id);
-    if (!current) throw new AppError("Usuário não encontrado", 404);
     await this.userRepository.update(id, {
       active: false,
-      tokenVersion: current.tokenVersion + 1,
+      tokenVersion: { increment: 1 },
     });
   }
 

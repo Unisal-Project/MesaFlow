@@ -316,6 +316,8 @@
   .category-row {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--spacing-4) var(--spacing-3);
+    // Contagem na linha de baixo: nome longo não fica espremido.
+    .category-product-count { grid-column: 1 / -1; }
     padding: var(--spacing-4);
     border: 1px solid var(--border);
     border-radius: var(--radius-large);

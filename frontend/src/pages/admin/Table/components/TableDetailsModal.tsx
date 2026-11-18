@@ -1,4 +1,5 @@
 import type { Order } from "../../Order/types/order.types";
+import { currentBusinessDate, orderNumber } from "../../Order/utils/order.utils";
 import { formatPrice } from "@/utils/formatPrice";
 import { Pencil, Plus, QrCode, ReceiptText } from "lucide-react";
 
@@ -124,7 +125,7 @@ export function TableDetailsModal({
                   aria-labelledby="table-linked-order-title"
                 >
                   <h3 id="table-linked-order-title">
-                    Pedido #{activeOrder.id}
+                    Pedido {orderNumber(activeOrder, currentBusinessDate())}
                   </h3>
                   <ul>
                     {activeOrder.items.map((item, index) => (

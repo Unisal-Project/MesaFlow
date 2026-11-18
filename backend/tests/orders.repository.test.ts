@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { withDailyNumber } from "./helpers/daily-number.js";
 import { test } from "node:test";
 process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:1/orders_test";
 process.env.JWT_SECRET ??= "orders-test-secret";
@@ -12,7 +13,7 @@ const input = {
 
 function fixture(status = "OPEN") {
   const calls: string[] = [];
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: any) => {
       calls.push("transaction");
       return callback(client);
@@ -57,7 +58,7 @@ function fixture(status = "OPEN") {
         calls.push("print");
       },
     },
-  };
+  });
   return { client, calls, repository: new PrismaOrderRepository(client) };
 }
 

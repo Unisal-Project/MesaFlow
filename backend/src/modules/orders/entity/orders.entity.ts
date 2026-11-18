@@ -17,6 +17,10 @@ export class OrderEntity {
     public restoreStock: boolean | null,
     public createdAt: Date,
     public updatedAt: Date,
+    /** Número curto do pedido no dia de operação (#1, #2…). */
+    public readonly dailyNumber: number,
+    /** Dia de operação, "AAAA-MM-DD". */
+    public readonly businessDate: string,
   ) {}
 
   isPending(): boolean {

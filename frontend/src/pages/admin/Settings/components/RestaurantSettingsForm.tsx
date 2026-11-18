@@ -1,6 +1,7 @@
 import {
   Button,
   Radio,
+  SelectField,
   SkeletonCard,
   SystemMessage,
   TextField,
@@ -101,6 +102,25 @@ export function RestaurantSettingsForm({
         {!editable && (
           <p>Somente o administrador pode alterar as configurações.</p>
         )}
+      </section>
+      <section aria-labelledby="restaurant-settings-day">
+        <h2 id="restaurant-settings-day">Número do pedido</h2>
+        <SelectField
+          id="settings-day-cutoff"
+          label="Virada do dia"
+          value={state.form.dayCutoffHour}
+          disabled={!editable || state.busy}
+          hint="Os pedidos são numerados #1, #2… a cada dia de operação. Pedidos antes deste horário contam no dia anterior (ex.: com 05:00, um pedido às 03:40 entra no dia anterior). Mudar a virada no meio do expediente reinicia a contagem no novo dia."
+          onChange={(event) =>
+            state.setForm({ ...state.form, dayCutoffHour: event.target.value })
+          }
+        >
+          {Array.from({ length: 24 }, (_, hour) => (
+            <option key={hour} value={String(hour)}>
+              {String(hour).padStart(2, "0")}:00
+            </option>
+          ))}
+        </SelectField>
       </section>
       {state.error && (
         <SystemMessage variant="error">{state.error}</SystemMessage>

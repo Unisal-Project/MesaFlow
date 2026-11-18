@@ -38,5 +38,6 @@ export type CreateUserInput = RegisterUserInput & {
 };
 
 export type UpdateUserData = Partial<CreateUserData> & {
-  tokenVersion?: number;
+  /** Sempre incremento atômico no banco (logout, senha, desativação, perfil). */
+  tokenVersion?: { increment: 1 };
 };

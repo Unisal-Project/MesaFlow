@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { createServer } from "vite";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-let server, run, service, useRestaurantSettings, PaymentForm, PaymentModal, RestaurantInfo;
+let server, run, service, useRestaurantSettings, PaymentForm, PaymentModal, RestaurantInfo, paymentModule;
 const old = { fetch: globalThis.fetch, window: globalThis.window, localStorage: globalThis.localStorage };
 const data = { name: "Mesa Flow", address: null, openingHours: "18h–23h", contact: "123", serviceFeeRate: 5 };
 const requests = [];
@@ -23,7 +23,8 @@ before(async () => {
   ({ createHookRunner: run } = await server.ssrLoadModule("/tests/helpers/hook-runtime.mjs"));
   service = await server.ssrLoadModule("/src/services/settings.service.ts");
   ({ useRestaurantSettings } = await server.ssrLoadModule("/src/pages/admin/Settings/hooks/useRestaurantSettings.ts"));
-  ({ PaymentForm, PaymentModal } = await server.ssrLoadModule("/src/pages/admin/Order/components/PaymentModal.tsx"));
+  paymentModule = await server.ssrLoadModule("/src/pages/admin/Order/components/PaymentModal.tsx");
+  ({ PaymentForm, PaymentModal } = paymentModule);
   ({ RestaurantInfo } = await server.ssrLoadModule("/src/components/layout/RestaurantInfo.tsx"));
 });
 after(async () => { await server?.close(); Object.assign(globalThis, old); });
@@ -162,4 +163,39 @@ test("fechamento mostra a mesa e a aba com todos os pedidos e horários da conta
   assert.ok(html.includes("Enviado às 08:20") && html.includes("Enviado às 08:32"));
   assert.ok(html.includes("2× Suco"));
   assert.ok(!html.includes("Valor do pagamento 1"));
+});
+
+test("virada do dia: padrão 05:00 e salva a hora como número", async () => {
+  const hook = run(() => useRestaurantSettings(true));
+  await hook().reload();
+  // A resposta do teste não traz dayCutoffHour: cai no padrão 5.
+  assert.equal(hook().form.dayCutoffHour, "5");
+  hook().setForm({ ...hook().form, dayCutoffHour: "3" });
+  await hook().submit({ preventDefault() {} });
+  assert.equal(JSON.parse(requests.at(-1).body).dayCutoffHour, 3);
+  assert.equal(hook().form.dayCutoffHour, "3");
+});
+
+test("B08: valor com ponto de milhar é lido certo", async () => {
+  const { parseAmount } = await server.ssrLoadModule("/src/pages/admin/Order/utils/order.utils.ts");
+  assert.equal(parseAmount("1.000"), 100000);
+  assert.equal(parseAmount("1.234,50"), 123450);
+  assert.equal(parseAmount("12,5"), 1250);
+  assert.equal(parseAmount("12.5"), 1250, "ponto com 1–2 casas segue decimal");
+  assert.equal(parseAmount("1.234.567,89"), 123456789);
+  assert.equal(parseAmount("abc"), 0);
+});
+
+test("B03: duplo clique em Confirmar e fechar envia um único fechamento", async () => {
+  let calls = 0, finish;
+  const pending = new Promise((resolve) => { finish = resolve; });
+  const render = run(() => PaymentForm({ orderId: 1, total: 20, serviceFeeRate: 0, onClose() {}, onComplete() { calls++; return pending; } }));
+  const confirm = () => find(render(), n => [n.props?.children].flat().includes("Confirmar e fechar"));
+  const first = confirm().props.onClick();
+  const second = confirm().props.onClick();
+  assert.equal(calls, 1, "2º clique ignorado enquanto o 1º está em andamento");
+  assert.equal(confirm().props.loading, true);
+  finish();
+  await Promise.all([first, second]);
+  assert.equal(confirm().props.loading, false, "destrava se o fechamento falhar e o modal continuar aberto");
 });
