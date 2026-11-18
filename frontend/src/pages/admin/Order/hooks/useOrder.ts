@@ -525,6 +525,7 @@ export function useOrder(
     isCreatingOrder,
     newOrderTableId,
     activityMessage,
+    setActivityMessage,
     searchQuery,
     setSearchQuery,
     orders,

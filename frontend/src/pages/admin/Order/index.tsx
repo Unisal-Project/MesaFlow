@@ -59,6 +59,7 @@ export default function Orders({
     filteredOrders,
     isCreatingOrder,
     activityMessage,
+    setActivityMessage,
     searchQuery,
     setSearchQuery,
     orders,
