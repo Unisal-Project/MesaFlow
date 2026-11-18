@@ -125,7 +125,7 @@ export function TableDetailsModal({
                   aria-labelledby="table-linked-order-title"
                 >
                   <h3 id="table-linked-order-title">
-                    Pedido {orderNumber(activeOrder, currentBusinessDate([activeOrder]))}
+                    Pedido {orderNumber(activeOrder, currentBusinessDate())}
                   </h3>
                   <ul>
                     {activeOrder.items.map((item, index) => (

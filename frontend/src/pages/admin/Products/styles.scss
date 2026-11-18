@@ -778,7 +778,8 @@
     .product-controls {
       display: grid;
       grid-column: 1 / -1;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      // Linha 1: estoque (ou "Sem controle"); linha 2: Disponível; linha 3: Editar (largura toda).
+      grid-template-columns: minmax(0, 1fr);
       align-items: center;
       gap: var(--spacing-3);
       padding-top: var(--spacing-3);
@@ -792,8 +793,19 @@
 
         input { width: 100%; min-height: 44px; font-size: 16px; }
       }
-      .product-status { justify-self: end; min-width: 0; min-height: 44px; }
-      .btn { width: 100%; min-height: 44px; }
+      // "Estoque" acima e [−] [campo] [+] lado a lado: o campo divide o espaço que sobra
+      // entre os botões de 44px (antes encolhia para ~10px) e tem largura mínima legível.
+      .product-stock {
+        grid-column: 1 / -1;
+        width: 100%;
+        gap: var(--spacing-2);
+        .product-quantity { flex: 1 1 0; width: auto; min-width: 64px; }
+      }
+      .product-quantity--untracked { grid-column: 1 / -1; align-items: stretch; }
+      .product-status { justify-self: start; min-width: 0; min-height: 44px; white-space: nowrap; }
+      .btn { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+      // O ícone nunca encolhe (em colunas estreitas ele chegava a 0px e vazava do card).
+      .btn svg { flex-shrink: 0; }
     }
   }
 

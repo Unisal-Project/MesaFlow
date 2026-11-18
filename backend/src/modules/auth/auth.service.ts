@@ -78,7 +78,7 @@ export class AuthService {
     }
     const updated = await this.userRepository.update(userId, {
       passwordHash: await this.passwordHasher.createHasher(newPassword),
-      tokenVersion: user.tokenVersion + 1,
+      tokenVersion: { increment: 1 },
     });
     return this.createAuthResult(updated);
   }
@@ -110,11 +110,9 @@ export class AuthService {
     return toPublicUser(updated);
   }
 
-  // ponytail: ler e somar 1 (não atômico); duas trocas simultâneas do mesmo
-  // usuário gravam o mesmo valor, o que ainda invalida os tokens anteriores.
   private bumpTokenVersion(user: UserEntity) {
     return this.userRepository.update(user.id, {
-      tokenVersion: user.tokenVersion + 1,
+      tokenVersion: { increment: 1 },
     });
   }
 

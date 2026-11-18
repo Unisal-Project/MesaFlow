@@ -1,4 +1,4 @@
-import { fetchAdminOrders, type AdminOrderResponse } from "@/services/orders.service";
+import { fetchOrderSummaries, type AdminOrderSummary } from "@/services/orders.service";
 import { fetchWaiterCalls } from "@/services/waiter-calls.service";
 import { useEffect, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
   type ClosingRequestedAttendance,
 } from "@/services/attendance.service";
 import { getSession } from "@/services/auth.service";
+import { businessDaysAgo } from "@/utils/businessDay";
 
 export type AttendanceNotification = (ClosingRequestedAttendance | CancelledRequestAttendance | {
   id: string; status: "WAITER_CALL" | "NEW_ORDER"; closingRequestedAt: string; table: { id?: string; number: number };
@@ -70,8 +71,11 @@ export function markOrderSeen(id: string) {
   const seen = seenOrderIds(); seen.add(id);
   saveSeen(seen);
 }
-export function newOrderNotifications(orders: AdminOrderResponse[]) {
-  const open = orders.filter(order => order.status !== "CANCELLED" && order.attendance.status !== "CANCELLED" && order.attendance.status !== "CLOSED");
+export function newOrderNotifications(orders: AdminOrderSummary[]) {
+  // Pedido novo é sempre recente: de antes de ontem é conta antiga reaberta (talvez em outro aparelho).
+  const yesterday = businessDaysAgo(1);
+  const open = orders.filter(order => order.status !== "CANCELLED" && order.attendance.status !== "CANCELLED" && order.attendance.status !== "CLOSED"
+    && (!order.businessDate || order.businessDate >= yesterday));
   // Primeira visita neste aparelho/usuário: o que já existe conta como visto,
   // para o sino não "inundar" com todos os pedidos abertos de uma vez.
   if (!hasSeenStore()) {
@@ -138,7 +142,7 @@ export function useAttendanceNotifications(enabled: boolean) {
     async function refresh() {
       try {
         const [closing, cancelled, waiterCalls, orders] = await Promise.all([
-          findClosingRequestedAttendances(), getSession()?.user.role === "ADMIN" ? findCancelledAttendances() : [], fetchWaiterCalls(), fetchAdminOrders(2), // pedido novo é sempre recente: 2 dias cobre a virada da meia-noite, sem buscar 90 dias a cada 5s
+          findClosingRequestedAttendances(), getSession()?.user.role === "ADMIN" ? findCancelledAttendances() : [], fetchWaiterCalls(), fetchOrderSummaries(), // versão enxuta (sem itens/pagamentos) da lista operacional: roda a cada 5 s
         ]);
         if (!disposed) setNotifications([
           ...newOrderNotifications(orders),

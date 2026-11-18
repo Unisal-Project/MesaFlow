@@ -5,12 +5,17 @@ import {
   closeAttendance,
   createTableOrder,
   fetchAdminOrders,
+  fetchOperationalOrders,
   reopenAttendance,
   updateOrderItems,
   type AdminOrderItemsInput,
   type AdminOrderResponse,
   type PaymentMethodCode,
 } from "@/services/orders.service";
+
+import { markOrderSeen } from "@/hooks/useAttendanceNotifications";
+import { fetchSettings } from "@/services/settings.service";
+import { businessToday, setDayCutoff, toBusinessDate } from "@/utils/businessDay";
 
 import type { RestaurantTable } from "../../Table/types/table.types";
 import type { AdminProduct } from "../../Products/types/product.types";
@@ -125,8 +130,10 @@ export function toOrder(
     tableId: response.table.id,
     attendanceId: attendance.id,
     status: closed ? "closed" : "open",
-    date: toDateKey(created),
+    // Dia de operação do pedido (o mesmo do número #N); sem ele, a data local.
+    date: response.businessDate ?? toDateKey(created),
     time: created.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
+    createdAt: response.createdAt,
     items: toOrderItems(response.items),
     observation: response.notes ?? undefined,
     payment: closed
@@ -154,7 +161,7 @@ export function toOrder(
               })
             : "",
           closedOn: attendance.closedAt
-            ? toDateKey(new Date(attendance.closedAt))
+            ? toBusinessDate(new Date(attendance.closedAt))
             : undefined,
           serviceFee: firstOfAttendance ? Number(attendance.serviceFee ?? 0) : 0,
           orderIds: attendanceOrderIds,
@@ -186,6 +193,22 @@ export function pickSelectedOrderId(current: number | null, list: Order[]) {
 }
 
 export const POLL_INTERVAL_MS = 15_000;
+
+const daysBetween = (later: string, earlier: string) =>
+  Math.round((Date.parse(`${later}T00:00:00Z`) - Date.parse(`${earlier}T00:00:00Z`)) / 86_400_000);
+
+/**
+ * Quantos dias de pedidos o período escolhido precisa; null = só a lista
+ * operacional (Hoje e Ontem), que é o que o polling de 15 s baixa. Períodos
+ * maiores buscam só o intervalo pedido, e não mais 90 dias a cada 15 s.
+ */
+export function historyDays(period: OrderPeriod, specificDate: string, todayDate: string) {
+  if (period === "today" || period === "yesterday") return null;
+  if (period === "7days") return 8;
+  if (period === "30days") return 31;
+  if (period === "specific") return Math.min(366, Math.max(2, daysBetween(todayDate, specificDate) + 2));
+  return 90;
+}
 export const DELETE_ORDER_REASON = "Excluído pelo administrador";
 
 /** Soma dos pagamentos da conta (eles ficam só no primeiro pedido dela). */
@@ -241,8 +264,9 @@ export function useOrder(
     setFocusedOrderId(null);
     updateSearchQuery(query);
   };
-  // Recalculado no render: o polling já atualiza a tela na virada do dia local.
-  const todayDate = toDateKey(new Date());
+  // Dia de operação atual (virada de Configurações). Recalculado no render: o
+  // polling já atualiza a tela na virada.
+  const todayDate = businessToday();
   const minimumDate = dateDaysAgo(89); // Hoje + 89 anteriores = 90 datas carregadas.
   const [period, updatePeriod] = useState<OrderPeriod>("today");
   const [specificDate, updateSpecificDate] = useState(todayDate);
@@ -268,19 +292,44 @@ export function useOrder(
   const setIsCreatingOrder = (open: boolean, tableId = "") =>
     setNewOrderTableId(open ? tableId : null);
 
+  // Pedido de link/notificação fora da janela carregada: busca 90 dias uma vez.
+  const [widenedFor, setWidenedFor] = useState<number | null>(null);
+  // Pedido focado cuja busca ampliada (90 dias) já terminou, achado ou não.
+  const [searchedFor, setSearchedFor] = useState<number | null>(null);
+  const days =
+    focusedOrderId !== null && widenedFor === focusedOrderId
+      ? 90
+      : historyDays(period, specificDate, todayDate);
+
   const reload = useCallback(
     () =>
-      fetchAdminOrders()
+      (days === null ? fetchOperationalOrders() : fetchAdminOrders(days))
         .then((responses) => {
           const list = toOrders(responses);
           setOrders(list);
           setSelectedOrderId((current) => pickSelectedOrderId(current, list));
+          if (focusedOrderId !== null && days !== 90 && !list.some((order) => order.id === focusedOrderId))
+            setWidenedFor(focusedOrderId);
           setError("");
         })
         .catch((err: unknown) => setError(message(err)))
-        .finally(() => setLoading(false)),
-    [],
+        .finally(() => {
+          if (days === 90 && focusedOrderId !== null) setSearchedFor(focusedOrderId);
+          setLoading(false);
+        }),
+    [days, focusedOrderId],
   );
+
+  // Dia de operação: lê a virada de /settings uma vez (até lá vale o padrão 05:00).
+  const [, setCutoffLoaded] = useState(false);
+  useEffect(() => {
+    fetchSettings()
+      .then((settings) => {
+        setDayCutoff(settings.dayCutoffHour);
+        setCutoffLoaded(true);
+      })
+      .catch(() => undefined);
+  }, []);
 
   // Polling leve: pedidos novos do QR aparecem sem recarregar a página.
   useEffect(() => startPolling(reload), [reload]);
@@ -417,6 +466,10 @@ export function useOrder(
 
   const reopenAccount = async () => {
     if (!selectedOrder?.attendanceId || selectedOrder.status !== "closed") return;
+    // Os pedidos da conta reaberta não são "novos" para o sino.
+    orders
+      .filter((order) => order.attendanceId === selectedOrder.attendanceId)
+      .forEach((order) => markOrderSeen(String(order.id)));
     await run(
       () => reopenAttendance(selectedOrder.attendanceId!),
       `Conta de ${selectedOrder.table} reaberta.`,
@@ -493,6 +546,12 @@ export function useOrder(
     catalog,
     tableOptions,
     loading,
+    // O pedido do link ainda pode estar fora da janela carregada: a rota só pode
+    // dar "não encontrado" depois que a busca ampliada terminar sem achá-lo.
+    resolvingOrder:
+      focusedOrderId !== null &&
+      !orders.some((order) => order.id === focusedOrderId) &&
+      searchedFor !== focusedOrderId,
     busy,
     error,
     setError,

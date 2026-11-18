@@ -14,7 +14,7 @@ type KitchenQueueProps = {
 };
 
 export function KitchenQueue({ orders, onViewOrders, onViewOrder }: KitchenQueueProps) {
-  const today = currentBusinessDate(orders);
+  const today = currentBusinessDate();
   return (
     <section
       className="mf-dashboard-panel"

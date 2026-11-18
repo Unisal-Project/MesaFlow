@@ -88,7 +88,7 @@ export default function Orders({
   const [restoreStock, setRestoreStock] = useState(true);
   const [deleteReason, setDeleteReason] = useState("");
 
-  const businessToday = currentBusinessDate(orders);
+  const businessToday = currentBusinessDate();
 
   const detailsRef = useRef<HTMLElement>(null);
   const topbarRef = useRef<HTMLDivElement>(null);

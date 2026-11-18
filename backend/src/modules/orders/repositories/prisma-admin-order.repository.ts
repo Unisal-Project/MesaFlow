@@ -1,8 +1,8 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 import type { Prisma } from "../../../generated/prisma/client.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
-import { byProductId, moveStock } from "../stock.js";
-import { nextDailyNumber } from "../daily-number.js";
+import { moveItemsStock, moveStock } from "../stock.js";
+import { nextDailyNumber, toBusinessDate } from "../daily-number.js";
 import { effectivePrice, promoSelect } from "../../products/promotion.js";
 
 type Tx = Prisma.TransactionClient;
@@ -43,6 +43,25 @@ export type AdminOrderRecord = Prisma.OrderGetPayload<{
   include: typeof adminOrderInclude;
 }>;
 
+export const adminOrderSummarySelect = {
+  id: true,
+  dailyNumber: true,
+  businessDate: true,
+  status: true,
+  createdAt: true,
+  attendance: {
+    select: {
+      id: true,
+      status: true,
+      table: { select: { id: true, number: true, name: true } },
+    },
+  },
+} satisfies Prisma.OrderSelect;
+
+export type AdminOrderSummaryRecord = Prisma.OrderGetPayload<{
+  select: typeof adminOrderSummarySelect;
+}>;
+
 /**
  * Pedidos lançados pelo administrativo. Cada escrita roda em transação e
  * mantém o estoque e os stock_movements alinhados (regras 9 a 17).
@@ -58,6 +77,51 @@ export class PrismaAdminOrderRepository {
       include: adminOrderInclude,
       orderBy: { id: "desc" },
     });
+  }
+
+  /** Lista de trabalho: o que a operação ainda precisa ver, sem varrer 90 dias. */
+  async findOperational(now = new Date()): Promise<AdminOrderRecord[]> {
+    return this.prismaClient.order.findMany({
+      where: await this.operationalWhere(now),
+      include: adminOrderInclude,
+      orderBy: { id: "desc" },
+    });
+  }
+
+  /** Versão enxuta (avisos de pedido novo): sem itens, produtos nem pagamentos. */
+  async findSummary(
+    where: Prisma.OrderWhereInput,
+  ): Promise<AdminOrderSummaryRecord[]> {
+    return this.prismaClient.order.findMany({
+      where,
+      select: adminOrderSummarySelect,
+      orderBy: { id: "desc" },
+    });
+  }
+
+  async operationalWhere(now: Date): Promise<Prisma.OrderWhereInput> {
+    const settings = await this.prismaClient.restaurantSettings.findUnique({
+      where: { id: 1 },
+      select: { timezone: true, dayCutoffHour: true },
+    });
+    const today = toBusinessDate(
+      now,
+      settings?.timezone ?? "America/Sao_Paulo",
+      settings?.dayCutoffHour ?? 5,
+    );
+    const yesterday = new Date(Date.parse(`${today}T00:00:00Z`) - 86_400_000);
+    return {
+      OR: [
+        { attendance: { status: { in: [...ACTIVE_ATTENDANCE] } } },
+        { businessDate: { gte: yesterday } },
+        // Conta fechada há pouco com pedidos mais antigos (ex.: virou a noite).
+        {
+          attendance: {
+            closedAt: { gte: new Date(now.getTime() - 172_800_000) },
+          },
+        },
+      ],
+    };
   }
 
   createForTable(
@@ -124,14 +188,11 @@ export class PrismaAdminOrderRepository {
         },
         include: { items: true },
       });
-      for (const item of [...order.items].sort(byProductId)) {
-        await moveStock(tx, item.productId, -item.quantity, {
-          type: "SALE",
-          orderId: order.id,
-          orderItemId: item.id,
-          userId: actor.id,
-        });
-      }
+      await moveItemsStock(tx, order.items, -1, {
+        type: "SALE",
+        orderId: order.id,
+        userId: actor.id,
+      });
       await tx.printJob.create({ data: { orderId: order.id, type: "ORDER" } });
       return tx.order.findUniqueOrThrow({
         where: { id: order.id },
@@ -244,14 +305,11 @@ export class PrismaAdminOrderRepository {
         },
       });
       if (restoreStock) {
-        for (const item of [...order.items].sort(byProductId)) {
-          await moveStock(tx, item.productId, item.quantity, {
-            type: "CANCELLATION",
-            orderId,
-            orderItemId: item.id,
-            userId: actor.id,
-          });
-        }
+        await moveItemsStock(tx, order.items, 1, {
+          type: "CANCELLATION",
+          orderId,
+          userId: actor.id,
+        });
       }
       return tx.order.findUniqueOrThrow({
         where: { id: orderId },

@@ -33,7 +33,7 @@ test("variação percentual usa uma casa e não inventa base zero", () => {
   assert.equal(hook.percentChange(50, 0), null);
 });
 
-test("relatório envia o período e o fuso do navegador", async () => {
+test("relatório envia só o período (dias de operação, sem fuso do navegador)", async () => {
   let requested;
   globalThis.fetch = async (url) => {
     requested = new URL(url);
@@ -43,7 +43,7 @@ test("relatório envia o período e o fuso do navegador", async () => {
   assert.equal(requested.pathname, "/api/v1/reports/sales");
   assert.equal(requested.searchParams.get("start"), "2026-11-01");
   assert.equal(requested.searchParams.get("end"), "2026-11-07");
-  assert.equal(requested.searchParams.get("tzOffset"), String(new Date().getTimezoneOffset()));
+  assert.equal(requested.searchParams.get("tzOffset"), null);
 });
 
 test("forma de pagamento: sem método vira Não informado e desconhecida não vira undefined", () => {

@@ -1,3 +1,4 @@
+import { businessDaysAgo, businessToday } from "@/utils/businessDay";
 import type {
   Order,
   OrderSummary,
@@ -15,11 +16,8 @@ export const toDateKey = (date: Date) =>
     String(date.getDate()).padStart(2, "0"),
   ].join("-");
 
-export const dateDaysAgo = (days: number) => {
-  const date = new Date();
-  date.setDate(date.getDate() - days);
-  return toDateKey(date);
-};
+/** Data (AAAA-MM-DD) do dia de operação de `days` dias atrás; 0 = hoje. */
+export const dateDaysAgo = (days: number) => businessDaysAgo(days);
 
 export const formatCurrency = (value: number) =>
   value.toLocaleString("pt-BR", {
@@ -47,24 +45,8 @@ export const getCurrentTime = () =>
 
 type NumberedOrder = { id: number; dailyNumber?: number; businessDate?: string; date?: string };
 
-/**
- * Dia de operação atual (AAAA-MM-DD), com a regra do backend: fuso de São Paulo
- * e virada às 05:00 (padrão). O front não carrega a virada configurada, então
- * vale o dia mais recente entre este cálculo e os pedidos recebidos: se a
- * virada for antes das 05:00, o primeiro pedido do novo dia já corrige.
- */
-export function currentBusinessDate(orders: NumberedOrder[] = [], now = new Date()) {
-  const computed = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Sao_Paulo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(now.getTime() - 5 * 3_600_000));
-  return orders.reduce(
-    (latest, order) => (order.businessDate && order.businessDate > latest ? order.businessDate : latest),
-    computed,
-  );
-}
+/** Dia de operação atual (AAAA-MM-DD), com a virada configurada em Configurações. */
+export const currentBusinessDate = (now = new Date()) => businessToday(now);
 
 /**
  * Número exibido do pedido: `#27` (número do dia; cai para o id). Se o pedido
@@ -134,15 +116,20 @@ export function filterOrdersByDate<T extends DatedOrderSummary>(
     : order.date >= firstDate && order.date <= todayDate);
 
 }
-export function sortOrders<T extends DatedOrderSummary & { time: string }>(
+/**
+ * Ordena pelo instante de criação (createdAt) e desempata por id. Dia + "HH:MM"
+ * como texto erra num turno que passa da meia-noite: no mesmo dia de operação,
+ * "23:59" > "00:47". Sem createdAt (dados antigos) cai no dia + hora.
+ */
+export function sortOrders<T extends DatedOrderSummary & { time: string; createdAt?: string }>(
   orders: T[],
   sort: OrderSort,
 ): T[] {
   const direction = sort === "newest" ? -1 : 1;
   return [...orders].sort((a, b) => {
-    const dateComparison = a.date.localeCompare(b.date);
-    const timeComparison = a.time.localeCompare(b.time);
-    return direction * (dateComparison || timeComparison || a.id - b.id);
+    const instant = a.createdAt && b.createdAt ? Date.parse(a.createdAt) - Date.parse(b.createdAt) : 0;
+    const fallback = a.date.localeCompare(b.date) || a.time.localeCompare(b.time);
+    return direction * (instant || fallback || a.id - b.id);
   });
 }
 

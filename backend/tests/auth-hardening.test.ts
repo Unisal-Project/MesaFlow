@@ -89,56 +89,64 @@ for (const [name, store] of [
   ["memória", null],
   ["Valkey", fakeValkey()],
 ] as const)
-  test(`limite do login conta só falhas por IP+e-mail (${name})`, async () => {
+  test(`limite por IP+e-mail conta na chegada; sucesso zera (${name})`, async () => {
     const limiter = createLoginLimiter(store);
-    for (let i = 0; i < 4; i++) await limiter.fail("1.1.1.1", "Ana@X.com ");
-    // Sucesso não consome e zera as falhas daquele e-mail.
-    assert.equal(await limiter.retryAfterMs("1.1.1.1", "ana@x.com"), 0);
+    for (let i = 0; i < 5; i++)
+      assert.equal(await limiter.attempt("1.1.1.1", "Ana@X.com "), 0);
+    // Login certo apaga o contador do e-mail: não consome o limite.
     await limiter.succeed("1.1.1.1", "ana@x.com");
-    for (let i = 0; i < 4; i++) await limiter.fail("1.1.1.1", "ana@x.com");
-    assert.equal(await limiter.retryAfterMs("1.1.1.1", "ana@x.com"), 0);
-    await limiter.fail("1.1.1.1", "ana@x.com");
-    assert.ok((await limiter.retryAfterMs("1.1.1.1", "ana@x.com")) > 0);
+    for (let i = 0; i < 5; i++)
+      assert.equal(await limiter.attempt("1.1.1.1", "ana@x.com"), 0);
+    assert.ok((await limiter.attempt("1.1.1.1", "ana@x.com")) > 0);
     // Outro e-mail e outro IP seguem livres.
-    assert.equal(await limiter.retryAfterMs("1.1.1.1", "bia@x.com"), 0);
-    assert.equal(await limiter.retryAfterMs("2.2.2.2", "ana@x.com"), 0);
+    assert.equal(await limiter.attempt("1.1.1.1", "bia@x.com"), 0);
+    assert.equal(await limiter.attempt("2.2.2.2", "ana@x.com"), 0);
   });
 
-test("teto por IP contra varredura de vários e-mails", async () => {
+test("teto por IP conta qualquer tentativa, inclusive as certas", async () => {
   const limiter = createLoginLimiter(null);
-  for (let i = 0; i < 30; i++) await limiter.fail("9.9.9.9", `u${i}@x.com`);
-  assert.ok((await limiter.retryAfterMs("9.9.9.9", "novo@x.com")) > 0);
-  assert.equal(await limiter.retryAfterMs("8.8.8.8", "novo@x.com"), 0);
+  for (let i = 0; i < 30; i++) {
+    assert.equal(await limiter.attempt("9.9.9.9", "ana@x.com"), 0);
+    await limiter.succeed("9.9.9.9", "ana@x.com");
+  }
+  assert.ok((await limiter.attempt("9.9.9.9", "novo@x.com")) > 0);
+  assert.equal(await limiter.attempt("8.8.8.8", "novo@x.com"), 0);
 });
 
-test("POST /auth/login: 5 senhas erradas → 429; logins certos não contam", async () => {
-  const user = {
-    id: 1n,
-    name: "Ana",
-    email: "ana@x.com",
-    passwordHash: "ok",
-    role: "ADMIN" as const,
-    active: true,
-    tokenVersion: 3,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  const repository = {
-    findByEmail: async (email: string) => (email === user.email ? user : null),
-    findById: async () => user,
-  };
+const user = {
+  id: 1n,
+  name: "Ana",
+  email: "ana@x.com",
+  passwordHash: "ok",
+  role: "ADMIN" as const,
+  active: true,
+  tokenVersion: 3,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+let compares = 0;
+const { BcryptPasswordHasher } =
+  await import("../src/config/hash/bcrypt-password-hasher.js");
+// bcrypt real é lento; aqui a senha "certa" é a palavra "certa" e o compare
+// demora um pouco, como o bcrypt, para a rajada se sobrepor de verdade.
+BcryptPasswordHasher.prototype.compareHasher = async (password: string) => {
+  compares++;
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  return password === "certa";
+};
+
+async function loginApp(store: Parameters<typeof createLoginLimiter>[0]) {
   setSessionUserLoader(async () => user);
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   await app.register(fastifyJwt, { secret: "test-secret" });
-  // Hasher real é lento; aqui a senha "certa" é a palavra "certa".
-  const { BcryptPasswordHasher } =
-    await import("../src/config/hash/bcrypt-password-hasher.js");
-  BcryptPasswordHasher.prototype.compareHasher = async (password: string) =>
-    password === "certa";
   await app.register(registerAuthRoutes, {
-    repository: repository as never,
-    loginLimiter: createLoginLimiter(null),
+    repository: {
+      findByEmail: async (email: string) =>
+        email === user.email ? user : null,
+      findById: async () => user,
+    } as never,
+    loginLimiter: createLoginLimiter(store),
   });
   const login = (password: string) =>
     app.inject({
@@ -146,6 +154,31 @@ test("POST /auth/login: 5 senhas erradas → 429; logins certos não contam", as
       url: "/auth/login",
       payload: { email: "ana@x.com", password },
     });
+  return { app, login };
+}
+
+for (const [name, store] of [
+  ["memória", null],
+  ["Valkey", fakeValkey()],
+] as const)
+  test(`rajada paralela: no máximo 5 tentativas chegam ao bcrypt (${name})`, async () => {
+    const { app, login } = await loginApp(store);
+    compares = 0;
+    try {
+      const responses = await Promise.all(
+        Array.from({ length: 25 }, () => login("errada")),
+      );
+      const codes = responses.map((response) => response.statusCode);
+      assert.equal(compares, 5);
+      assert.equal(codes.filter((code) => code === 401).length, 5);
+      assert.equal(codes.filter((code) => code === 429).length, 20);
+    } finally {
+      await app.close();
+    }
+  });
+
+test("POST /auth/login: certos não consomem o limite do e-mail; 5 errados bloqueiam", async () => {
+  const { app, login } = await loginApp(null);
   try {
     for (let i = 0; i < 10; i++)
       assert.equal((await login("certa")).statusCode, 200);
@@ -156,6 +189,23 @@ test("POST /auth/login: 5 senhas erradas → 429; logins certos não contam", as
     const blocked = await login("certa");
     assert.equal(blocked.statusCode, 429);
     assert.ok(Number(blocked.headers["retry-after"]) > 0);
+  } finally {
+    await app.close();
+  }
+});
+
+test("login recusa e-mail > 180 e senha > 128 caracteres (400)", async () => {
+  const { app } = await loginApp(null);
+  try {
+    for (const payload of [
+      { email: `${"a".repeat(175)}@x.com`, password: "certa" },
+      { email: "ana@x.com", password: "x".repeat(129) },
+    ])
+      assert.equal(
+        (await app.inject({ method: "POST", url: "/auth/login", payload }))
+          .statusCode,
+        400,
+      );
   } finally {
     await app.close();
   }

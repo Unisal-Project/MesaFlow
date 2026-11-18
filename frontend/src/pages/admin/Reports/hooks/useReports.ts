@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { fetchSalesReport, type SalesReport } from "@/services/orders.service";
 import { dateDaysAgo, formatCurrency } from "../../Order/utils/order.utils";
-import { hasLowSales } from "../utils/report.utils";
+import { bucketReportDays, hasLowSales, rankProducts } from "../utils/report.utils";
 import type { ReportPeriod } from "../types/report.types";
 
 const methodLabels = {
@@ -27,8 +27,11 @@ export function topMethodLabel(methods: Map<string, number>) {
 
 export function useReports() {
   const [period, setPeriodValue] = useState<ReportPeriod>("7days");
-  const [startDate, setStartDateValue] = useState(() => dateDaysAgo(6));
-  const [endDate, setEndDateValue] = useState(() => dateDaysAgo(0));
+  // null = padrão: acompanha o dia de operação (a virada de /settings chega depois da montagem).
+  const [chosenStart, setStartDateValue] = useState<string | null>(null);
+  const [chosenEnd, setEndDateValue] = useState<string | null>(null);
+  const startDate = chosenStart ?? dateDaysAgo(6);
+  const endDate = chosenEnd ?? dateDaysAgo(0);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const setPeriod = (value: ReportPeriod) => { setPeriodValue(value); setSelectedDate(null); };
   const setStartDate = (value: string) => { setStartDateValue(value); setSelectedDate(null); };
@@ -76,19 +79,21 @@ export function useReports() {
   const periodTicket = periodOrders ? periodRevenue / periodOrders : 0;
   const periodDailyAverage = days.length ? periodRevenue / days.length : 0;
 
-  const selectedDay = days.find((day) => day.date === selectedDate) ?? null;
-  const scope = selectedDay ? [selectedDay] : days;
+  // Períodos longos agrupam por semana/mês; a barra selecionada cobre vários dias.
+  const buckets = bucketReportDays(days);
+  const selectedDay = buckets.find((bucket) => bucket.date === selectedDate) ?? null;
+  const scope = selectedDay ? selectedDay.days : days;
   const revenue = sum("revenue", scope);
   const orders = sum("orders", scope);
   const tables = sum("tables", scope);
   const averageTicket = orders ? revenue / orders : 0;
 
-  // Período: compara com o anterior de mesmo tamanho. Dia: com a média do período.
+  // Período: compara com o anterior de mesmo tamanho. Barra: com a média do período (por dia × dias da barra).
   const previous = current?.previous;
   const changes = selectedDay
     ? [
-        percentChange(revenue, periodDailyAverage),
-        percentChange(orders, days.length ? periodOrders / days.length : 0),
+        percentChange(revenue, periodDailyAverage * scope.length),
+        percentChange(orders, days.length ? (periodOrders / days.length) * scope.length : 0),
         percentChange(averageTicket, periodTicket),
       ]
     : [
@@ -97,16 +102,14 @@ export function useReports() {
         percentChange(averageTicket, previous?.orders ? previous.revenue / previous.orders : 0),
       ];
   const scenario = selectedDay
-    ? hasLowSales(selectedDay.revenue, periodDailyAverage) ? "negative" : "positive"
+    ? hasLowSales(selectedDay.revenue / scope.length, periodDailyAverage) ? "negative" : "positive"
     : (changes[0] ?? 0) < 0 ? "negative" : "positive";
 
-  const ranking = new Map<string, number>();
   const methods = new Map<string, number>();
-  for (const day of scope) {
-    day.products.forEach((product) => ranking.set(product.name, (ranking.get(product.name) ?? 0) + product.quantity));
+  for (const day of scope)
     Object.entries(day.payments).forEach(([method, value]) => methods.set(method, (methods.get(method) ?? 0) + (value ?? 0)));
-  }
-  const products = [...ranking].map(([name, quantity]) => ({ name, quantity })).sort((a, b) => b.quantity - a.quantity);
+  // Por productId: nomes repetidos não se misturam e um produto renomeado aparece com o nome atual.
+  const products = rankProducts(scope);
   const summary = {
     serviceFee: sum("serviceFee", scope),
     cancellations: sum("cancellations", scope),
@@ -117,8 +120,25 @@ export function useReports() {
   const selectDay = (date: string) => setSelectedDate((value) => value === date ? null : date);
   const clearSelectedDay = () => setSelectedDate(null);
   const filteredProducts = products.filter((product) => product.name.toLocaleLowerCase("pt-BR").includes(search.trim().toLocaleLowerCase("pt-BR")));
-  const chartDays = days.map((day) => ({ ...day, label: new Date(`${day.date}T12:00:00`).toLocaleDateString("pt-BR", days.length <= 7 ? { weekday: "short" } : { day: "2-digit", month: "2-digit" }).replace(".", "") }));
   const formatDate = (date: string) => new Date(`${date}T12:00:00`).toLocaleDateString("pt-BR");
+  const bucketLabel = (bucket: (typeof buckets)[number]) => {
+    const first = bucket.days[0].date;
+    const last = bucket.days[bucket.days.length - 1].date;
+    const at = (options: Intl.DateTimeFormatOptions) => new Date(`${first}T12:00:00`).toLocaleDateString("pt-BR", options).replace(".", "");
+    return {
+      // Rótulo curto no eixo e descrição completa para leitores de tela/dica.
+      label: bucket.kind === "day" ? at(days.length <= 7 ? { weekday: "short" } : { day: "2-digit", month: "2-digit" })
+        : bucket.kind === "week" ? at({ day: "2-digit", month: "2-digit" }) : `${at({ month: "short" })}/${at({ year: "2-digit" })}`,
+      fullLabel: bucket.kind === "day" ? at({ weekday: "long", day: "2-digit", month: "long" })
+        : bucket.kind === "week" ? `Semana de ${formatDate(first)} a ${formatDate(last)}` : at({ month: "long", year: "numeric" }),
+    };
+  };
+  const chartDays = buckets.map((bucket) => ({
+    // Uma "barra": soma do que ela cobre (um dia, uma semana ou um mês).
+    date: bucket.date, revenue: bucket.revenue, ...bucketLabel(bucket),
+  }));
+  // Dia: "01/11/2026"; barra agrupada: "01/11/2026 a 07/11/2026".
+  const selectedLabel = selectedDay ? selectedDay.kind === "day" ? formatDate(selectedDay.date) : `${formatDate(selectedDay.days[0].date)} a ${formatDate(selectedDay.days[selectedDay.days.length - 1].date)}` : "";
   const periodLabel = !rangeError ? `${formatDate(start)} a ${formatDate(end)}` : "Período inválido";
   const hasSales = periodRevenue > 0 || periodOrders > 0;
 
@@ -139,8 +159,7 @@ export function useReports() {
       [], ["Indicador", "Variação vs. período anterior (%)"],
       ...["Faturamento", "Pedidos concluídos", "Ticket médio"].map((label, index) => [label, periodChanges[index] === null ? "—" : String(periodChanges[index]).replace(".", ",")]),
       [], ["Produto", "Quantidade"],
-      ...[...days.reduce((map, day) => { day.products.forEach((p) => map.set(p.name, (map.get(p.name) ?? 0) + p.quantity)); return map; }, new Map<string, number>())]
-        .sort((a, b) => b[1] - a[1]),
+      ...rankProducts(days).map((product) => [product.name, product.quantity]),
     ];
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(";")).join("\r\n");
     const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }));
@@ -151,6 +170,6 @@ export function useReports() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
-  return { selectedDay, selectDay, clearSelectedDay, formatDate, period, setPeriod, scenario, startDate, setStartDate, endDate, setEndDate, search, setSearch,
+  return { selectedDay, selectedLabel, selectDay, clearSelectedDay, formatDate, period, setPeriod, scenario, startDate, setStartDate, endDate, setEndDate, search, setSearch,
     today, error, loading: loading || (!error && !current), days, hasSales, revenue, orders, tables, averageTicket, changes, summary, chartDays, products: filteredProducts, periodLabel, exportCsv, formatCurrency };
 }

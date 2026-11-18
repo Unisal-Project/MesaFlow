@@ -26,6 +26,8 @@ export type Order = OrderSummary & {
   attendanceId?: string;
   date: string;
   time: string;
+  /** Instante de criação (ISO): base da ordenação. */
+  createdAt?: string;
   items: OrderItem[];
   unread?: boolean;
   observation?: string;

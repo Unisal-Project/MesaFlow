@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { setDayCutoff } from "@/utils/businessDay";
 import {
   fetchSettings,
   saveSettings,
@@ -99,6 +100,7 @@ export function useRestaurantSettings(editable: boolean) {
           dayCutoffHour: Number(form.dayCutoffHour),
         }),
       );
+      setDayCutoff(Number(data.dayCutoffHour));
       setForm(data);
       setSaved(data);
       setNotice("Configurações salvas com sucesso.");

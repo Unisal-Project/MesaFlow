@@ -58,18 +58,22 @@ test("data aparece só quando o pedido não é do dia de operação atual", () =
   assert.equal(utils.orderNumber(order), "#27");
 });
 
-test("dia de operação atual: São Paulo com virada às 05:00, avançado pelos pedidos", () => {
+test("dia de operação atual: usa a virada configurada (padrão 05:00) no fuso de São Paulo", async () => {
+  const businessDay = await server.ssrLoadModule("/src/utils/businessDay.ts");
   // 04:59 em São Paulo (07:59Z) ainda é o dia anterior; 05:00 já é o dia.
-  assert.equal(utils.currentBusinessDate([], new Date("2026-11-18T07:59:00Z")), "2026-11-17");
-  assert.equal(utils.currentBusinessDate([], new Date("2026-11-18T08:00:00Z")), "2026-11-18");
+  assert.equal(utils.currentBusinessDate(new Date("2026-11-18T07:59:00Z")), "2026-11-17");
+  assert.equal(utils.currentBusinessDate(new Date("2026-11-18T08:00:00Z")), "2026-11-18");
   // Servidor/navegador em UTC não importa: 01:00Z do dia 18 é 22:00 do dia 17.
-  assert.equal(utils.currentBusinessDate([], new Date("2026-11-18T01:00:00Z")), "2026-11-17");
-  // Virada configurada antes das 05:00: o pedido mais novo já é do dia 18.
-  const early = new Date("2026-11-18T06:30:00Z"); // 03:30 local
-  assert.equal(utils.currentBusinessDate([{ id: 1, businessDate: "2026-11-18" }], early), "2026-11-18");
-  // Pedidos antigos nunca puxam o dia para trás.
-  assert.equal(utils.currentBusinessDate([{ id: 1, businessDate: "2026-11-10" }], early), "2026-11-17");
+  assert.equal(utils.currentBusinessDate(new Date("2026-11-18T01:00:00Z")), "2026-11-17");
+  // Virada configurada em Configurações (sem o 5 fixo): 03:30 local com virada 03:00 já é o dia 18.
+  businessDay.setDayCutoff(3);
+  try {
+    assert.equal(utils.currentBusinessDate(new Date("2026-11-18T06:30:00Z")), "2026-11-18");
+    assert.equal(utils.currentBusinessDate(new Date("2026-11-18T05:59:00Z")), "2026-11-17");
+  } finally { businessDay.setDayCutoff(5); }
+  assert.equal(businessDay.addDays("2026-12-31", 1), "2027-01-01");
 });
+
 
 test("busca encontra pelo número do dia e pelo id", () => {
   const orders = hook.toOrders([response(), response({ id: "121", dailyNumber: 28 })]);

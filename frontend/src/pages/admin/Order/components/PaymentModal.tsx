@@ -326,7 +326,7 @@ export function PaymentForm({
                 {accountOrders.map((order) => (
                   <li key={order.id}>
                     <header>
-                      <strong>Pedido {orderNumber(order, currentBusinessDate(accountOrders))}</strong>
+                      <strong>Pedido {orderNumber(order, currentBusinessDate())}</strong>
                       {order.time && <span>Enviado às {order.time}</span>}
                       <strong className="payment-account-order-total">{formatCurrency(order.total)}</strong>
                     </header>
@@ -518,7 +518,7 @@ export function PaymentForm({
 
             <div className="payment-summary-breakdown">
               {accountOrders.length > 1 && accountOrders.map((order) => (
-                <div key={order.id} className="payment-summary-order"><span>Pedido {orderNumber(order, currentBusinessDate(accountOrders))}</span><strong>{formatCurrency(order.total)}</strong></div>
+                <div key={order.id} className="payment-summary-order"><span>Pedido {orderNumber(order, currentBusinessDate())}</span><strong>{formatCurrency(order.total)}</strong></div>
               ))}
               <div><span>Consumo</span><strong>{formatCurrency(subtotalCents / 100)}</strong></div>
               {serviceFeeRate > 0 && <div><span>Taxa de serviço ({serviceFeeRate.toLocaleString("pt-BR")}%)</span><strong>{formatCurrency(serviceInCents / 100)}</strong></div>}

@@ -69,9 +69,10 @@ function OrderRoute({
     if (orderId !== undefined && state.selectedOrderId === Number(orderId)) return;
     state.openOrder(orderId === undefined ? undefined : Number(orderId));
   }, [orderId, state]);
-  // Durante o carregamento a lista ainda está vazia; não redireciona.
+  // Durante o carregamento (ou a busca ampliada do pedido do link) não redireciona.
   if (
     !state.loading &&
+    !state.resolvingOrder &&
     orderId !== undefined &&
     !state.orders.some((order) => String(order.id) === orderId)
   ) {

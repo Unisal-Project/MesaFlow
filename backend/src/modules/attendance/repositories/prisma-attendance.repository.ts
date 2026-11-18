@@ -112,11 +112,14 @@ export class PrismaAttendanceRepository implements AttendanceRepository {
 
   async findAllByStatus(
     status: AttendanceStatus,
+    limit?: { since: Date; take: number },
   ): Promise<AttendanceListItem[]> {
     const attendances = await this.prismaClient.attendance.findMany({
       where: {
         status,
+        ...(limit ? { updatedAt: { gte: limit.since } } : {}),
       },
+      ...(limit ? { take: limit.take } : {}),
       include: {
         table: {
           select: {
