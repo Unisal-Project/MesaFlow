@@ -104,6 +104,7 @@ test("relatório só soma pagamentos PAID de contas CLOSED (estornos ficam fora)
         return [];
       },
     },
+    restaurantSettings: { findUnique: async () => null },
     order: { findMany: async () => [] },
     category: { count: async () => 0 },
   };

@@ -37,6 +37,11 @@ export const cancelOrderSchema = z
 
 export const listOrdersQuerySchema = z.object({
   days: z.coerce.number().int().min(1).max(366).default(90),
+  // operational: contas abertas + pedidos de hoje e ontem (dia de operação) + contas
+  // fechadas nas últimas 48 h. Com ele `days` é ignorado.
+  scope: z.enum(["operational"]).optional(),
+  // summary: só o necessário para avisar pedido novo (sem itens nem pagamentos).
+  view: z.enum(["summary"]).optional(),
 });
 
 export type AdminOrderItemsDTO = z.infer<typeof adminOrderItemsSchema>;

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { withDailyNumber } from "./helpers/daily-number.js";
 import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
@@ -14,7 +15,7 @@ const { QrOrderController } =
 
 test("first QR order opens the table attendance and stores the customer name", async () => {
   const calls: string[] = [];
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async () => {
       calls.push("lock");
@@ -67,7 +68,7 @@ test("first QR order opens the table attendance and stores the customer name", a
         };
       },
     },
-  };
+  });
 
   const service = new QrOrderService(client);
   const result = await service.submit("table-token", {
@@ -88,7 +89,7 @@ test("first QR order opens the table attendance and stores the customer name", a
 });
 
 test("QR order without enough stock is rejected", async () => {
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async () => undefined,
     restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
@@ -105,7 +106,7 @@ test("QR order without enough stock is rejected", async () => {
         items: [{ id: 31n, productId: 4n, quantity: 2 }],
       }),
     },
-  };
+  });
   await assert.rejects(
     new QrOrderService(client).submit("table-token", {
       customerName: "Ana",
@@ -117,7 +118,7 @@ test("QR order without enough stock is rejected", async () => {
 
 test("QR account request closes ordering and creates one bill print job", async () => {
   const jobs: any[] = [];
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async () => undefined,
     restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
@@ -130,7 +131,7 @@ test("QR account request closes ordering and creates one bill print job", async 
         jobs.push(data);
       },
     },
-  };
+  });
 
   const result = await new QrOrderService(client).requestClosing("table-token");
 
@@ -206,7 +207,7 @@ test("QR order endpoint validates the customer and returns the created order", a
 });
 
 test("bill query contains consumption without order tracking and excludes cancelled orders", async () => {
-  const client: any = {
+  const client: any = withDailyNumber({
     restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
     attendance: { findFirst: async () => ({ id: 12n, status: "OPEN" }) },
     order: {
@@ -218,6 +219,8 @@ test("bill query contains consumption without order tracking and excludes cancel
         return [
           {
             id: 21n,
+            dailyNumber: 27,
+            businessDate: new Date("2026-11-17T00:00:00Z"),
             items: [
               {
                 id: 31n,
@@ -232,7 +235,7 @@ test("bill query contains consumption without order tracking and excludes cancel
         ];
       },
     },
-  };
+  });
   const result = await new QrOrderService(client).findBill("table-token");
   assert.deepEqual(result, {
     attendanceId: "12",
@@ -240,6 +243,8 @@ test("bill query contains consumption without order tracking and excludes cancel
     items: [
       {
         id: "31",
+        dailyNumber: 27,
+        businessDate: "2026-11-17",
         productId: "4",
         productName: "Suco",
         quantity: 2,
@@ -251,10 +256,10 @@ test("bill query contains consumption without order tracking and excludes cancel
 });
 
 test("bill of a free table has no consumption", async () => {
-  const client: any = {
+  const client: any = withDailyNumber({
     restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
     attendance: { findFirst: async () => null },
-  };
+  });
   assert.deepEqual(await new QrOrderService(client).findBill("table-token"), {
     attendanceId: null,
     attendanceStatus: null,
@@ -297,7 +302,7 @@ test("public bill route replaces the old tracking route", async (t) => {
 
 test("pedido QR cobra o preço promocional calculado no servidor", async () => {
   let charged: unknown;
-  const client: any = {
+  const client: any = withDailyNumber({
     $transaction: async (callback: (tx: any) => unknown) => callback(client),
     $queryRaw: async () => undefined,
     restaurantTable: { findUnique: async () => ({ id: 7n, active: true }) },
@@ -339,7 +344,7 @@ test("pedido QR cobra o preço promocional calculado no servidor", async () => {
         };
       },
     },
-  };
+  });
   await new QrOrderService(client).submit("table-token", {
     customerName: "Ana",
     items: [{ productId: "4", quantity: 1 }],

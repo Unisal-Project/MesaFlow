@@ -413,7 +413,7 @@ test("fotos: libera blobs removidos, salvos e descartados; não revoga URLs do s
 
 test("nome do produto abre só o cartão de prévia e o X fecha", async () => {
   const product = { id: "9", name: "Suco", category: "Bebidas", price: "R$ 10,00",
-    finalPrice: "R$ 8,00", promotion: { type: "PERCENT", value: "20", source: "PRODUCT" },
+    finalPrice: "R$ 8,00", priceValue: 10, finalPriceValue: 8, promotion: { type: "PERCENT", value: "20", source: "PRODUCT" },
     imageUrl: "/uploads/suco.webp", observation: "Suco natural", quantity: 4, trackStock: true, available: true };
   const render = run(() => ProductRow({ product, onUpdateQuantity() {}, onUpdateAvailability() {}, onEdit() {}, onDelete() {} }));
   const button = find(render(), n => n.props?.["aria-label"] === "Ver prévia de Suco");
@@ -426,25 +426,30 @@ test("nome do produto abre só o cartão de prévia e o X fecha", async () => {
   assert.ok(preview, "clicar no nome monta o pop-up");
   ({ ProductRowPreview } = await server.ssrLoadModule("/src/pages/admin/Products/components/ProductRowPreview.tsx"));
   const dialog = run(() => ProductRowPreview(preview.props))();
+  // A prévia é o card do cardápio do cliente (MenuProductCard): mesmas classes e formatação.
   const card = find(dialog, n => n.props?.description === product.observation);
-  assert.equal(card.props.price, product.finalPrice);
-  assert.equal(card.props.originalPrice, product.price);
-  assert.equal(card.props.badge, "-20%");
-  assert.equal(card.props.image.props.src, product.imageUrl);
-  assert.equal(card.props.onSelect, undefined, "só cartão, sem abrir detalhe");
+  assert.equal(card.props.finalPrice, 8);
+  assert.equal(card.props.price, 10);
+  assert.equal(card.props.imageUrl, product.imageUrl);
   const html = renderToStaticMarkup(createElement(card.type, card.props));
+  assert.match(html, /class="menu-card-preview client-workspace"/);
+  assert.match(html, /client-menu-products/);
+  assert.match(html, /<img class="client-menu-photo" src="http:\/\/localhost:3333\/uploads\/suco\.webp"/);
   assert.match(html, /Suco natural/);
   assert.match(html, /product-card-old-price/);
+  assert.match(html, /R\$ 10,00/);
+  assert.match(html, /R\$ 8,00/);
+  assert.match(html, /-20%/);
+  assert.ok(!html.includes("product-card-select"), "só cartão, sem abrir detalhe");
+  assert.ok(!html.includes("food-photo"), "sem o card vertical antigo");
+  const noPhoto = renderToStaticMarkup(createElement(card.type, { ...card.props, imageUrl: undefined }));
+  assert.match(noPhoto, /<div class="client-menu-photo" aria-hidden="true">/);
   find(dialog, n => n.props?.["aria-label"] === "Fechar prévia").props.onClick();
   assert.equal(find(render(), n => n.props?.product === product && n.props?.onClose), undefined);
-  for (const [available, trackStock, quantity, expectedAvailable, unavailableLabel] of [
-    [true, true, 0, false, "Esgotado"], [false, true, 4, false, "Indisponível"], [true, false, 0, true, "Esgotado"],
-  ]) {
-    const state = run(() => ProductRowPreview({ product: { ...product, available, trackStock, quantity }, onClose() {} }))();
-    const previewCard = find(state, n => n.props?.description === product.observation);
-    assert.equal(previewCard.props.available, expectedAvailable);
-    assert.equal(previewCard.props.unavailableLabel, unavailableLabel);
-  }
+  // A linha repassa estoque e disponibilidade (a matriz completa está no teste do MenuProductCard).
+  const soldOut = run(() => ProductRowPreview({ product: { ...product, trackStock: true, quantity: 0 }, onClose() {} }))();
+  const soldOutCard = find(soldOut, n => n.props?.description === product.observation);
+  assert.match(renderToStaticMarkup(createElement(soldOutCard.type, soldOutCard.props)), /product-card indisponivel[\s\S]*Esgotado/);
 });
 
 test("prévia gerencia foco/rolagem, fecha por Esc/fundo e ao entrar no celular", async () => {
@@ -578,4 +583,27 @@ test("formulário começa sem destaque, switch altera e envia featured ao criar/
   products().setNewProduct({ ...products().newProduct, featured: false });
   await products().handleSaveProduct({ preventDefault() {} });
   assert.deepEqual(requests, [["POST", true], ["PATCH", false]]);
+});
+
+test("MenuProductCard segue a regra do cliente: esgotado × indisponível × sem controle de estoque", async () => {
+  const { MenuProductCard } = await server.ssrLoadModule("/src/pages/admin/Products/components/MenuProductCard.tsx");
+  const html = (overrides) => renderToStaticMarkup(createElement(MenuProductCard, {
+    name: "Suco", finalPrice: 8, price: 10, promotion: null, available: true, trackStock: true, quantity: 3, ...overrides,
+  }));
+  assert.ok(!html({}).includes("indisponivel"));
+  assert.ok(!html({ trackStock: false, quantity: 0 }).includes("indisponivel"), "sem controle de estoque nunca esgota");
+  for (const [overrides, label] of [
+    [{ quantity: 0 }, "Esgotado"],
+    [{ quantity: -1 }, "Esgotado"],
+    [{ available: false, quantity: 5 }, "Indisponível"],
+    [{ available: false, quantity: 0 }, "Indisponível"],
+  ]) {
+    const markup = html(overrides);
+    assert.match(markup, /class="product-card indisponivel"/);
+    assert.ok(markup.includes(label) && !markup.includes(label === "Esgotado" ? "Indisponível" : "Esgotado"), label);
+  }
+  // Foto: URL relativa é resolvida como no cliente; sem foto vem o degradê do cliente.
+  assert.match(html({ imageUrl: "/uploads/suco.webp" }), /<img class="client-menu-photo" src="http:\/\/localhost:3333\/uploads\/suco\.webp"/);
+  assert.match(html({ imageUrl: "blob:http://localhost/abc" }), /src="blob:http:\/\/localhost\/abc"/);
+  assert.match(html({}), /<div class="client-menu-photo" aria-hidden="true">/);
 });

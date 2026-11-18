@@ -1,4 +1,9 @@
 # EXEMPLO DESLIGADO: substituir domínio e montar certificados antes de ativar.
+
+# Freio extra para /api/v1/auth/ (login, cadastro, senha) antes do backend:
+# 10 req/min por IP com rajada de 5. O backend já limita por IP e por
+# IP+e-mail (Valkey); isto só poupa a CPU do Node em ataques grosseiros.
+limit_req_zone $binary_remote_addr zone=mesaflow_auth:10m rate=10r/m;
 server {
     listen 80;
     server_name mesaflow.example.com;
@@ -27,9 +32,21 @@ server {
 
     # Repassa a API ao serviço "backend" pela rede interna do Docker.
     # Sem barra final em proxy_pass: preserva /api/v1/... na URL enviada ao Fastify.
+    location /api/v1/auth/ {
+        limit_req zone=mesaflow_auth burst=5 nodelay;
+        limit_req_status 429;
+        proxy_pass http://backend:3333;
+
+        # Mantém a origem e o IP do cliente disponíveis para o backend e seus logs.
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
     location /api/v1/ {
         proxy_pass http://backend:3333;
-        
+
         # Mantém a origem e o IP do cliente disponíveis para o backend e seus logs.
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;

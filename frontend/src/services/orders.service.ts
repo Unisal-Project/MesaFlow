@@ -78,6 +78,10 @@ export type PaymentMethodCode = "CASH" | "PIX" | "CREDIT_CARD" | "DEBIT_CARD";
 
 export type AdminOrderResponse = {
   id: string;
+  /** Número curto do pedido no dia de operação; `id` segue sendo o identificador. */
+  dailyNumber?: number;
+  /** Dia de operação (AAAA-MM-DD). */
+  businessDate?: string;
   status: "PENDING" | "CANCELLED";
   notes: string | null;
   customerName: string | null;
@@ -131,6 +135,19 @@ export type CloseAttendanceInput = {
 export const fetchAdminOrders = (days = 90) =>
   apiRequest<AdminOrderResponse[]>(`/orders?days=${days}`);
 
+/** Lista de trabalho: contas abertas + hoje e ontem + fechadas nas últimas 48 h. */
+export const fetchOperationalOrders = () =>
+  apiRequest<AdminOrderResponse[]>("/orders?scope=operational");
+
+/** Só o necessário para avisar pedido novo (sem itens nem pagamentos). */
+export type AdminOrderSummary = Pick<
+  AdminOrderResponse,
+  "id" | "dailyNumber" | "businessDate" | "status" | "createdAt" | "table"
+> & { attendance: { id: string; status: AdminOrderResponse["attendance"]["status"] } };
+
+export const fetchOrderSummaries = () =>
+  apiRequest<AdminOrderSummary[]>("/orders?scope=operational&view=summary");
+
 export const createTableOrder = (
   tableId: string,
   input: AdminOrderItemsInput,
@@ -182,7 +199,7 @@ export type SalesReportDay = {
   serviceFee: number;
   cancellations: number;
   payments: Partial<Record<PaymentMethodCode, number>>;
-  products: { name: string; quantity: number }[];
+  products: { productId: string; name: string; quantity: number }[];
 };
 
 export type SalesReport = {
@@ -194,9 +211,8 @@ export type SalesReport = {
 };
 
 export const fetchSalesReport = (start: string, end: string) =>
-  apiRequest<SalesReport>(
-    `/reports/sales?start=${start}&end=${end}&tzOffset=${new Date().getTimezoneOffset()}`,
-  );
+  // Dias de operação (fuso e virada do restaurante): o servidor não precisa do fuso do navegador.
+  apiRequest<SalesReport>(`/reports/sales?start=${start}&end=${end}`);
 export function createQrOrder(
   token: string,
   input: CreateQrOrderInput,

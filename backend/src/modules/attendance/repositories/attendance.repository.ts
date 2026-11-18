@@ -23,5 +23,9 @@ export interface AttendanceRepository {
 
   requestCancelled(attendanceId: bigint): Promise<AttendanceEntity>;
 
-  findAllByStatus(status: AttendanceStatus): Promise<AttendanceListItem[]>;
+  /** `since`/`take` limitam a lista (ex.: cancelados são consultados a cada poucos segundos). */
+  findAllByStatus(
+    status: AttendanceStatus,
+    limit?: { since: Date; take: number },
+  ): Promise<AttendanceListItem[]>;
 }

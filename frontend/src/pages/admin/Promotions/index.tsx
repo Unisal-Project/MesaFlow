@@ -11,7 +11,6 @@ import {
   SystemMessage,
   Tabs,
 } from "@/components";
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { promotionLabel, type PromoFields } from "@/utils/promotion";
 import { usePromotions, type ItemKey } from "./hooks/usePromotions";
 import { promotionStatus } from "./promotionStatus";
@@ -132,7 +131,6 @@ export function PromotionsContent({ onNavigate, embedded = false, state: promoti
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate}
       />}
       <Container className="promotions-content">

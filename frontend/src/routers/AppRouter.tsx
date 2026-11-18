@@ -8,6 +8,7 @@ import {
   useNavigate,
 } from "react-router";
 import Login from "@/pages/admin/Login";
+import ResetPassword from "@/pages/admin/ResetPassword";
 import { getSession } from "@/services/auth.service";
 import { AdminRoutes } from "./AdminRoutes";
 import { ClientRoutes } from "./ClientRoutes";
@@ -15,6 +16,11 @@ import { ClientRoutes } from "./ClientRoutes";
 function LoginRoute() {
   const navigate = useNavigate();
   return <Login onEnter={() => navigate("/admin/dashboard")} />;
+}
+
+function ResetPasswordRoute() {
+  const navigate = useNavigate();
+  return <ResetPassword onBack={() => navigate("/login", { replace: true })} />;
 }
 
 export function RequireAuth({ children }: { children: ReactNode }) {
@@ -52,6 +58,7 @@ export function AppRouter() {
       <Routes>
         <Route path="/" element={<EntryRoute />} />
         <Route path="/login" element={<LoginRoute />} />
+        <Route path="/redefinir-senha" element={<ResetPasswordRoute />} />
         <Route path="/admin/*" element={<RequireAuth><AdminRoutes /></RequireAuth>} />
         <Route path="/*" element={<ClientRoutes />} />
       </Routes>

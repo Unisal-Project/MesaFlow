@@ -1,16 +1,12 @@
--- ============================================================
--- MesaFlow - Schema do Banco de Dados MariaDB
+-- =====================================================-- MesaFlow - Schema do Banco de Dados MariaDB
 -- Versão inicial (V1)
--- ============================================================
---
+-- =====================================================--
 -- O banco deve ser selecionado por quem executa este arquivo. No Docker
 -- Compose, MARIADB_DATABASE cria o banco e o script é executado nele.
 -- Isso evita criar as tabelas em um banco diferente do DATABASE_URL da API.
 
--- ============================================================
--- 1. Usuários
--- ============================================================
-
+-- =====================================================-- 1. Usuários
+-- =====================================================
 CREATE TABLE IF NOT EXISTS users (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(120) NOT NULL,
@@ -30,11 +26,12 @@ CREATE TABLE IF NOT EXISTS users (
 ALTER TABLE users
     ADD COLUMN IF NOT EXISTS token_version INT NOT NULL DEFAULT 0 AFTER active;
 
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS avatar_url VARCHAR(255) NULL AFTER name;
 
--- ============================================================
--- 2. Categorias
--- ============================================================
 
+-- =====================================================-- 2. Categorias
+-- =====================================================
 CREATE TABLE IF NOT EXISTS categories (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
@@ -53,10 +50,8 @@ CREATE TABLE IF NOT EXISTS categories (
 ) ENGINE=InnoDB;
 
 
--- ============================================================
--- 3. Produtos
--- ============================================================
-
+-- =====================================================-- 3. Produtos
+-- =====================================================
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     category_id BIGINT UNSIGNED NULL,
@@ -136,10 +131,8 @@ ALTER TABLE products
     ADD COLUMN IF NOT EXISTS promo_ends_at DATETIME NULL AFTER promo_starts_at;
 
 
--- ============================================================
--- 4. Mesas
--- ============================================================
-
+-- =====================================================-- 4. Mesas
+-- =====================================================
 -- Migração incremental, reaplicável e sem alteração dos produtos existentes.
 CREATE TABLE IF NOT EXISTS product_categories (
     product_id BIGINT UNSIGNED NOT NULL,
@@ -173,10 +166,8 @@ ALTER TABLE restaurant_tables
     ADD COLUMN IF NOT EXISTS seats SMALLINT UNSIGNED NOT NULL DEFAULT 4 AFTER qr_token;
 
 
--- ============================================================
--- 5. Atendimentos / Comandas
--- ============================================================
-
+-- =====================================================-- 5. Atendimentos / Comandas
+-- =====================================================
 CREATE TABLE IF NOT EXISTS attendances (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     table_id BIGINT UNSIGNED NOT NULL,
@@ -246,10 +237,8 @@ ALTER TABLE attendances
     ADD COLUMN IF NOT EXISTS service_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00 AFTER closed_by;
 
 
--- ============================================================
--- 6. Pedidos
--- ============================================================
-
+-- =====================================================-- 6. Pedidos
+-- =====================================================
 CREATE TABLE IF NOT EXISTS orders (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     attendance_id BIGINT UNSIGNED NOT NULL,
@@ -311,10 +300,8 @@ ALTER TABLE orders
     MODIFY COLUMN status ENUM('PENDING', 'CANCELLED') NOT NULL DEFAULT 'PENDING';
 
 
--- ============================================================
--- 7. Itens do Pedido
--- ============================================================
-
+-- =====================================================-- 7. Itens do Pedido
+-- =====================================================
 CREATE TABLE IF NOT EXISTS order_items (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     order_id BIGINT UNSIGNED NOT NULL,
@@ -351,10 +338,8 @@ CREATE TABLE IF NOT EXISTS order_items (
 ) ENGINE=InnoDB;
 
 
--- ============================================================
--- 8. Movimentações de Estoque
--- ============================================================
-
+-- =====================================================-- 8. Movimentações de Estoque
+-- =====================================================
 CREATE TABLE IF NOT EXISTS stock_movements (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     product_id BIGINT UNSIGNED NOT NULL,
@@ -413,10 +398,8 @@ CREATE TABLE IF NOT EXISTS stock_movements (
 ) ENGINE=InnoDB;
 
 
--- ============================================================
--- 9. Pagamentos
--- ============================================================
-
+-- =====================================================-- 9. Pagamentos
+-- =====================================================
 CREATE TABLE IF NOT EXISTS payments (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     attendance_id BIGINT UNSIGNED NOT NULL,
@@ -463,10 +446,8 @@ ALTER TABLE payments
     ADD COLUMN IF NOT EXISTS processing_fee DECIMAL(10,2) NULL AFTER change_amount;
 
 
--- ============================================================
--- 10. Fila de Impressão / Integração com ESP32
--- ============================================================
-
+-- =====================================================-- 10. Fila de Impressão / Integração com ESP32
+-- =====================================================
 CREATE TABLE IF NOT EXISTS print_jobs (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
 
@@ -516,10 +497,8 @@ CREATE TABLE IF NOT EXISTS print_jobs (
 ) ENGINE=InnoDB;
 
 
--- ============================================================
--- Views úteis para a primeira versão
--- ============================================================
-
+-- =====================================================-- Views úteis para a primeira versão
+-- =====================================================
 -- Total acumulado de cada atendimento, desconsiderando pedidos cancelados.
 CREATE OR REPLACE VIEW vw_attendance_totals AS
 SELECT
@@ -549,10 +528,8 @@ WHERE status = 'PAID'
 GROUP BY attendance_id;
 
 
--- ============================================================
--- Observações de regra de negócio
--- ============================================================
---
+-- =====================================================-- Observações de regra de negócio
+-- =====================================================--
 -- 1. O QR Code identifica a mesa através de restaurant_tables.qr_token.
 --
 -- 2. Uma mesa só pode ter um atendimento OPEN/CLOSING_REQUESTED/AWAITING_PAYMENT por vez.
@@ -591,8 +568,7 @@ GROUP BY attendance_id;
 -- 15. A fila print_jobs permite reprocessar impressões caso o ESP32 ou
 --     impressora estejam temporariamente indisponíveis.
 --
--- ============================================================
-
+-- =====================================================
 
 -- Migração incremental reaplicável, seguindo as demais migrações SQL do projeto.
 CREATE TABLE IF NOT EXISTS waiter_calls (
@@ -627,3 +603,62 @@ INSERT IGNORE INTO restaurant_settings (id, service_fee_rate) VALUES (1, 10.00);
 
 ALTER TABLE restaurant_settings
     ADD COLUMN IF NOT EXISTS banner_image_url VARCHAR(255) NULL AFTER name;
+-- =====================================================-- Número do pedido por dia de operação (mesmo conteúdo de
+-- backend/prisma/sql/order-daily-number.sql; idempotente).
+-- =====================================================
+-- Dia de operação: fuso do restaurante + hora de virada (03:40 ainda é o dia anterior).
+ALTER TABLE restaurant_settings
+    ADD COLUMN IF NOT EXISTS day_cutoff_hour TINYINT UNSIGNED NOT NULL DEFAULT 5 AFTER contact,
+    ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) NOT NULL DEFAULT 'America/Sao_Paulo' AFTER day_cutoff_hour,
+    ADD CONSTRAINT IF NOT EXISTS chk_restaurant_settings_cutoff CHECK (day_cutoff_hour BETWEEN 0 AND 23);
+
+-- Último número usado em cada dia (V2: ganha restaurant_id na chave).
+CREATE TABLE IF NOT EXISTS order_daily_counters (
+    business_date DATE NOT NULL,
+    last_number INT UNSIGNED NOT NULL,
+    PRIMARY KEY (business_date)
+) ENGINE=InnoDB;
+
+ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS business_date DATE NULL AFTER attendance_id,
+    ADD COLUMN IF NOT EXISTS daily_number INT UNSIGNED NULL AFTER business_date;
+
+-- Backfill: created_at está em UTC. Sem as tabelas de fuso do MariaDB,
+-- CONVERT_TZ com nome devolve NULL e cai no -03:00 (São Paulo, sem horário de verão).
+SET @mf_tz = COALESCE((SELECT timezone FROM restaurant_settings WHERE id = 1), 'America/Sao_Paulo');
+SET @mf_cutoff = COALESCE((SELECT day_cutoff_hour FROM restaurant_settings WHERE id = 1), 5);
+
+UPDATE orders
+SET business_date = DATE(
+        COALESCE(CONVERT_TZ(created_at, '+00:00', @mf_tz), CONVERT_TZ(created_at, '+00:00', '-03:00'))
+        - INTERVAL @mf_cutoff HOUR)
+WHERE business_date IS NULL;
+
+-- Numera por dia em ordem de created_at, id, continuando depois do maior número já usado no dia.
+UPDATE orders o
+JOIN (
+    SELECT pending.id,
+           ROW_NUMBER() OVER (PARTITION BY pending.business_date ORDER BY pending.created_at, pending.id)
+           + COALESCE(used.max_number, 0) AS number
+    FROM orders pending
+    LEFT JOIN (
+        SELECT business_date, MAX(daily_number) AS max_number
+        FROM orders
+        WHERE daily_number IS NOT NULL
+        GROUP BY business_date
+    ) used ON used.business_date = pending.business_date
+    WHERE pending.daily_number IS NULL
+) numbered ON numbered.id = o.id
+SET o.daily_number = numbered.number;
+
+-- Contadores coerentes com os números já usados (nunca diminuem).
+INSERT INTO order_daily_counters (business_date, last_number)
+SELECT business_date, MAX(daily_number) FROM orders GROUP BY business_date
+ON DUPLICATE KEY UPDATE last_number = GREATEST(last_number, VALUES(last_number));
+
+-- Todo pedido tem número a partir daqui. Pare o backend antigo antes de rodar:
+-- ele não preenche estas colunas e os pedidos dele falhariam.
+ALTER TABLE orders
+    MODIFY COLUMN business_date DATE NOT NULL,
+    MODIFY COLUMN daily_number INT UNSIGNED NOT NULL,
+    ADD UNIQUE KEY IF NOT EXISTS uq_orders_business_date_daily_number (business_date, daily_number);

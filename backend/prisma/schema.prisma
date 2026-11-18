@@ -77,6 +77,7 @@ enum PrintJobStatus {
 model User {
   id                BigInt          @id @default(autoincrement()) @db.UnsignedBigInt
   name              String          @db.VarChar(120)
+  avatarUrl         String?         @map("avatar_url") @db.VarChar(255)
   email             String          @unique(map: "uq_users_email") @db.VarChar(180)
   passwordHash      String          @map("password_hash") @db.VarChar(255)
   role              UserRole        @default(EMPLOYEE)
@@ -198,6 +199,8 @@ model Attendance {
 model Order {
   id                 BigInt              @id @default(autoincrement()) @db.UnsignedBigInt
   attendanceId       BigInt              @map("attendance_id") @db.UnsignedBigInt
+  businessDate       DateTime            @map("business_date") @db.Date
+  dailyNumber        Int                 @map("daily_number") @db.UnsignedInt
   status             OrderStatus         @default(PENDING)
   notes              String?             @db.Text
   customerName       String?             @map("customer_name") @db.VarChar(100)
@@ -220,7 +223,15 @@ model Order {
   @@index([status], map: "idx_orders_status")
   @@index([createdAt], map: "idx_orders_created_at")
   @@index([cancelledAt], map: "idx_orders_cancelled_at")
+  @@unique([businessDate, dailyNumber], map: "uq_orders_business_date_daily_number")
   @@map("orders")
+}
+
+model OrderDailyCounter {
+  businessDate DateTime @id @map("business_date") @db.Date
+  lastNumber   Int      @map("last_number") @db.UnsignedInt
+
+  @@map("order_daily_counters")
 }
 
 model OrderItem {
@@ -350,6 +361,8 @@ model RestaurantSettings {
   address        String?  @db.VarChar(255)
   openingHours   String?  @map("opening_hours") @db.VarChar(255)
   contact        String?  @db.VarChar(120)
+  dayCutoffHour  Int      @default(5) @map("day_cutoff_hour") @db.UnsignedTinyInt
+  timezone       String   @default("America/Sao_Paulo") @db.VarChar(64)
   updatedAt      DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(0)
   @@map("restaurant_settings")
 }

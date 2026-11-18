@@ -398,3 +398,32 @@ test("prévia admin herda a seção Destaque pelo featured sem categoria especia
   assert.match(normal, /aria-label="Destaque"/); // seção vazia preservada, como antes.
 
 });
+
+test("prévia do formulário é o card do cliente e mostra Esgotado/Indisponível", async () => {
+  const { ProductFormModal } = await server.ssrLoadModule("/src/pages/admin/Products/components/ProductFormModal.tsx");
+  const { emptyPromoForm } = await server.ssrLoadModule("/src/utils/promotion.ts");
+  const render = (overrides) =>
+    renderToString(
+      createElement(ProductFormModal, {
+        categories: [{ id: "1", name: "Lanches" }],
+        editingProductId: null,
+        hasUnsavedChanges: false,
+        newProduct: {
+          name: "X-Burger", category: "1", additionalCategoryIds: [], price: "20", quantity: "5",
+          observation: "Pão e carne", imageUrl: "", trackStock: true, available: true, promo: emptyPromoForm, ...overrides,
+        },
+        products: [], setNewProduct() {}, onClose() {}, onSave() {}, onPhotoChange() {}, onDelete() {},
+      }),
+    );
+  const normal = render({});
+  assert.match(normal, /class="menu-card-preview client-workspace"/);
+  assert.match(normal, /<div class="client-menu-photo" aria-hidden="true">/, "sem foto: o degradê do cliente");
+  assert.match(normal, /R\$ 20,00/);
+  assert.ok(!normal.includes("food-photo") && !normal.includes("indisponivel"));
+  const soldOut = render({ quantity: "0" });
+  assert.match(soldOut, /product-card indisponivel/);
+  assert.ok(soldOut.includes("Esgotado"));
+  const off = render({ available: false });
+  assert.match(off, /product-card indisponivel/);
+  assert.ok(off.includes("Indisponível") && !off.includes("Esgotado"));
+});

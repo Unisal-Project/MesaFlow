@@ -38,19 +38,22 @@ SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 # 1. Backup do banco (copie também o volume de uploads)
 $DC exec -T database sh -c 'exec mariadb-dump -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" --single-transaction "$MARIADB_DATABASE"' > backup-$(date +%F-%H%M).sql
 
-# 2. Incrementais antigos (se ainda não aplicados), 3. colunas do painel admin, controle de estoque opcional e promoções, 4. remoção do acompanhamento de preparo
-for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images product-featured restaurant-settings remove-order-tracking user-token-version product-category-nullable; do
+# 2. Parar o backend: a versão anterior não preenche o número do pedido do dia (order-daily-number)
+$DC stop backend
+
+# 3. Incrementais (se ainda não aplicados): painel admin, estoque opcional, promoções, remoção do acompanhamento de preparo, número do pedido do dia
+for f in product-categories tables-attendance-status qr-ordering-payment waiter-calls admin-panel-columns product-track-stock promotions product-images product-featured restaurant-settings remove-order-tracking user-token-version product-category-nullable order-daily-number user-avatar; do
   $DC exec -T database sh -c "$SQL" < backend/prisma/sql/$f.sql || break
 done
 
-# 5. Publicar e verificar
+# 4. Publicar (sobe o backend novo) e verificar
 $DC up --build -d
 curl -fsS http://localhost/api/v1/health   # {"status":"ok"}
 ```
 
 `admin-panel-columns.sql` só adiciona colunas (`seats`, `service_fee` e detalhes de pagamento), `product-track-stock.sql` só adiciona `products.track_stock` (padrão `TRUE`, produtos existentes continuam com estoque controlado) `promotions.sql` só adiciona as colunas `promo_*` em `products` e `categories` (promoção desligada por padrão) e `product-images.sql` só adiciona `image_url_2`/`image_url_3` em `products` (fotos extras; `image_url` segue como capa); `product-featured.sql` adiciona `products.featured` com padrão `FALSE` (destaque escolhido pelo admin). Aplique esse incremental antes de publicar o backend; a versão anterior ignora as novas colunas. `remove-order-tracking.sql` preserva pedidos e cancelamentos e converte os antigos estados de preparo (`PREPARING`, `READY`, `DELIVERED`) para `PENDING`; essa conversão só é desfeita restaurando o backup.
 
-Rollback: a versão anterior do backend funciona com o banco já atualizado. Para devolver o enum de pedidos ao formato antigo (sem recuperar os estados convertidos):
+Rollback: a partir de `order-daily-number.sql`, a versão anterior do backend **não funciona** com o banco atualizado (ela não preenche `orders.business_date`/`daily_number`, obrigatórios, e falha ao criar pedidos). Para voltar de versão, restaure o backup (abaixo). Em bancos anteriores a esse incremental, para devolver o enum de pedidos ao formato antigo (sem recuperar os estados convertidos):
 
 ```sql
 ALTER TABLE orders
@@ -80,6 +83,8 @@ A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. E
 
 
 `user-token-version.sql` só adiciona `users.token_version` (padrão 0): tokens emitidos antes, sem a versão, continuam valendo até expirar ou até o primeiro logout/troca de senha do usuário; a versão anterior do backend ignora a coluna.
+
+`order-daily-number.sql` cria o número curto do pedido por dia de operação (`orders.business_date`/`daily_number`, único por dia), a tabela `order_daily_counters` e as colunas `restaurant_settings.day_cutoff_hour` (padrão 5 = 05:00) e `timezone` (padrão `America/Sao_Paulo`). Numera os pedidos existentes por dia de operação, em ordem de `created_at`, e só depois torna as colunas obrigatórias. **Pare o backend antes** (`$DC stop backend`): a versão anterior não preenche o número e os pedidos criados por ela nesse intervalo falhariam. Pode ser reexecutado: só numera pedidos ainda sem número e nunca diminui um contador. Não há rollback destrutivo; para voltar, restaure o backup.
 
 `product-category-nullable.sql` deve ser executado por último, antes de publicar a versão que exclui categorias com produtos inativos. Apenas permite NULL em `products.category_id`, mantendo a FK RESTRICT. Pode ser reexecutado; não remove produtos nem pedidos. O backend continua exigindo categoria para criar, editar ou reativar produtos. Depois que houver históricos sem categoria, não reverta a coluna para NOT NULL sem primeiro atribuir uma categoria a esses inativos.
 

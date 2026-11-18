@@ -3,6 +3,7 @@ import { apiRequest } from "@/api/client";
 export type AuthUser = {
   id: string;
   name: string;
+  avatarUrl?: string | null;
   email: string;
   role: "ADMIN" | string;
 };
@@ -83,5 +84,14 @@ export async function updateProfile(data: {name?: string; email?: string; curren
   const user = await apiRequest<AuthUser>("/auth/me", {method: "PATCH", body: JSON.stringify(data)});
   const session = getSession();
   if (session) saveSession({...session, user});
+  return user;
+}
+
+export async function uploadProfileAvatar(file: File) {
+  const body = new FormData();
+  body.append("image", file);
+  const user = await apiRequest<AuthUser>("/auth/me/avatar", { method: "POST", body });
+  const session = getSession();
+  if (session) saveSession({ ...session, user });
   return user;
 }

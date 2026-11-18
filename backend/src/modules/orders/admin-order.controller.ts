@@ -11,7 +11,10 @@ import {
   PrismaAdminOrderRepository,
   type Actor,
   type AdminOrderRecord,
+  type AdminOrderSummaryRecord,
 } from "./repositories/prisma-admin-order.repository.js";
+
+import { formatBusinessDate } from "./daily-number.js";
 
 const money = (value: { toString(): string } | null | undefined) =>
   value == null ? null : value.toString();
@@ -21,6 +24,8 @@ export function presentAdminOrder(order: AdminOrderRecord) {
   const { attendance } = order;
   return {
     id: order.id.toString(),
+    dailyNumber: order.dailyNumber,
+    businessDate: formatBusinessDate(order.businessDate),
     status: order.status,
     notes: order.notes,
     customerName: order.customerName,
@@ -56,6 +61,24 @@ export function presentAdminOrder(order: AdminOrderRecord) {
   };
 }
 
+/** Mesmos campos de presentAdminOrder usados pelos avisos de pedido novo. */
+export function presentOrderSummary(order: AdminOrderSummaryRecord) {
+  const { attendance } = order;
+  return {
+    id: order.id.toString(),
+    dailyNumber: order.dailyNumber,
+    businessDate: formatBusinessDate(order.businessDate),
+    status: order.status,
+    createdAt: order.createdAt.toISOString(),
+    table: {
+      id: attendance.table.id.toString(),
+      number: attendance.table.number,
+      name: attendance.table.name,
+    },
+    attendance: { id: attendance.id.toString(), status: attendance.status },
+  };
+}
+
 export function actorFrom(request: FastifyRequest): Actor {
   const { id, role } = request.user;
   return {
@@ -71,9 +94,20 @@ export async function adminOrderRoutes(
   const repository = options.repository ?? new PrismaAdminOrderRepository();
 
   app.get("/orders", async (request, reply) => {
-    const { days } = listOrdersQuerySchema.parse(request.query);
-    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    const { days, scope, view } = listOrdersQuerySchema.parse(request.query);
+    const now = new Date();
     reply.header("Cache-Control", "no-store");
+    if (view === "summary") {
+      const where =
+        scope === "operational"
+          ? await repository.operationalWhere(now)
+          : { createdAt: { gte: new Date(now.getTime() - days * 86_400_000) } };
+      return (await repository.findSummary(where)).map(presentOrderSummary);
+    }
+    if (scope === "operational") {
+      return (await repository.findOperational(now)).map(presentAdminOrder);
+    }
+    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     return (await repository.findSince(since)).map(presentAdminOrder);
   });
 

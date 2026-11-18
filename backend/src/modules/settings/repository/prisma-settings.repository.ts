@@ -25,6 +25,7 @@ export class PrismaSettingsRepository implements SettingsRepository {
       address: data.address,
       openingHours: data.openingHours,
       contact: data.contact,
+      dayCutoffHour: data.dayCutoffHour,
     };
     return this.toResponse(
       await this.prismaClient.restaurantSettings.upsert({
@@ -40,6 +41,7 @@ export class PrismaSettingsRepository implements SettingsRepository {
     },
   ): RestaurantSettings {
     return {
+      dayCutoffHour: row.dayCutoffHour,
       name: row.name,
       bannerImageUrl: row.bannerImageUrl ?? null,
       address: row.address,

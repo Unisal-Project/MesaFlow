@@ -17,7 +17,6 @@ import Categories from "../Categories";
 
 import type { ProductsProps } from "./types/product.types";
 
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 
 import { isRowAreaClick } from "@/utils/selectableRow";
 import "./styles.scss";
@@ -30,7 +29,6 @@ export default function Products({
   showAllProducts,
   showAllCategories,
   onSwitchTab,
-  onShowAllProducts,
   onShowAllCategories,
   onBackToMenu,
 }: ProductsProps) {
@@ -47,14 +45,6 @@ export default function Products({
   useEffect(() => {
     if (activeTab === "promotions") void Promise.resolve().then(reloadPromotions);
   }, [activeTab, reloadPromotions]);
-
-  const openAllProducts = () => {
-    setSearchQuery("");
-    setCategoryFilter("all");
-    setAvailabilityFilter("all");
-    setSortOrder("default");
-    onShowAllProducts();
-  };
 
   const {
     products,
@@ -94,7 +84,6 @@ export default function Products({
   // Inclui a promoção da categoria para a prévia do formulário de produto.
   const productCategories = categoryState.categories;
   const isCategories = activeTab === "categories";
-  const selectedProductIds = selectedProducts.filter(id => products.some(product => product.id === id));
   // Com busca ou filtro ativo a lista mostra todos os resultados (sem corte).
   const isFiltering =
     normalizedSearch !== "" ||
@@ -105,7 +94,18 @@ export default function Products({
     setCategoryFilter("all");
     setAvailabilityFilter("all");
   };
-  const { pageItems: visibleProducts, pager } = usePagedList(filteredProducts);
+  const listKey = [normalizedSearch, categoryFilter, availabilityFilter, sortOrder].join("|");
+  const { pageItems: visibleProducts, pager } = usePagedList(filteredProducts, listKey);
+  // Mudou busca/filtro/ordem/página: a seleção recomeça (sem "fantasmas" que voltam depois).
+  const viewKey = `${listKey}|${pager.page}|${pager.pageSize}`;
+  const [seenView, setSeenView] = useState(viewKey);
+  if (seenView !== viewKey) {
+    setSeenView(viewKey);
+    setSelectedProducts([]);
+  }
+  // Na renderização em que a chave muda a seleção antiga ainda está no estado:
+  // só o que está na tela conta para "Excluir selecionados" e "Colocar em promoção".
+  const selectedProductIds = selectedProducts.filter(id => visibleProducts.some(product => product.id === id));
   const toggleProduct = (id: string) =>
     setSelectedProducts((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
   const pageIds = visibleProducts.map((product) => product.id);
@@ -135,7 +135,6 @@ export default function Products({
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
       />
       <main className="products-content">
@@ -319,12 +318,6 @@ export default function Products({
                     <Button size="small" variant="secondary" disabled={promotionState.busy} onClick={togglePage}>
                       {pageAllSelected ? <SquareMinus aria-hidden="true" /> : <CheckSquare aria-hidden="true" />}
                       {pageAllSelected ? "Desmarcar todos" : `Selecionar todos (${visibleProducts.length})`}
-                    </Button>
-                  )}
-                  {!showAllProducts && (
-                    <Button size="small" onClick={openAllProducts}>
-                      <Eye aria-hidden="true" />
-                      Ver todos
                     </Button>
                   )}
                   </div>

@@ -42,7 +42,9 @@ function makeRepository(): UserRepository {
     async update(id, data: UpdateUserData) {
       const user = users.find((item) => item.id === id);
       if (!user) throw new Error("missing user");
-      Object.assign(user, data);
+      const { tokenVersion, ...rest } = data;
+      Object.assign(user, rest);
+      if (tokenVersion) user.tokenVersion += tokenVersion.increment;
       return user;
     },
   };

@@ -5,6 +5,8 @@ import type { TableRepository } from "../tables/repositories/table.repository.js
 
 import type { CreateAttendanceDTO } from "./dto/create-attendance.dto.js";
 
+const CANCELLED_WINDOW_MS = 48 * 60 * 60 * 1000;
+
 export class AttendanceService {
   constructor(
     private readonly attendanceRepository: AttendanceRepository,
@@ -95,6 +97,10 @@ export class AttendanceService {
   }
 
   async findCancelledAttendances() {
-    return this.attendanceRepository.findAllByStatus("CANCELLED");
+    // Aviso para o admin: só as últimas 48 h (no máximo 100), não o histórico todo.
+    return this.attendanceRepository.findAllByStatus("CANCELLED", {
+      since: new Date(Date.now() - CANCELLED_WINDOW_MS),
+      take: 100,
+    });
   }
 }

@@ -1,5 +1,5 @@
-import type { SettingsDTO } from "../dto/settings.dto.js";
-export type RestaurantSettings = SettingsDTO & {
+import type { SettingsDTO, SettingsResponse } from "../dto/settings.dto.js";
+export type RestaurantSettings = SettingsResponse & {
   bannerImageUrl?: string | null;
 };
 export interface SettingsRepository {

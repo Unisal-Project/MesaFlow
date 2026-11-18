@@ -61,101 +61,74 @@ export function createAuthRateLimit(store: CounterStore | null = valkey) {
   };
 }
 
-const LOGIN_EMAIL_FAILURES = 5;
+const LOGIN_EMAIL_ATTEMPTS = 5;
 const LOGIN_EMAIL_WINDOW_MS = 15 * 60_000;
-const LOGIN_IP_FAILURES = 30;
+const LOGIN_IP_ATTEMPTS = 30;
 const LOGIN_IP_WINDOW_MS = 60_000;
 
 /**
- * Limite do login que conta SÓ FALHAS: 5 por IP+e-mail em 15 min e um teto de
- * 30 por IP em 1 min (varredura de vários e-mails). Login certo não consome e
- * zera as falhas daquele e-mail. Valkey com fallback em memória, como acima.
+ * Limite do login contado NA CHEGADA, antes do bcrypt, com incremento atômico
+ * (INCR no Valkey; no Map em memória o incremento é síncrono, sem await entre
+ * ler e somar). Assim uma rajada paralela não passa toda do limite.
+ * - por IP: 30 tentativas/min de qualquer tipo (protege a CPU);
+ * - por IP+e-mail: 5 em 15 min; o login certo apaga esse contador, então
+ *   só as falhas "ficam" no limite do e-mail.
  */
 export function createLoginLimiter(store: KeyValueStore | null = valkey) {
   const memory = new Map<string, { count: number; resetAt: number }>();
-  const fromMemory = (key: string, now = Date.now()) => {
+
+  const hitInMemory = (key: string, windowMs: number) => {
+    const now = Date.now();
+    // Limpeza simples para o Map não crescer sem fim sob varredura.
+    if (memory.size > 10_000)
+      for (const [k, v] of memory) if (v.resetAt <= now) memory.delete(k);
     const entry = memory.get(key);
-    if (entry && entry.resetAt <= now) memory.delete(key);
-    return entry && entry.resetAt > now ? entry : undefined;
+    const next =
+      entry && entry.resetAt > now
+        ? { count: entry.count + 1, resetAt: entry.resetAt }
+        : { count: 1, resetAt: now + windowMs };
+    memory.set(key, next);
+    return { count: next.count, retryMs: next.resetAt - now };
   };
-  const withStore = async <T>(
-    action: (valkey: KeyValueStore) => Promise<T>,
-    fallback: () => T,
-  ) => {
+
+  /** Soma 1 e devolve quanto falta para liberar se passou de `max` (0 = ok). */
+  const hit = async (key: string, windowMs: number, max: number) => {
+    let result: { count: number; retryMs: number };
     try {
       if (!store) throw new Error("Valkey não configurado");
-      return await action(store);
+      const count = await store.incr(key);
+      await store.pexpire(key, windowMs, "NX");
+      const ttl = count > max ? await store.pttl(key) : windowMs;
+      result = { count, retryMs: ttl > 0 ? ttl : windowMs };
     } catch {
-      return fallback();
+      result = hitInMemory(key, windowMs);
     }
+    return result.count > max ? Math.max(result.retryMs, 1_000) : 0;
   };
 
-  const failures = (key: string) =>
-    withStore(
-      async (valkey) => {
-        const count = Number((await valkey.get(key)) ?? 0);
-        return { count, retryMs: count ? await valkey.pttl(key) : 0 };
-      },
-      () => {
-        const entry = fromMemory(key);
-        return {
-          count: entry?.count ?? 0,
-          retryMs: entry ? entry.resetAt - Date.now() : 0,
-        };
-      },
-    );
-  const addFailure = (key: string, windowMs: number) =>
-    withStore(
-      async (valkey) => {
-        await valkey.incr(key);
-        await valkey.pexpire(key, windowMs, "NX");
-      },
-      () => {
-        const now = Date.now();
-        // Limpeza simples para o Map não crescer sem fim sob varredura.
-        if (memory.size > 10_000)
-          for (const k of memory.keys()) fromMemory(k, now);
-        const entry = fromMemory(key, now);
-        memory.set(
-          key,
-          entry
-            ? { ...entry, count: entry.count + 1 }
-            : { count: 1, resetAt: now + windowMs },
-        );
-      },
-    );
-
   const keys = (ip: string, email: string) => ({
-    byEmail: `mf:v1:login-fail:${ip}:${email.trim().toLowerCase()}`,
-    byIp: `mf:v1:login-fail-ip:${ip}`,
+    byEmail: `mf:v1:login-attempt:${ip}:${email.trim().toLowerCase()}`,
+    byIp: `mf:v1:login-attempt-ip:${ip}`,
   });
 
   return {
-    /** Milissegundos até liberar, ou 0 se pode tentar. */
-    async retryAfterMs(ip: string, email: string) {
+    /** Conta a tentativa; devolve ms até liberar (0 = pode testar a senha). */
+    async attempt(ip: string, email: string) {
       const { byEmail, byIp } = keys(ip, email);
-      const [emailFails, ipFails] = [
-        await failures(byEmail),
-        await failures(byIp),
-      ];
-      if (emailFails.count >= LOGIN_EMAIL_FAILURES)
-        return Math.max(emailFails.retryMs, 1_000);
-      if (ipFails.count >= LOGIN_IP_FAILURES)
-        return Math.max(ipFails.retryMs, 1_000);
-      return 0;
+      return Math.max(
+        await hit(byIp, LOGIN_IP_WINDOW_MS, LOGIN_IP_ATTEMPTS),
+        await hit(byEmail, LOGIN_EMAIL_WINDOW_MS, LOGIN_EMAIL_ATTEMPTS),
+      );
     },
-    async fail(ip: string, email: string) {
-      const { byEmail, byIp } = keys(ip, email);
-      await addFailure(byEmail, LOGIN_EMAIL_WINDOW_MS);
-      await addFailure(byIp, LOGIN_IP_WINDOW_MS);
-    },
+    /** Login certo: o limite por e-mail volta a zero (o por IP continua). */
     async succeed(ip: string, email: string) {
       const { byEmail } = keys(ip, email);
       memory.delete(byEmail);
-      await withStore(
-        (valkey) => valkey.del(byEmail),
-        () => 0,
-      );
+      try {
+        await store?.del(byEmail);
+      } catch {
+        // Valkey fora: a chave expira sozinha.
+      }
     },
   };
 }

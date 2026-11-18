@@ -1,7 +1,8 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 
 import { AppError } from "../../../shared/errors/app-errors.js";
-import { byProductId, moveStock } from "../stock.js";
+import { moveItemsStock } from "../stock.js";
+import { formatBusinessDate, nextDailyNumber } from "../daily-number.js";
 import { OrderEntity } from "../entity/orders.entity.js";
 
 import type { OrderRepository, CreateOrderData } from "./order.repository.js";
@@ -34,8 +35,10 @@ export class PrismaOrderRepository implements OrderRepository {
       if (!attendance || attendance.status !== "OPEN") {
         throw new AppError("Atendimento não está aberto para pedidos.", 409);
       }
+      const number = await nextDailyNumber(tx);
       const order = await tx.order.create({
         data: {
+          ...number,
           attendanceId: data.attendanceId,
           customerName: data.customerName,
           notes: data.notes,
@@ -50,14 +53,11 @@ export class PrismaOrderRepository implements OrderRepository {
         },
         include: { items: true },
       });
-      for (const item of [...order.items].sort(byProductId)) {
-        await moveStock(tx, item.productId, -item.quantity, {
-          type: "SALE",
-          orderId: order.id,
-          orderItemId: item.id,
-          userId: null,
-        });
-      }
+      await moveItemsStock(tx, order.items, -1, {
+        type: "SALE",
+        orderId: order.id,
+        userId: null,
+      });
       await tx.printJob.create({ data: { orderId: order.id, type: "ORDER" } });
       return this.toOrderWithItems(order);
     });
@@ -88,6 +88,8 @@ export class PrismaOrderRepository implements OrderRepository {
       order.restoreStock,
       order.createdAt,
       order.updatedAt,
+      order.dailyNumber,
+      formatBusinessDate(order.businessDate),
     );
   }
 

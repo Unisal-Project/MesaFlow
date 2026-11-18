@@ -4,6 +4,11 @@ import type { UserRepository } from "../users/repository/user.repository.js";
 import type { PasswordHasher } from "../../config/hash/password-hasher.js";
 import type { AuthTokenSigner, AuthResult } from "./entity/auth.entity.js";
 import type { UpdateProfileDTO, RegisterDTO } from "./dto/auth.dto.js";
+import { LocalStorageService } from "../../shared/storage/local-storage.service.js";
+import type {
+  StorageService,
+  UploadFile,
+} from "../../shared/storage/storage.service.js";
 import {
   toPublicUser,
   type PublicUser,
@@ -21,6 +26,7 @@ export class AuthService {
     private readonly userRepository: UserRepository,
     private readonly userService: UserService,
     private readonly signToken: AuthTokenSigner,
+    private readonly storage: StorageService = new LocalStorageService(),
   ) {}
 
   async register(data: RegisterDTO): Promise<AuthResult> {
@@ -78,7 +84,7 @@ export class AuthService {
     }
     const updated = await this.userRepository.update(userId, {
       passwordHash: await this.passwordHasher.createHasher(newPassword),
-      tokenVersion: user.tokenVersion + 1,
+      tokenVersion: { increment: 1 },
     });
     return this.createAuthResult(updated);
   }
@@ -110,12 +116,27 @@ export class AuthService {
     return toPublicUser(updated);
   }
 
-  // ponytail: ler e somar 1 (não atômico); duas trocas simultâneas do mesmo
-  // usuário gravam o mesmo valor, o que ainda invalida os tokens anteriores.
   private bumpTokenVersion(user: UserEntity) {
     return this.userRepository.update(user.id, {
-      tokenVersion: user.tokenVersion + 1,
+      tokenVersion: { increment: 1 },
     });
+  }
+
+  async uploadAvatar(userId: bigint, file: UploadFile): Promise<PublicUser> {
+    const user = await this.userRepository.findById(userId);
+    if (!user?.active) throw new AppError("Usuário inativo", 403);
+    const previousAvatarUrl = user.avatarUrl;
+    const avatarUrl = await this.storage.uploadProductImage(file);
+    let updated;
+    try {
+      updated = await this.userRepository.update(userId, { avatarUrl });
+    } catch (error) {
+      await this.storage.delete(avatarUrl).catch(() => undefined);
+      throw error;
+    }
+    if (previousAvatarUrl)
+      await this.storage.delete(previousAvatarUrl).catch(() => undefined);
+    return toPublicUser(updated);
   }
 
   private createAuthResult(user: UserEntity): AuthResult {

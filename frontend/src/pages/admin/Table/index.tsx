@@ -12,7 +12,6 @@ import { TablesQrSheet } from "./components/TableQr";
 
 import type { TablesProps } from "./types/table.types";
 
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { TablesSummary } from "./components/TablesSummary";
 
 import { findActiveTableOrder } from "./utils/table.utils";
@@ -74,7 +73,6 @@ export default function Tables({
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
       />
       <main className="tables-content">

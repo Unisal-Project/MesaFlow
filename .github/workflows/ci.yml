@@ -108,5 +108,12 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Auditar dependências da raiz
-        run: npm audit --audit-level=moderate
+      # Produção (o que roda no servidor): qualquer vulnerabilidade moderada ou acima bloqueia.
+      - name: Auditar dependências de produção
+        run: npm audit --omit=dev --audit-level=moderate
+
+      # Desenvolvimento/build (vite, sass, prisma CLI...): bloqueia só as críticas; as demais
+      # ficam no relatório. Ex.: picomatch <=4.0.7 (GHSA-fc5q-39xc-vjpf) ainda sem versão
+      # corrigida, usado só no build com padrões do próprio projeto.
+      - name: Auditar dependências de desenvolvimento
+        run: npm audit --audit-level=critical

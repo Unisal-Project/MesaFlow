@@ -26,6 +26,8 @@ export type Order = OrderSummary & {
   attendanceId?: string;
   date: string;
   time: string;
+  /** Instante de criação (ISO): base da ordenação. */
+  createdAt?: string;
   items: OrderItem[];
   unread?: boolean;
   observation?: string;
@@ -78,6 +80,10 @@ export type OrderPeriod = "today" | "yesterday" | "7days" | "30days" | "all" | "
 
 export type OrderSummary = {
   id: number;
+  /** Número do dia (#27); ausente em respostas antigas → mostra o id. */
+  dailyNumber?: number;
+  /** Dia de operação (AAAA-MM-DD). */
+  businessDate?: string;
   table: string;
   status: OrderStatus;
 };

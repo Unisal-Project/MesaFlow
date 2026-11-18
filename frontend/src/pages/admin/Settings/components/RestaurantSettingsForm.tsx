@@ -1,18 +1,13 @@
-import {
-  Button,
-  Radio,
-  SkeletonCard,
-  SystemMessage,
-  TextField,
-} from "@/components";
-import type { useRestaurantSettings } from "../hooks/useRestaurantSettings";
+import { Button, SkeletonCard, SystemMessage, TextField } from "@/components";
+import { ImagePlus, Store, Save } from "lucide-react";
 import { assetUrl } from "@/api/client";
-type State = ReturnType<typeof useRestaurantSettings>;
+import type { useRestaurantSettings } from "../hooks/useRestaurantSettings";
+import { OpeningHoursFields } from "./OpeningHoursFields";
 export function RestaurantSettingsForm({
   state,
   editable,
 }: {
-  state: State;
+  state: ReturnType<typeof useRestaurantSettings>;
   editable: boolean;
 }) {
   if (state.loading) return <SkeletonCard />;
@@ -26,100 +21,104 @@ export function RestaurantSettingsForm({
       </section>
     );
   const fields = [
-    ["name", "Nome", 120],
+    ["name", "Nome do restaurante", 120],
     ["address", "Endereço", 255],
-    ["openingHours", "Horário de funcionamento", 255],
     ["contact", "Contato", 120],
   ] as const;
   return (
     <form
-      className="settings-card settings-restaurant-form"
+      id="restaurant-settings-form"
+      className="settings-restaurant-form"
       onSubmit={state.submit}
     >
-      <section aria-labelledby="restaurant-settings-info">
-        <h2 id="restaurant-settings-info">Informações do restaurante</h2>
-        {fields.map(([key, label, maxLength]) => (
-          <TextField
-            key={key}
-            id={`settings-${key}`}
-            label={label}
-            maxLength={maxLength}
-            value={state.form[key]}
-            readOnly={!editable}
-            disabled={state.busy}
-            onChange={(event) =>
-              state.setForm({ ...state.form, [key]: event.target.value })
-            }
-          />
-        ))}
-        <div className="settings-restaurant-banner">
-          <span>Imagem de boas-vindas do cardápio</span>
-          {(state.bannerPreview || state.form.bannerImageUrl) && <img
-            src={state.bannerPreview || assetUrl(state.form.bannerImageUrl) || undefined}
-            alt="Prévia da imagem de boas-vindas" />}
-          {editable && <TextField
-            id="settings-banner-image"
-            label="Escolher imagem"
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/avif"
-            disabled={state.busy}
-            hint="JPG, PNG, WebP ou AVIF de até 5 MB. A imagem aparece no banner de boas-vindas."
-            onChange={(event) => {
-              state.selectBanner(event.target.files?.[0]);
-              event.target.value = "";
-            }} />}
-        </div>
-      </section>
-      <section aria-labelledby="restaurant-settings-fee">
-        <h2 id="restaurant-settings-fee">Taxa de serviço</h2>
-        <fieldset
-          className="settings-fee-choices"
-          disabled={!editable || state.busy}
+      <div className="settings-card settings-restaurant-details">
+        <header className="settings-card-heading">
+          <span className="settings-section-icon">
+            <Store aria-hidden="true" />
+          </span>
+          <div>
+            <h2 id="restaurant-settings-info">Informações do restaurante</h2>
+            <p>A identidade que seus clientes encontram no cardápio.</p>
+          </div>
+        </header>
+        <section
+          className="settings-restaurant-identity"
+          aria-labelledby="restaurant-settings-info"
         >
-          <legend>Percentual</legend>
-          {[
-            ["0", "Sem taxa"],
-            ["5", "5%"],
-            ["10", "10%"],
-            ["other", "Outro"],
-          ].map(([value, label]) => (
-            <Radio
-              key={value}
-              name="service-fee-rate"
-              label={label}
-              checked={state.form.rateChoice === value}
-              onChange={() =>
-                state.setForm({
-                  ...state.form,
-                  rateChoice: value,
-                  serviceFeeRate:
-                    value === "other" ? state.form.serviceFeeRate : value,
-                })
-              }
-            />
-          ))}
-        </fieldset>
-        {state.form.rateChoice === "other" && (
-          <TextField
-            id="settings-service-fee-rate"
-            label="Outro (%)"
-            inputMode="decimal"
-            value={state.form.serviceFeeRate}
-            readOnly={!editable}
-            disabled={state.busy}
-            hint="De 0 a 20%, com até duas casas decimais."
-            onChange={(event) =>
-              state.setForm({
-                ...state.form,
-                serviceFeeRate: event.target.value,
-              })
-            }
-          />
-        )}
-        {!editable && (
-          <p>Somente o administrador pode alterar as configurações.</p>
-        )}
-      </section>
+          <div className="settings-restaurant-banner">
+            <span className="settings-field-caption">
+              Imagem de boas-vindas
+            </span>
+            <div className="settings-banner-preview">
+              {(state.bannerPreview || state.form.bannerImageUrl) && (
+                <img
+                  src={
+                    state.bannerPreview ||
+                    assetUrl(state.form.bannerImageUrl) ||
+                    undefined
+                  }
+                  alt="Prévia da imagem de boas-vindas"
+                />
+              )}
+              <span className="settings-banner-name">
+                {state.form.name.trim() || "MesaFlow"}
+              </span>
+            </div>
+            <div className="settings-banner-upload">
+              {editable && (
+                <label
+                  className={`settings-image-picker${state.busy ? " is-disabled" : ""}`}
+                >
+                  <ImagePlus aria-hidden="true" />
+                  <span>
+                    {state.bannerPreview || state.form.bannerImageUrl
+                      ? "Trocar imagem"
+                      : "Escolher imagem"}
+                  </span>
+                  <input
+                    id="settings-banner-image"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/avif"
+                    disabled={state.busy}
+                    aria-describedby="settings-banner-hint"
+                    onChange={(event) => {
+                      state.selectBanner(event.target.files?.[0]);
+                      event.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+              <p id="settings-banner-hint">JPG, PNG, WebP ou AVIF · Até 5 MB</p>
+            </div>
+          </div>
+          <div className="settings-restaurant-fields">
+            {fields.map(([key, label, maxLength]) => (
+              <TextField
+                key={key}
+                className={`settings-field-${key}`}
+                id={`settings-${key}`}
+                label={label}
+                maxLength={maxLength}
+                value={state.form[key]}
+                readOnly={!editable}
+                disabled={state.busy}
+                onChange={(event) =>
+                  state.setForm({ ...state.form, [key]: event.target.value })
+                }
+              />
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="settings-card settings-hours-card">
+        <OpeningHoursFields
+          value={state.form.openingHours}
+          disabled={!editable || state.busy}
+          onChange={(openingHours) =>
+            state.setForm({ ...state.form, openingHours })
+          }
+        />
+      </div>
       {state.error && (
         <SystemMessage variant="error">{state.error}</SystemMessage>
       )}
@@ -127,19 +126,27 @@ export function RestaurantSettingsForm({
         <SystemMessage variant="success">{state.notice}</SystemMessage>
       )}
       {editable && (
-        <div className="settings-restaurant-actions">
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={state.busy || !state.dirty}
-            onClick={state.discard}
+        <footer className="settings-restaurant-footer">
+          <span
+            className={`settings-save-status${state.dirty ? " is-pending" : ""}`}
           >
-            Descartar alterações
-          </Button>
-          <Button type="submit" loading={state.busy} disabled={!state.dirty}>
-            Salvar configurações
-          </Button>
-        </div>
+            {state.dirty ? "Alterações não salvas" : "Tudo atualizado"}
+          </span>
+          <div className="settings-restaurant-actions">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={state.busy || !state.dirty}
+              onClick={state.discard}
+            >
+              Descartar alterações
+            </Button>
+            <Button type="submit" loading={state.busy} disabled={!state.dirty}>
+              <Save aria-hidden="true" />
+              Salvar configurações
+            </Button>
+          </div>
+        </footer>
       )}
     </form>
   );
