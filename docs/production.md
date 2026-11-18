@@ -76,7 +76,7 @@ O script usa Node 22 com suporte a `--experimental-strip-types`, sem depender do
 A API deriva `thumbUrls` na mesma ordem de `imageUrls`, sem mudança no banco. Exclusão e substituição de uma foto removem as duas variantes. O admin usa miniaturas com fallback para a imagem original se a miniatura ainda não existir. O cardápio do cliente continua usando a imagem original nesta etapa.
 
 
-`restaurant-settings.sql` cria a tabela de configuração única e insere id=1 com taxa padrão de 10% somente se a linha ainda não existir. Reexecutar não sobrescreve dados do restaurante nem a taxa já configurada. Aplique este SQL antes de publicar a versão que lê a taxa do banco; sem a linha, o fechamento retorna configuração indisponível, sem presumir uma taxa. Os atendimentos anteriores preservam `service_fee` já gravado. Não há rollback destrutivo: a versão anterior ignora esta tabela.
+`restaurant-settings.sql` cria a tabela de configuração única e insere id=1 com taxa padrão de 10% somente se a linha ainda não existir. Reexecutar não sobrescreve dados do restaurante nem a taxa já configurada. O SQL também adiciona `banner_image_url`; reaplique-o antes de publicar a versão com a imagem de boas-vindas do cardápio. Aplique este SQL antes de publicar a versão que lê a taxa do banco; sem a linha, o fechamento retorna configuração indisponível, sem presumir uma taxa. Os atendimentos anteriores preservam `service_fee` já gravado. Não há rollback destrutivo: a versão anterior ignora esta tabela.
 
 
 `user-token-version.sql` só adiciona `users.token_version` (padrão 0): tokens emitidos antes, sem a versão, continuam valendo até expirar ou até o primeiro logout/troca de senha do usuário; a versão anterior do backend ignora a coluna.

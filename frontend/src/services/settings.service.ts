@@ -4,6 +4,7 @@ export type PublicRestaurantSettings = {
   address: string | null;
   openingHours: string | null;
   contact: string | null;
+  bannerImageUrl?: string | null;
 };
 export type RestaurantSettings = PublicRestaurantSettings & {
   serviceFeeRate: number;
@@ -11,8 +12,14 @@ export type RestaurantSettings = PublicRestaurantSettings & {
 export const fetchSettings = () => apiRequest<RestaurantSettings>("/settings");
 export const fetchPublicSettings = () =>
   apiRequest<PublicRestaurantSettings>("/settings/public");
-export const saveSettings = (data: RestaurantSettings) =>
+export const saveSettings = (data: Omit<RestaurantSettings, "bannerImageUrl">) =>
   apiRequest<RestaurantSettings>("/settings", {
     method: "PUT",
     body: JSON.stringify(data),
   });
+
+export const uploadRestaurantBanner = (file: File) => {
+  const body = new FormData();
+  body.append("image", file);
+  return apiRequest<RestaurantSettings>("/settings/banner", { method: "POST", body });
+};

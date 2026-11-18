@@ -6,6 +6,7 @@ import {
   TextField,
 } from "@/components";
 import type { useRestaurantSettings } from "../hooks/useRestaurantSettings";
+import { assetUrl } from "@/api/client";
 type State = ReturnType<typeof useRestaurantSettings>;
 export function RestaurantSettingsForm({
   state,
@@ -51,6 +52,23 @@ export function RestaurantSettingsForm({
             }
           />
         ))}
+        <div className="settings-restaurant-banner">
+          <span>Imagem de boas-vindas do cardápio</span>
+          {(state.bannerPreview || state.form.bannerImageUrl) && <img
+            src={state.bannerPreview || assetUrl(state.form.bannerImageUrl) || undefined}
+            alt="Prévia da imagem de boas-vindas" />}
+          {editable && <TextField
+            id="settings-banner-image"
+            label="Escolher imagem"
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif"
+            disabled={state.busy}
+            hint="JPG, PNG, WebP ou AVIF de até 5 MB. A imagem aparece no banner de boas-vindas."
+            onChange={(event) => {
+              state.selectBanner(event.target.files?.[0]);
+              event.target.value = "";
+            }} />}
+        </div>
       </section>
       <section aria-labelledby="restaurant-settings-fee">
         <h2 id="restaurant-settings-fee">Taxa de serviço</h2>

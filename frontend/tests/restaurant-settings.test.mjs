@@ -76,6 +76,52 @@ test("formulário salva vírgula, trata erros, descarta e bloqueia escrita do fu
   } finally { globalThis.fetch = fetch; }
 });
 
+test("imagem do restaurante fica em rascunho até salvar e é enviada como arquivo", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const imageUrl = "/uploads/products/restaurant-banner.webp";
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), ...options });
+    if (options.method === "POST") return Response.json({ ...data, bannerImageUrl: imageUrl });
+    return Response.json(options.method === "PUT" ? JSON.parse(options.body) : data);
+  };
+  const hook = run(() => useRestaurantSettings(true));
+  try {
+    await hook().reload();
+    hook().selectBanner(new File(["photo"], "banner.png", { type: "image/png" }));
+    assert.equal(hook().dirty, true);
+    assert.match(hook().bannerPreview, /^blob:/);
+    assert.equal(calls.some(call => call.method === "POST"), false);
+    await hook().submit({ preventDefault() {} });
+    const upload = calls.find(call => call.method === "POST");
+    assert.match(upload.url, /\/settings\/banner$/);
+    assert.ok(upload.body instanceof FormData);
+    assert.equal(upload.body.get("image").name, "banner.png");
+    assert.equal(hook().form.bannerImageUrl, imageUrl);
+    assert.equal(hook().dirty, false);
+    hook().selectBanner(new File(["bad"], "script.svg", { type: "image/svg+xml" }));
+    assert.match(hook().error, /JPG.*5 MB/);
+    assert.equal(hook().dirty, false);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("nome e imagem salvos aparecem na tela de boas-vindas; nome vazio usa MesaFlow", async () => {
+  const { Home } = await server.ssrLoadModule("/src/pages/client/Home/index.tsx");
+  const { RestaurantSettingsContext } = await server.ssrLoadModule("/src/contexts/restaurant-settings.ts");
+  const originalWindow = globalThis.window;
+  globalThis.window = { ...originalWindow, location: { ...originalWindow.location, origin: "http://localhost:5173" } };
+  try {
+    const render = (value) => renderToStaticMarkup(createElement(RestaurantSettingsContext.Provider, { value },
+      createElement(Home, { guestName: "", onGuestNameChange() {}, onExploreMenu() {}, onOpenCart() {} })));
+    const html = render({ ...data, name: "Bistrô da Praça", bannerImageUrl: "/uploads/products/banner.webp" });
+    assert.match(html, /<strong>Bistrô da Praça<\/strong>/);
+    assert.match(html, /<span>Bistrô da Praça<\/span>/);
+    assert.match(html, /src="http:\/\/localhost:3333\/uploads\/products\/banner.webp"/);
+    assert.doesNotMatch(html, />MesaFlow</);
+    assert.match(render({ ...data, name: null }), /<strong>MesaFlow<\/strong>/);
+  } finally { globalThis.window = originalWindow; }
+});
+
 test("pagamento usa taxa recebida e omite taxa/isenção com zero", () => {
   for (const rate of [5, 0]) {
     const render = run(() => PaymentForm({ orderId: 1, total: 20, serviceFeeRate: rate, onClose() {}, onComplete() {} }));

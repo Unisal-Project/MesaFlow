@@ -1,4 +1,5 @@
-import { useClientTable } from "@/contexts/ClientTableContext";
+import { usePublicRestaurantSettings } from "@/contexts/restaurant-settings";
+import { assetUrl } from "@/api/client";
 import { ClientTableHeader } from "@/components/layout/ClientTableHeader";
 import { Button,  TextField } from "@/components";
 import "./styles.scss";
@@ -11,13 +12,16 @@ type HomeProps = {
 };
 
 export function Home({ guestName, onGuestNameChange, onExploreMenu }: HomeProps) {
-  const { tableLabel } = useClientTable();
+  const settings = usePublicRestaurantSettings();
+  const restaurantName = settings?.name?.trim() || "MesaFlow";
 
   return (
     <div className="client-home">
       <ClientTableHeader />
-      <div className="client-home-banner" aria-label={tableLabel}>
-        <span>{tableLabel}</span>
+      <div className="client-home-banner" aria-label={restaurantName}>
+        {settings?.bannerImageUrl && <img src={assetUrl(settings.bannerImageUrl) || undefined} alt=""
+          onError={(event) => { event.currentTarget.style.display = "none"; }} />}
+        <span>{restaurantName}</span>
       </div>
       <main className="client-home-content">
         <p className="client-home-eyebrow">Bem-vindo à mesa</p>

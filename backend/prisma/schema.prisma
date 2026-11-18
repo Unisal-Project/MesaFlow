@@ -346,6 +346,7 @@ model RestaurantSettings {
   id             Int      @id @default(1) @db.UnsignedTinyInt
   serviceFeeRate Decimal  @default(10.00) @map("service_fee_rate") @db.Decimal(5, 2)
   name           String?  @db.VarChar(120)
+  bannerImageUrl String?  @map("banner_image_url") @db.VarChar(255)
   address        String?  @db.VarChar(255)
   openingHours   String?  @map("opening_hours") @db.VarChar(255)
   contact        String?  @db.VarChar(120)

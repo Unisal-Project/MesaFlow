@@ -624,3 +624,6 @@ CREATE TABLE IF NOT EXISTS restaurant_settings (
     CONSTRAINT chk_restaurant_settings_rate CHECK (service_fee_rate BETWEEN 0 AND 20)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 INSERT IGNORE INTO restaurant_settings (id, service_fee_rate) VALUES (1, 10.00);
+
+ALTER TABLE restaurant_settings
+    ADD COLUMN IF NOT EXISTS banner_image_url VARCHAR(255) NULL AFTER name;
