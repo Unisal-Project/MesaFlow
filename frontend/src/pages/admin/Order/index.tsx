@@ -32,7 +32,6 @@ import {
 
 import type { OrdersProps, OrderSort, OrderFilter, OrderPeriod } from "./types/order.types.js";
 
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { OrdersSummary } from "./components/OrdersSummary";
 
 import "./styles.scss";
@@ -128,7 +127,6 @@ export default function Orders({
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={(id) => onNavigate?.(id)}
       />
 

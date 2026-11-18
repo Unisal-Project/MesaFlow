@@ -3,8 +3,10 @@ import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
 import fastifyJwt from "@fastify/jwt";
+import multipart from "@fastify/multipart";
 import { errorHandler } from "../src/shared/errors/error-handler.js";
 import { requireApiAuthentication } from "../src/shared/api-access.js";
+import type { RestaurantSettings } from "../src/modules/settings/repository/settings.repository.js";
 
 process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:1/settings_test";
 process.env.JWT_SECRET ??= "settings-test-secret";
@@ -44,6 +46,7 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
             ({ id: 1n, role: "ADMIN", active: adminActive }) as any,
         },
         repository: {
+          saveBannerImage: async () => saved,
           get: async () => saved,
           save: async (data) => {
             writes++;
@@ -178,6 +181,96 @@ test("settings: dados públicos sem taxa, GET autenticado, PUT só ADMIN e valid
         (await app.inject({ url: "/api/v1/settings/public" })).json(),
       false,
     );
+  } finally {
+    await app.close();
+  }
+});
+
+test("banner: upload só por admin ativo, imagem pública e rollback preserva banner anterior", async () => {
+  const { registerSettingsRoutes } =
+    await import("../src/modules/settings/settings.routes.js");
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  await app.register(fastifyJwt, { secret: "settings-test-secret" });
+  await app.register(multipart, {
+    limits: { files: 1, fileSize: 5 * 1024 * 1024 },
+  });
+  let saved: RestaurantSettings = {
+    ...initial,
+    name: "Bistrô da Praça",
+    bannerImageUrl: "/uploads/products/old.webp",
+  };
+  let active = true,
+    failSave = false,
+    uploads = 0;
+  const deleted: string[] = [];
+  await app.register(
+    async (api) => {
+      api.addHook("onRequest", requireApiAuthentication);
+      await registerSettingsRoutes(api, {
+        userRepository: {
+          findById: async () => ({ id: 1n, role: "ADMIN", active }) as any,
+        },
+        repository: {
+          get: async () => saved,
+          save: async (data) => {
+            saved = { ...saved, ...data };
+            return saved;
+          },
+          saveBannerImage: async (url) => {
+            if (failSave) throw Error("save failed");
+            saved = { ...saved, bannerImageUrl: url };
+            return saved;
+          },
+        },
+        storage: {
+          uploadProductImage: async (file) => {
+            assert.equal(file.mimeType, "image/png");
+            assert.equal(file.buffer.toString(), "image-bytes");
+            return `/uploads/products/new-${++uploads}.webp`;
+          },
+          delete: async (url) => {
+            deleted.push(url);
+          },
+        },
+      });
+    },
+    { prefix: "/api/v1" },
+  );
+  const admin = {
+    authorization: `Bearer ${app.jwt.sign({ id: "1", email: "admin@example.com", role: "ADMIN" })}`,
+  };
+  const employee = {
+    authorization: `Bearer ${app.jwt.sign({ id: "2", email: "employee@example.com", role: "EMPLOYEE" })}`,
+  };
+  const upload = (headers: Record<string, string> = admin) =>
+    app.inject({
+      method: "POST",
+      url: "/api/v1/settings/banner",
+      headers: {
+        ...headers,
+        "content-type": "multipart/form-data; boundary=banner",
+      },
+      payload:
+        '--banner\r\nContent-Disposition: form-data; name="image"; filename="banner.png"\r\nContent-Type: image/png\r\n\r\nimage-bytes\r\n--banner--\r\n',
+    });
+  try {
+    assert.equal((await upload({})).statusCode, 401);
+    assert.equal((await upload(employee)).statusCode, 403);
+    assert.equal(uploads, 0);
+    assert.equal((await upload()).statusCode, 200);
+    const info = (await app.inject({ url: "/api/v1/settings/public" })).json();
+    assert.equal(info.name, "Bistrô da Praça");
+    assert.equal(info.bannerImageUrl, "/uploads/products/new-1.webp");
+    assert.equal("serviceFeeRate" in info, false);
+    assert.deepEqual(deleted, ["/uploads/products/old.webp"]);
+    failSave = true;
+    assert.equal((await upload()).statusCode, 500);
+    assert.equal(saved.bannerImageUrl, "/uploads/products/new-1.webp");
+    assert.equal(deleted.at(-1), "/uploads/products/new-2.webp");
+    active = false;
+    assert.equal((await upload()).statusCode, 403);
+    assert.equal(uploads, 2);
   } finally {
     await app.close();
   }

@@ -3,6 +3,7 @@ export type UserRole = "ADMIN" | "EMPLOYEE";
 export type UserEntity = {
   id: bigint;
   name: string;
+  avatarUrl?: string | null;
   email: string;
   passwordHash: string;
   role: UserRole;
@@ -38,6 +39,7 @@ export type CreateUserInput = RegisterUserInput & {
 };
 
 export type UpdateUserData = Partial<CreateUserData> & {
+  avatarUrl?: string | null;
   /** Sempre incremento atômico no banco (logout, senha, desativação, perfil). */
   tokenVersion?: { increment: 1 };
 };

@@ -77,6 +77,52 @@ test("formulário salva vírgula, trata erros, descarta e bloqueia escrita do fu
   } finally { globalThis.fetch = fetch; }
 });
 
+test("imagem do restaurante fica em rascunho até salvar e é enviada como arquivo", async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  const imageUrl = "/uploads/products/restaurant-banner.webp";
+  globalThis.fetch = async (url, options = {}) => {
+    calls.push({ url: String(url), ...options });
+    if (options.method === "POST") return Response.json({ ...data, bannerImageUrl: imageUrl });
+    return Response.json(options.method === "PUT" ? JSON.parse(options.body) : data);
+  };
+  const hook = run(() => useRestaurantSettings(true));
+  try {
+    await hook().reload();
+    hook().selectBanner(new File(["photo"], "banner.png", { type: "image/png" }));
+    assert.equal(hook().dirty, true);
+    assert.match(hook().bannerPreview, /^blob:/);
+    assert.equal(calls.some(call => call.method === "POST"), false);
+    await hook().submit({ preventDefault() {} });
+    const upload = calls.find(call => call.method === "POST");
+    assert.match(upload.url, /\/settings\/banner$/);
+    assert.ok(upload.body instanceof FormData);
+    assert.equal(upload.body.get("image").name, "banner.png");
+    assert.equal(hook().form.bannerImageUrl, imageUrl);
+    assert.equal(hook().dirty, false);
+    hook().selectBanner(new File(["bad"], "script.svg", { type: "image/svg+xml" }));
+    assert.match(hook().error, /JPG.*5 MB/);
+    assert.equal(hook().dirty, false);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test("nome e imagem salvos aparecem na tela de boas-vindas; nome vazio usa MesaFlow", async () => {
+  const { Home } = await server.ssrLoadModule("/src/pages/client/Home/index.tsx");
+  const { RestaurantSettingsContext } = await server.ssrLoadModule("/src/contexts/restaurant-settings.ts");
+  const originalWindow = globalThis.window;
+  globalThis.window = { ...originalWindow, location: { ...originalWindow.location, origin: "http://localhost:5173" } };
+  try {
+    const render = (value) => renderToStaticMarkup(createElement(RestaurantSettingsContext.Provider, { value },
+      createElement(Home, { guestName: "", onGuestNameChange() {}, onExploreMenu() {}, onOpenCart() {} })));
+    const html = render({ ...data, name: "Bistrô da Praça", bannerImageUrl: "/uploads/products/banner.webp" });
+    assert.match(html, /<strong>Bistrô da Praça<\/strong>/);
+    assert.match(html, /<span>Bistrô da Praça<\/span>/);
+    assert.match(html, /src="http:\/\/localhost:3333\/uploads\/products\/banner.webp"/);
+    assert.doesNotMatch(html, />MesaFlow</);
+    assert.match(render({ ...data, name: null }), /<strong>MesaFlow<\/strong>/);
+  } finally { globalThis.window = originalWindow; }
+});
+
 test("pagamento usa taxa recebida e omite taxa/isenção com zero", () => {
   for (const rate of [5, 0]) {
     const render = run(() => PaymentForm({ orderId: 1, total: 20, serviceFeeRate: rate, onClose() {}, onComplete() {} }));
@@ -118,14 +164,41 @@ test("informações do restaurante carregam ao abrir, respeitam prop e falha man
 
 test("formulário é somente leitura para EMPLOYEE e mostra salvar para ADMIN", async () => {
   const { RestaurantSettingsForm } = await server.ssrLoadModule("/src/pages/admin/Settings/components/RestaurantSettingsForm.tsx");
+  const { ServiceFeeSettings } = await server.ssrLoadModule("/src/pages/admin/Settings/components/ServiceFeeSettings.tsx");
   const hook = run(() => useRestaurantSettings(false));
   await hook().reload();
   const employee = renderToStaticMarkup(createElement(RestaurantSettingsForm, { state: hook(), editable: false }));
   assert.ok(employee.includes("readOnly"));
   assert.ok(!employee.includes("Salvar configurações"));
-  assert.ok(employee.includes("Somente o administrador"));
+  const employeeFee = renderToStaticMarkup(createElement(ServiceFeeSettings, { state: hook(), editable: false }));
+  assert.ok(employeeFee.includes("Somente o administrador"));
+  assert.match(employeeFee, /<fieldset[^>]*disabled/);
   const admin = renderToStaticMarkup(createElement(RestaurantSettingsForm, { state: hook(), editable: true }));
   assert.ok(admin.includes("Salvar configurações"));
+  const fee = renderToStaticMarkup(createElement(ServiceFeeSettings, { state: hook(), editable: true }));
+  assert.match(admin, /id="restaurant-settings-form"/);
+  assert.match(fee, /form="restaurant-settings-form"/);
+  assert.match(fee, /Virada do dia/);
+});
+
+test("horários por dia e virada de operação são salvos juntos sem perder a imagem", async () => {
+  const hours = await server.ssrLoadModule("/src/utils/opening-hours.ts");
+  const hook = run(() => useRestaurantSettings(true));
+  await hook().reload();
+  const days = hours.emptyOpeningHours();
+  days[0] = { ...days[0], open: true, from: "18:00", to: "" };
+  hook().setForm({ ...hook().form, openingHours: hours.serializeOpeningHours(days), dayCutoffHour: "4" });
+  const count = requests.length;
+  await hook().submit({ preventDefault() {} });
+  assert.equal(requests.length, count);
+  assert.match(hook().error, /segunda-feira/);
+  days[0].to = "02:00";
+  hook().setForm({ ...hook().form, openingHours: hours.serializeOpeningHours(days) });
+  await hook().submit({ preventDefault() {} });
+  const payload = JSON.parse(requests.at(-1).body);
+  assert.equal(payload.dayCutoffHour, 4);
+  assert.deepEqual(hours.parseOpeningHours(payload.openingHours), days);
+  assert.equal(hook().dirty, false);
 });
 
 test("pagamento aguarda GET settings e permite tentar novamente após falha", async () => {

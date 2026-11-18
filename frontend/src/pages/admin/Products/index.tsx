@@ -17,7 +17,6 @@ import Categories from "../Categories";
 
 import type { ProductsProps } from "./types/product.types";
 
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 
 import { isRowAreaClick } from "@/utils/selectableRow";
 import "./styles.scss";
@@ -136,7 +135,6 @@ export default function Products({
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={onNavigate ?? (() => undefined)}
       />
       <main className="products-content">

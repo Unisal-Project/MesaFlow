@@ -1,6 +1,5 @@
-import { ArrowDown, ArrowDownLeft, ArrowUp, ArrowUpRight, ChevronDown, Download, Search, Utensils } from "lucide-react";
+import { ArrowDown, ArrowDownLeft, ArrowUp, ArrowUpRight, ChevronDown, Download, Search, Undo2, Utensils } from "lucide-react";
 import { AdminSidebar, Button, Notifications, StatCard } from "@/components";
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 import { useReports } from "./hooks/useReports";
 import { ReportSalesChart } from "./components/ReportSalesChart";
 import type { ReportPeriod } from "./types/report.types";
@@ -32,9 +31,15 @@ export default function Reports({ onNavigate }: ReportsProps) {
     { label: "Mesas atendidas", value: invalid ? "—" : String(report.tables), icon: <Utensils aria-hidden="true" /> },
   ];
   return (
-    <div className="reports-page">
+    <div className="reports-page" onKeyDown={(event) => {
+      if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing || !report.selectedDay) return;
+      const target = event.target as Element;
+      if (target.closest?.('dialog, [role="dialog"], .notifications-container, .admin-profile, .admin-sidebar')) return;
+      event.preventDefault();
+      report.clearSelectedDay();
+    }}>
       <AdminSidebar activeId="reports" brandSubtitle="GESTÃO DO RESTAURANTE" navigationLabel="MENU PRINCIPAL" showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />} onChange={onNavigate} />
+        onChange={onNavigate} />
       <main className="reports-content">
         <header className="reports-topbar">
           <div className="reports-breadcrumb" aria-label="Página atual"><span>Visão geral</span><strong>/ &nbsp;Relatórios</strong></div>
@@ -77,7 +82,13 @@ export default function Reports({ onNavigate }: ReportsProps) {
               <header className="reports-panel-heading"><div><h2 id="reports-products-title">Produtos mais vendidos</h2><p aria-live="polite">{report.selectedDay ? `Mais vendidos: ${report.selectedLabel}` : "Itens com maior saída no período"}</p></div></header>
               {report.selectedDay && <div className="reports-day-detail">
                 <span>{report.formatCurrency(report.selectedDay.revenue)} <span>em vendas na seleção</span></span>
-                <button type="button" onClick={report.clearSelectedDay}>Ver período completo</button>
+                <Button type="button" variant="secondary" className="reports-reset-selection"
+                  aria-keyshortcuts="Escape" onClick={(event) => {
+                    event.currentTarget.closest(".reports-page")?.querySelector<SVGElement>('.reports-chart-day[aria-pressed="true"]')?.focus({ preventScroll: true });
+                    report.clearSelectedDay();
+                  }}>
+                  <Undo2 aria-hidden="true" /><span>Voltar ao período completo</span><kbd aria-hidden="true">Esc</kbd>
+                </Button>
               </div>}
               <ol className="reports-ranking" key={report.selectedDay?.date ?? report.periodLabel}>
                 {rankedProducts.map((product, index) => <li key={product.productId}>

@@ -19,7 +19,6 @@ import type {
   DashboardProps
 } from "./types/dashboard.types";
 
-import logoAlternativo from "@/assets/logotipo/logo_alternativo-2.png";
 
 import "./styles.scss";
 
@@ -40,7 +39,6 @@ export default function Dashboard({ orders, tables, loading = false, error = "",
         brandSubtitle="GESTÃO DO RESTAURANTE"
         navigationLabel="MENU PRINCIPAL"
         showAvatar
-        brandImage={<img src={logoAlternativo} alt="" />}
         onChange={(id) => onNavigate?.(id)}
       />
 

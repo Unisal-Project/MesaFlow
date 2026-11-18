@@ -1,0 +1,52 @@
+import assert from "node:assert/strict";
+import { after, before, test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { createServer } from "vite";
+import { fileURLToPath } from "node:url";
+let server, ProfileForm, AdminSidebar, auth, run;
+const saved = { fetch: globalThis.fetch, window: globalThis.window, localStorage: globalThis.localStorage };
+const values = new Map();
+const token = `h.${btoa(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 3600 }))}.s`;
+const user = { id: "1", name: "Ana", email: "ana@example.com", role: "ADMIN" };
+before(async () => {
+  globalThis.window = { location: { protocol: "http:", hostname: "localhost", origin: "http://localhost:5173" } };
+  globalThis.localStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
+  values.set("mesaflow.session", JSON.stringify({ user, accessToken: token }));
+  server = await createServer({ root: fileURLToPath(new URL("..", import.meta.url)), server: { middlewareMode: true, ws: false }, optimizeDeps: { noDiscovery: true }, plugins: [{ name: "avatar-controlled-profile", enforce: "pre", transform(code, id) { if (id.endsWith("/Settings/components/ProfileForm.tsx")) return code.replace('from "react"', 'from "/tests/helpers/hook-runtime.mjs"'); } }] });
+  ({ ProfileForm } = await server.ssrLoadModule("/src/pages/admin/Settings/components/ProfileForm.tsx"));
+  ({ AdminSidebar } = await server.ssrLoadModule("/src/components/layout/AdminSidebar.tsx"));
+  auth = await server.ssrLoadModule("/src/services/auth.service.ts");
+  ({ createHookRunner: run } = await server.ssrLoadModule("/tests/helpers/hook-runtime.mjs"));
+});
+after(async () => { await server?.close(); Object.assign(globalThis, saved); });
+function find(tree, predicate) {
+  if (Array.isArray(tree)) return tree.map(item => find(item, predicate)).find(Boolean);
+  if (!tree?.props) return undefined;
+  return predicate(tree) ? tree : find(tree.props.children, predicate);
+}
+test("foto fica em prévia até salvar; sessão e avatar lateral recebem a foto sem trocar o token", async () => {
+  const calls = []; let updated = 0;
+  const avatarUrl = "/uploads/products/profile.webp";
+  globalThis.fetch = async (url, options) => { calls.push({ url, ...options }); return Response.json(options.method === "POST" ? { ...user, avatarUrl } : user); };
+  const render = run(() => ProfileForm({ onSaved: () => { updated++; } }));
+  const input = () => find(render(), node => node.props?.["aria-label"] === "Escolher foto do perfil");
+  input().props.onChange({ target: { files: [new File(["photo"], "photo.png", { type: "image/png" })], value: "photo.png" } });
+  assert.equal(calls.length, 0);
+  assert.match(find(render(), node => node.props?.alt === "Foto do perfil").props.src, /^blob:/);
+  await find(render(), node => node.type === "form").props.onSubmit({ preventDefault() {} });
+  assert.equal(updated, 1);
+  const request = calls.find(call => call.method === "POST");
+  assert.match(request.url, /\/auth\/me\/avatar$/);
+  assert.ok(request.body instanceof FormData);
+  assert.equal(request.body.get("image").name, "photo.png");
+  assert.equal(request.headers.get("Authorization"), `Bearer ${token}`);
+  assert.equal(auth.getSession().user.avatarUrl, avatarUrl);
+  assert.equal(auth.getToken(), token);
+  const sidebar = renderToStaticMarkup(createElement(AdminSidebar, { activeId: "settings", showAvatar: true, onChange() {} }));
+  assert.match(sidebar, /src="http:\/\/localhost:3333\/uploads\/products\/profile.webp"/);
+  const count = calls.length;
+  input().props.onChange({ target: { files: [new File(["bad"], "bad.svg", { type: "image/svg+xml" })], value: "bad.svg" } });
+  assert.equal(calls.length, count);
+  assert.match(renderToStaticMarkup(render()), /Escolha uma imagem JPG/);
+});

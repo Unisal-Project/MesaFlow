@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { openingHoursError } from "@/utils/opening-hours";
 import { setDayCutoff } from "@/utils/businessDay";
 import {
   fetchSettings,
   saveSettings,
+  uploadRestaurantBanner,
   type RestaurantSettings,
 } from "@/services/settings.service";
 const emptyForm = {
@@ -10,6 +12,7 @@ const emptyForm = {
   address: "",
   openingHours: "",
   contact: "",
+  bannerImageUrl: "",
   serviceFeeRate: "10",
   rateChoice: "10",
   dayCutoffHour: "5",
@@ -19,6 +22,7 @@ const toForm = (data: RestaurantSettings) => ({
   address: data.address ?? "",
   openingHours: data.openingHours ?? "",
   contact: data.contact ?? "",
+  bannerImageUrl: data.bannerImageUrl ?? "",
   serviceFeeRate: String(data.serviceFeeRate),
   rateChoice: [0, 5, 10].includes(data.serviceFeeRate)
     ? String(data.serviceFeeRate)
@@ -32,8 +36,24 @@ export function useRestaurantSettings(editable: boolean) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerPreview, setBannerPreview] = useState("");
+  useEffect(() => () => {
+    if (bannerPreview) URL.revokeObjectURL(bannerPreview);
+  }, [bannerPreview]);
+  const selectBanner = (file?: File) => {
+    if (!editable || busy || !file) return;
+    if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError("Escolha uma imagem JPG, PNG, WebP ou AVIF de até 5 MB.");
+      return;
+    }
+    setBannerFile(file);
+    setBannerPreview(URL.createObjectURL(file));
+    setError("");
+    setNotice("");
+  };
   const dirty =
-    saved !== null && JSON.stringify(form) !== JSON.stringify(saved);
+    saved !== null && (bannerFile !== null || JSON.stringify(form) !== JSON.stringify(saved));
   const reload = useCallback(async () => {
     setError("");
     try {
@@ -67,6 +87,8 @@ export function useRestaurantSettings(editable: boolean) {
   const discard = () => {
     if (saved && confirmDiscard()) {
       setForm(saved);
+      setBannerFile(null);
+      setBannerPreview("");
       setError("");
       setNotice("");
     }
@@ -76,6 +98,8 @@ export function useRestaurantSettings(editable: boolean) {
     if (!editable || busy || !saved) return;
     setError("");
     setNotice("");
+    const hoursError = openingHoursError(form.openingHours);
+    if (hoursError) { setError(hoursError); return; }
     const value = form.serviceFeeRate.trim().replace(",", ".");
     const rate = Number(value);
     if (
@@ -103,6 +127,13 @@ export function useRestaurantSettings(editable: boolean) {
       setDayCutoff(Number(data.dayCutoffHour));
       setForm(data);
       setSaved(data);
+      if (bannerFile) {
+        const updated = toForm(await uploadRestaurantBanner(bannerFile));
+        setForm(updated);
+        setSaved(updated);
+        setBannerFile(null);
+        setBannerPreview("");
+      }
       setNotice("Configurações salvas com sucesso.");
     } catch (err) {
       setError(
@@ -127,5 +158,7 @@ export function useRestaurantSettings(editable: boolean) {
     submit,
     confirmDiscard,
     discard,
+    bannerPreview,
+    selectBanner,
   };
 }

@@ -81,7 +81,7 @@ html.admin-workspace-active {
   :is(button, input, textarea, select, summary):focus-visible {
     @include mixins.focus-visible(2px, 3px);
   }
-  :is(.order-search, .product-search, .table-search) input:focus-visible {
+  :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="submit"], [type="button"]), textarea, select):focus-visible {
     outline: none;
   }
 }

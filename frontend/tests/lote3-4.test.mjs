@@ -154,4 +154,3 @@ test("B: rótulos do eixo — 7 no desktop e 4 no celular, sem sobreposição no
   }
   assert.deepEqual(ninety.narrow, [0, 23, 46, 89]);
 });
-

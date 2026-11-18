@@ -22,6 +22,7 @@ const publicRoutes = new Set([
 const adminRoutes = new Set([
   "POST /auth/register",
   "PUT /settings",
+  "POST /settings/banner",
   "POST /categories",
   "PUT /categories/:id",
   "DELETE /categories/:id",

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { classNames } from "@/utils/classNames";
 import { getSession, signOut } from "@/services/auth.service";
 import mesaFlowLogo from "@/assets/logotipo/logo_principal.png";
+import { assetUrl } from "@/api/client";
 import {
   LayoutDashboard,
   ChartColumnBig,
@@ -63,7 +64,7 @@ export function AdminSidebar({
   brandSubtitle = "Administrativo",
   navigationLabel,
   showAvatar = false,
-  avatarSrc = mesaFlowLogo,
+  avatarSrc,
   brandImage,
   items = adminSidebarItems,
   activeId,
@@ -72,6 +73,7 @@ export function AdminSidebar({
   userRole,
 }: AdminSidebarProps) {
   const user = getSession()?.user;
+  const profileImage = avatarSrc ?? assetUrl(user?.avatarUrl) ?? mesaFlowLogo;
   userName ??= user?.name ?? "Usuário";
   userRole ??= user?.role === "ADMIN" ? "Administrador" : "Funcionário";
   const [menuOpen, setMenuOpen] = useState(false);
@@ -166,7 +168,7 @@ export function AdminSidebar({
       </button>
       <div className="admin-brand">
         <div className="admin-brand-image">
-          {brandImage ?? brand.charAt(0).toUpperCase()}
+          {brandImage ?? <img src={mesaFlowLogo} alt="" />}
         </div>
         <div className="admin-brand-text">
           <strong>{brand}</strong>
@@ -228,7 +230,9 @@ export function AdminSidebar({
           <UserRound className="admin-profile-icon" size={20} aria-hidden="true" />
           {showAvatar && (
             <span className="admin-profile-avatar" aria-hidden="true">
-              <img src={avatarSrc} alt="" />
+              <img src={profileImage} alt="" onError={(event) => {
+                if (event.currentTarget.getAttribute("src") !== mesaFlowLogo) event.currentTarget.src = mesaFlowLogo;
+              }} />
             </span>
           )}
           <strong>{userName}</strong>

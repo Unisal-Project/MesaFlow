@@ -1,13 +1,16 @@
 import { PrismaConnector } from "../../../database/prisma.js";
 import { AppError } from "../../../shared/errors/app-errors.js";
-import type { SettingsDTO, SettingsResponse } from "../dto/settings.dto.js";
-import type { SettingsRepository } from "./settings.repository.js";
+import type { SettingsDTO } from "../dto/settings.dto.js";
+import type {
+  RestaurantSettings,
+  SettingsRepository,
+} from "./settings.repository.js";
 
 export class PrismaSettingsRepository implements SettingsRepository {
   constructor(
     private readonly prismaClient: typeof PrismaConnector = PrismaConnector,
   ) {}
-  async get(): Promise<SettingsResponse> {
+  async get(): Promise<RestaurantSettings> {
     const row = await this.prismaClient.restaurantSettings.findUnique({
       where: { id: 1 },
     });
@@ -15,7 +18,7 @@ export class PrismaSettingsRepository implements SettingsRepository {
       throw new AppError("Configurações do restaurante indisponíveis.", 503);
     return this.toResponse(row);
   }
-  async save(data: SettingsDTO): Promise<SettingsResponse> {
+  async save(data: SettingsDTO): Promise<RestaurantSettings> {
     const values = {
       serviceFeeRate: data.serviceFeeRate,
       name: data.name,
@@ -33,17 +36,27 @@ export class PrismaSettingsRepository implements SettingsRepository {
     );
   }
   private toResponse(
-    row: Omit<SettingsResponse, "serviceFeeRate"> & {
+    row: Omit<RestaurantSettings, "serviceFeeRate"> & {
       serviceFeeRate: { toString(): string } | number;
     },
-  ): SettingsResponse {
+  ): RestaurantSettings {
     return {
       dayCutoffHour: row.dayCutoffHour,
       name: row.name,
+      bannerImageUrl: row.bannerImageUrl ?? null,
       address: row.address,
       openingHours: row.openingHours,
       contact: row.contact,
       serviceFeeRate: Number(row.serviceFeeRate),
     };
+  }
+
+  async saveBannerImage(url: string): Promise<RestaurantSettings> {
+    return this.toResponse(
+      await this.prismaClient.restaurantSettings.update({
+        where: { id: 1 },
+        data: { bannerImageUrl: url },
+      }),
+    );
   }
 }

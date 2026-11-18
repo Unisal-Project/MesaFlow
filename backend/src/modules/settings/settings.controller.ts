@@ -14,4 +14,22 @@ export class SettingsController {
       await this.service.save(settingsSchema.parse(request.body)),
     );
   }
+
+  async uploadBanner(request: FastifyRequest, reply: FastifyReply) {
+    if (!request.isMultipart()) {
+      return reply
+        .status(415)
+        .send({ message: "Envie a imagem usando multipart/form-data" });
+    }
+    const image = await request.file();
+    if (!image)
+      return reply.status(400).send({ message: "Imagem não enviada" });
+    return reply.send(
+      await this.service.uploadBanner({
+        buffer: await image.toBuffer(),
+        originalName: image.filename,
+        mimeType: image.mimetype,
+      }),
+    );
+  }
 }

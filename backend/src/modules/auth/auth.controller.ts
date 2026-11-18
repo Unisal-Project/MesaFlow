@@ -24,6 +24,22 @@ export class AuthController {
     });
   }
 
+  async uploadAvatar(request: FastifyRequest, reply: FastifyReply) {
+    if (!request.isMultipart())
+      return reply
+        .status(415)
+        .send({ message: "Envie a imagem usando multipart/form-data" });
+    const image = await request.file();
+    if (!image)
+      return reply.status(400).send({ message: "Imagem não enviada" });
+    const user = await this.authService.uploadAvatar(BigInt(request.user.id), {
+      buffer: await image.toBuffer(),
+      originalName: image.filename,
+      mimeType: image.mimetype,
+    });
+    return reply.send({ ...user, id: user.id.toString() });
+  }
+
   async login(request: FastifyRequest, reply: FastifyReply) {
     const { email, password } = loginSchema.parse(request.body);
     // Conta ANTES do bcrypt: uma rajada paralela não testa senhas além do limite.

@@ -92,7 +92,7 @@ test("B10: venda e ticket médio são SEM a taxa de serviço (igual a Relatório
   assert.deepEqual(hook.salesOn([withFee, second], dayKey()), { total: 160, accounts: 2, orders: 2, serviceFee: 16 });
   const html = renderToString(createElement(Dashboard, { orders: [withFee, second], tables: [] }));
   const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
-  assert.match(text, /Vendas hoje R\$\s?160,00 .*taxa de serviço à parte: R\$\s?16,00/);
+  assert.match(text, /Vendas hoje R\$\s?160,00 .*taxa: R\$\s?16,00/);
   assert.ok(!/\+ R\$\s?16,00/.test(text), "a taxa não parece crescimento");
   assert.match(text, /Ticket médio R\$\s?80,00 2 pedidos concluídos hoje/);
 });

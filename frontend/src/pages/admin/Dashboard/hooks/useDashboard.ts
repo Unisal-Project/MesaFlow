@@ -33,7 +33,7 @@ export function salesOn(orders: Order[], day: string) {
 }
 
 const percentChange = (current: number, previous: number) => {
-  if (previous === 0) return current === 0 ? "Sem vendas ontem" : "Primeiras vendas desde ontem";
+  if (previous === 0) return "Sem vendas ontem";
   const change = Math.round(((current - previous) / previous) * 100);
   return `${change >= 0 ? "+" : ""}${change}% vs. ontem`;
 };
@@ -60,7 +60,7 @@ export function useDashboard(orders: Order[] = [], tables: RestaurantTable[] = [
         detail:
           (todaySales.total === 0 ? "Sem vendas ainda hoje" : percentChange(todaySales.total, yesterdaySales.total)) +
           // Venda é sem a taxa de serviço; ela aparece à parte (e não parece crescimento).
-          (todaySales.serviceFee > 0 ? ` · taxa de serviço à parte: ${currency(todaySales.serviceFee)}` : ""),
+          (todaySales.serviceFee > 0 ? ` · taxa: ${currency(todaySales.serviceFee)}` : ""),
       },
       {
         label: "Pedidos ativos",
