@@ -1,7 +1,7 @@
 .git
-.env
-.env.*
-production.env
+**/.env
+**/.env.*
+**/production.env
 node_modules
 **/node_modules
 **/dist

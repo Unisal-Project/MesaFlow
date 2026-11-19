@@ -23,7 +23,7 @@ flowchart LR
 | Development | `docker-compose.yml` | Desenvolvimento com Vite, recarga de código e portas próprias para frontend, API e banco. |
 | Testing | `docker-compose.test.yml` | Testes de integração com MariaDB isolado, publicado em `127.0.0.1:3308` e com dados temporários em `tmpfs`. |
 | Staging | Compose de produção com `docker-compose.staging.yml` | Homologação com dados próprios, Nginx local na porta 8080 e acesso externo opcional por túnel. |
-| Production | `docker-compose.production.yml` | Publicação com `production.env` e Nginx na porta 80 na configuração base. Veja o [guia de produção](production.md). |
+| Production | `docker-compose.production.yml` | Publicação com a seção `PRODUCTION_*` do `.env` e Nginx na porta 80 na configuração base. Veja o [guia de produção](production.md). |
 
 ## Pré-requisitos
 
@@ -39,25 +39,25 @@ Confirme a instalação com `cloudflared --version`.
 
 ## Configuração e inicialização
 
-Na raiz do repositório, se ainda não existir um `.env.staging`, copie o modelo e restrinja o acesso ao arquivo.
+Na raiz do repositório, se ainda não existir um `.env`, copie o modelo e restrinja o acesso ao arquivo.
 
 ```bash
-cp -n .env.staging.example .env.staging
-chmod 600 .env.staging
+cp -n .env.example .env
+chmod 600 .env
 ```
 
 Para o primeiro uso, gere credenciais independentes para root, para o usuário da aplicação e para a assinatura JWT.
 
 ```bash
-openssl rand -hex 32     # MARIADB_ROOT_PASSWORD
-openssl rand -hex 32     # MARIADB_PASSWORD
-openssl rand -base64 48  # JWT_SECRET
+openssl rand -hex 32     # STAGING_MARIADB_ROOT_PASSWORD
+openssl rand -hex 32     # STAGING_MARIADB_PASSWORD
+openssl rand -base64 48  # STAGING_JWT_SECRET
 ```
 
-Preencha `.env.staging` com os valores gerados. Na `DATABASE_URL`, substitua `change-me` pela mesma senha de `MARIADB_PASSWORD`, mantendo o usuário `mesaflow`, o host `database:3306` e o banco `mesaflow`. A senha hexadecimal pode ser inserida diretamente. Mantenha `VALKEY_URL=redis://valkey:6379` e defina inicialmente `FRONTEND_URL=http://127.0.0.1:8080`. Remova do shell variáveis exportadas com os mesmos nomes para evitar que sobrescrevam o arquivo na interpolação do Compose.
+Preencha a seção `STAGING_*` do `.env`. Em `STAGING_DATABASE_URL`, use a mesma senha de `STAGING_MARIADB_PASSWORD`, mantendo o usuário `mesaflow`, o host `database:3306` e o banco `mesaflow`. Uma senha hexadecimal pode ser inserida diretamente. Mantenha `STAGING_VALKEY_URL=redis://valkey:6379` e use inicialmente `STAGING_FRONTEND_URL=http://127.0.0.1:8080`. Variáveis exportadas no shell têm precedência na interpolação do Compose.
 
 ```bash
-npm run staging:config -- --quiet
+npm run staging:config
 npm run staging:build
 npm run staging:up
 npm run staging:ps
@@ -68,7 +68,7 @@ O primeiro start aguarda MariaDB e Valkey ficarem saudáveis para iniciar o back
 
 ## Acesso externo com Quick Tunnel
 
-Em outro terminal no mesmo host, execute `npm run staging:tunnel` e mantenha o processo aberto. Copie a origem HTTPS `https://<subdomínio>.trycloudflare.com` exibida no terminal. Atualize `FRONTEND_URL` no `.env.staging` com essa origem, sem caminho nem barra final. O backend usa esse valor na configuração de CORS e nos links do cardápio gerados para os QR Codes.
+Em outro terminal no mesmo host, execute `npm run staging:tunnel` e mantenha o processo aberto. Copie a origem HTTPS `https://<subdomínio>.trycloudflare.com` exibida no terminal. Atualize `STAGING_FRONTEND_URL` no `.env` com essa origem, sem caminho nem barra final. O backend usa esse valor na configuração de CORS e nos links do cardápio gerados para os QR Codes.
 
 ```bash
 npm run staging:up -- --no-deps --force-recreate backend
@@ -84,14 +84,14 @@ Por padrão, qualquer pessoa com a URL pode acessar a aplicação exposta. A ses
 Para publicar alterações no código, rode `npm run staging:build` e `npm run staging:up`. O build recompila as imagens do backend e do Nginx e busca atualizações das imagens base. Para atualizar também as imagens prontas de MariaDB e Valkey, faça backup do banco e dos uploads e execute:
 
 ```bash
-docker compose -p mesaflow-staging --env-file .env.staging \
+docker compose -p mesaflow-staging --env-file .env \
   -f docker-compose.production.yml -f docker-compose.staging.yml pull database valkey
 npm run staging:up
 ```
 
 O Compose usa rede própria e volumes `mesaflow-staging_mariadb_data` e `mesaflow-staging_product_uploads`. O MariaDB importa `mesaflow_schema_v1.sql` ao inicializar um volume vazio. Alterações no schema ou nas senhas do arquivo de ambiente exigem atualização explícita no banco existente. Para atualizar o schema, siga os incrementais descritos no [guia de produção](production.md#atualização-de-banco-existente), usando os parâmetros do Compose de staging. O Valkey não possui volume persistente declarado.
 
-Use dados de teste e credenciais exclusivas. Mantenha `.env.staging` fora do Git e evite compartilhar a saída de `staging:config`, que inclui segredos. Restrinja a circulação da URL pública e encerre o túnel ao concluir a sessão.
+Use dados de teste e credenciais exclusivas. Mantenha `.env` fora do Git. Use `npm run staging:config` para validar a interpolação sem imprimir valores. Restrinja a circulação da URL pública e encerre o túnel ao concluir a sessão.
 
 ## Problemas identificados na homologação
 
@@ -104,9 +104,9 @@ Use dados de teste e credenciais exclusivas. Mantenha `.env.staging` fora do Git
 |---|---|
 | Erro ao ler `!override` | Confira a versão com `docker compose version` e atualize o plugin Compose. |
 | Porta 8080 ocupada | Identifique o processo que usa o loopback e libere a porta antes de subir o Nginx. |
-| Banco inacessível ou backend reiniciando | Confira os logs de `database` e `backend`, a senha da `DATABASE_URL` e o `JWT_SECRET`. Em volume existente, confirme a senha cadastrada no MariaDB. |
+| Banco inacessível ou backend reiniciando | Confira os logs de `database` e `backend`, a senha da `STAGING_DATABASE_URL` e o `STAGING_JWT_SECRET`. Em volume existente, confirme a senha cadastrada no MariaDB. |
 | HTTP 502 | Teste primeiro a URL local e confira os logs de `nginx` e `backend`. Se o backend acabou de ser recriado, reinicie o Nginx. |
-| CORS ou QR Code apontando para outra origem | Confirme a URL atual em `FRONTEND_URL`, recrie o backend, reinicie o Nginx e gere um novo QR Code. |
+| CORS ou QR Code apontando para outra origem | Confirme a URL atual em `STAGING_FRONTEND_URL`, recrie o backend, reinicie o Nginx e gere um novo QR Code. |
 | Quick Tunnel não inicia | Confirme que o Nginx responde localmente e verifique os logs do `cloudflared`, a conectividade e possíveis conflitos com uma configuração de túnel já existente no host. |
 
 ## Encerramento

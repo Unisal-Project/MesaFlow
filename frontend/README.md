@@ -30,7 +30,7 @@ O Context atende ao estado global atual. Não há dependência de Redux nem moti
 
 ## Configuração e comandos
 
-Copie `.env.example` para `.env` quando precisar configurar a API. `VITE_API_URL` é a URL completa com `/api/v1`, sem barra final. Sem configuração, o cliente usa o protocolo e host da página na porta 3333. Variáveis `VITE_*` são públicas e não devem conter segredos.
+Configure `VITE_API_URL` e `VITE_PRINT_URL` no `.env` da raiz. São as duas variáveis de configuração que o Vite expõe ao navegador. Sem `VITE_API_URL`, o cliente usa o protocolo e host da página, na porta 3333, com o prefixo `/api/v1`. Staging e produção usam `/api/v1` na própria origem. Os testes automatizados partem dos valores padrão, mesmo com URLs personalizadas no `.env`.
 
 Na raiz do repositório:
 
@@ -40,7 +40,7 @@ Na raiz do repositório:
 - `npm run lint`: executa Oxlint.
 - `npm run test:frontend`: executa os testes do frontend.
 
-O Docker também usa `frontend/` como contexto e origem do bind mount. As dependências declaradas cobrem React/roteamento, ícones, QR Code, fontes, TypeScript, Vite, lint e Sass. Atualizações de versões devem ser avaliadas separadamente; esta revisão preserva as versões existentes.
+O Docker usa a raiz do monorepo como contexto e monta `frontend/` no container durante o desenvolvimento. As dependências declaradas cobrem React/roteamento, ícones, QR Code, fontes, TypeScript, Vite, lint e Sass. Atualizações de versões devem ser avaliadas separadamente; esta revisão preserva as versões existentes.
 
 ## Limites atuais da integração
 

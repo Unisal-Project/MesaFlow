@@ -22,11 +22,12 @@ export function TableBill({
   onBack,
   onNavigate,
 }: TableBillProps) {
-  const { items, attendanceStatus, isLoading, error, refreshBill } =
+  const { items, attendanceId, attendanceStatus, isLoading, error, refreshBill } =
     useBillOrders(tableToken);
 
   const { isSubmitting, requestError, handleRequestClose } = useTableBill(
     tableToken,
+    attendanceId,
     refreshBill,
   );
 

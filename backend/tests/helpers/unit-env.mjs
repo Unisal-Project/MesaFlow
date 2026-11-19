@@ -1,0 +1,11 @@
+process.env.NODE_ENV = "test";
+process.env.PORT = "3333";
+process.env.JWT_SECRET = "test-jwt-secret";
+process.env.FRONTEND_URL = "http://localhost:5173";
+process.env.DATABASE_URL = "mysql://unit:unit@127.0.0.1:1/mesaflow_unit";
+delete process.env.VALKEY_URL;
+delete process.env.VAPID_PUBLIC_KEY;
+delete process.env.VAPID_PRIVATE_KEY;
+delete process.env.VAPID_SUBJECT;
+delete process.env.RUN_TABLES_DB_TESTS;
+delete process.env.RUN_WAITER_DB_TESTS;

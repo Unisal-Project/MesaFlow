@@ -2,6 +2,8 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import { authenticate } from "./authenticate.js";
 
 const publicRoutes = new Set([
+  // Esta rota verifica a credencial do cliente no próprio handler.
+  "GET /client/payment-confirmation",
   "GET /health",
   "GET /settings/public",
   "POST /auth/login",

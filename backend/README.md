@@ -17,26 +17,24 @@ backend/
 ├── src/             # Código-fonte da API
 │   ├── generated/   # Client gerado pelo Prisma (ignorado pelo git)
 │   └── ...
-├── .env.example     # Variáveis de ambiente de exemplo
-├── tsconfig.json
-└── package.json
+└── tsconfig.json
 ```
 
 ## Configuração
 
-Copie o arquivo de ambiente e ajuste as variáveis:
-
-```bash
-cp .env.example .env
-```
+Use o `.env` na raiz do monorepo, a partir do modelo `.env.example`.
+`DATABASE_URL` aponta para o banco de desenvolvimento acessível pelo host.
+Quando o backend está no Compose, o container recebe a URL da rede interna.
+O Prisma lê o mesmo arquivo para os comandos da CLI. Os testes montam um
+ambiente próprio e ignoram as credenciais de desenvolvimento, staging e produção.
 
 ## Scripts
 
 | Comando               | Descrição                          |
 |-----------------------|------------------------------------|
-| `npm run dev`         | Inicia o servidor em modo dev      |
-| `npm run build`       | Compila o TypeScript               |
-| `npm run start`       | Inicia a versão compilada          |
+| `npm run dev:backend` | Inicia o servidor em modo dev      |
+| `npm run build:backend` | Compila o TypeScript             |
+| `npm run start:backend` | Inicia a versão compilada        |
 
 > Para subir o banco e gerar o client do Prisma, use os scripts globais do monorepo na raiz do projeto.
 

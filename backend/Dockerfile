@@ -2,9 +2,6 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-ARG DATABASE_URL=mysql://orderflow:orderflow@database:3306/orderflow
-ENV DATABASE_URL=$DATABASE_URL
-
 COPY package.json package-lock.json ./
 RUN npm ci
 

@@ -37,6 +37,7 @@ export type CreateQrOrderInput = {
 };
 
 export type CreateQrOrderResponse = {
+  paymentSession: string;
   attendanceId: string;
   order: OrderResponse & {
     customerName: string | null;

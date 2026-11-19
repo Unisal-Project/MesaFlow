@@ -84,7 +84,7 @@ export class QrOrderService {
   }
 
   // Solicitar fechamento da conta
-  async requestClosing(token: string) {
+  async requestClosing(token: string, expectedAttendanceId?: string) {
     return this.prismaClient.$transaction(
       async (tx: Prisma.TransactionClient) => {
         await tx.$queryRaw`
@@ -114,6 +114,13 @@ export class QrOrderService {
 
         if (!attendance) {
           throw new AppError("Não há atendimento aberto nesta mesa.", 409);
+        }
+
+        if (
+          expectedAttendanceId &&
+          attendance.id.toString() !== expectedAttendanceId
+        ) {
+          throw new AppError("O atendimento mudou. Atualize a conta.", 409);
         }
 
         if (attendance.status !== "OPEN") {

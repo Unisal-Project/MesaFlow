@@ -26,6 +26,8 @@ test(
       await import("../src/modules/products/products.service.js");
     const { LocalStorageService } =
       await import("../src/shared/storage/local-storage.service.js");
+    const { readPaymentConfirmation } =
+      await import("../src/modules/payments/payment-confirmation.js");
     const sharp = (await import("sharp")).default;
     const uploadDirectory = await mkdtemp(
       path.join(tmpdir(), "mesaflow-flow-"),
@@ -114,7 +116,13 @@ test(
       assert.equal(bill.items[0].quantity, 2);
       assert.equal(Number(bill.items[0].unitPrice), 10);
       assert.equal("orders" in bill, false);
-      await qr.requestClosing(token);
+      assert.deepEqual(await readPaymentConfirmation(attendanceId), {
+        status: "pending",
+      });
+      await qr.requestClosing(token, created.attendanceId);
+      assert.deepEqual(await readPaymentConfirmation(attendanceId), {
+        status: "pending",
+      });
       await assert.rejects(
         qr.submit(token, {
           customerName: "Teste",
@@ -139,6 +147,14 @@ test(
         employee.id,
       );
       assert.equal(Number(paid.total), 20);
+      const confirmation = await readPaymentConfirmation(attendanceId);
+      assert.equal(confirmation.status, "confirmed");
+      assert.equal(confirmation.event?.attendanceId, created.attendanceId);
+      assert.equal(confirmation.event?.receipt.totalInCents, 2000);
+      assert.equal(
+        confirmation.event?.receipt.tableNumber,
+        String(table.number),
+      );
       const closedAttendance = await db.attendance.findUniqueOrThrow({
         where: { id: attendanceId },
       });
@@ -244,6 +260,42 @@ test(
         }),
         0,
       );
+
+      assert.deepEqual(
+        await readPaymentConfirmation(attendanceId),
+        confirmation,
+      );
+      assert.deepEqual(await readPaymentConfirmation(secondAttendanceId), {
+        status: "pending",
+      });
+      await assert.rejects(qr.requestClosing(token, created.attendanceId), {
+        statusCode: 409,
+      });
+
+      const paymentRepository = new PrismaPaymentRepository(db);
+      await paymentRepository.reopen(
+        (
+          await paymentRepository.closeWithPayments(
+            secondAttendanceId,
+            {
+              serviceFeeWaived: true,
+              payments: [{ method: "PIX", amount: 10 }],
+            },
+            employee.id,
+          )
+        ).attendanceId,
+      );
+      assert.deepEqual(await readPaymentConfirmation(secondAttendanceId), {
+        status: "pending",
+      });
+
+      await db.attendance.update({
+        where: { id: secondAttendanceId },
+        data: { status: "CANCELLED" },
+      });
+      assert.deepEqual(await readPaymentConfirmation(secondAttendanceId), {
+        status: "unavailable",
+      });
 
       await catalog.deleteProduct(productId);
 

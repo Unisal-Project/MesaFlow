@@ -13,10 +13,10 @@ services:
     container_name: orderflow-mariadb
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_ROOT_PASSWORD: ${DEV_MARIADB_ROOT_PASSWORD:?Defina DEV_MARIADB_ROOT_PASSWORD}
       MARIADB_DATABASE: orderflow
       MARIADB_USER: orderflow
-      MARIADB_PASSWORD: orderflow
+      MARIADB_PASSWORD: ${DEV_MARIADB_PASSWORD:?Defina DEV_MARIADB_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
@@ -36,7 +36,7 @@ services:
     container_name: orderflow-database-init
     restart: "no"
     environment:
-      MARIADB_ROOT_PASSWORD: root
+      MARIADB_ROOT_PASSWORD: ${DEV_MARIADB_ROOT_PASSWORD:?Defina DEV_MARIADB_ROOT_PASSWORD}
       MARIADB_DATABASE: orderflow
     volumes:
       - ./mesaflow_schema_v1.sql:/schema/mesaflow_schema_v1.sql:ro,Z
@@ -57,16 +57,17 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-      args:
-        DATABASE_URL: ${DATABASE_URL:-mysql://orderflow:orderflow@database:3306/orderflow}
     container_name: orderflow-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: mysql://orderflow:orderflow@database:3306/orderflow
-      JWT_SECRET: ${JWT_SECRET:-development-only-change-me}
+      DATABASE_URL: ${DEV_DATABASE_URL:?Defina DEV_DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET:?Defina JWT_SECRET}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
-      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
+      VALKEY_URL: ${DEV_VALKEY_URL:-redis://valkey:6379}
       PORT: 3333
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     ports:
       - "3333:3333"
     volumes:
@@ -96,8 +97,9 @@ services:
       - "5173:5173"
     environment:
       # Garante que o Vite perceba alteracoes em bind mounts (Docker Desktop/WSL).
-      CHOKIDAR_USEPOLLING: "true"
-      VITE_DEV_PROXY_TARGET: http://backend:3333
+      CHOKIDAR_USEPOLLING: ${CHOKIDAR_USEPOLLING:-true}
+      VITE_API_URL: ${VITE_API_URL:-}
+      VITE_PRINT_URL: ${VITE_PRINT_URL:-}
     volumes:
       # Mantem o codigo local sincronizado com o servidor de desenvolvimento.
       - ./frontend:/app/frontend:z

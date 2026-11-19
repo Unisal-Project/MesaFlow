@@ -15,7 +15,6 @@ pnpm-debug.log*
 # Environment files
 .env
 .env.*
-!.env.example
 *.local
 
 # Vite cache

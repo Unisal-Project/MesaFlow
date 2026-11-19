@@ -13,6 +13,7 @@ export type ClosingRequestedAttendance = {
 };
 
 export type RequestQrClosingResponse = {
+  paymentSession: string;
   attendanceId: string;
   status: "closing_requested";
 };
@@ -51,11 +52,13 @@ export const setCancelledRequestedAttendances = async (attendanceId: string) => 
 
 export function requestQrClosing(
   token: string,
+  attendanceId: string,
 ): Promise<RequestQrClosingResponse> {
   return apiRequest<RequestQrClosingResponse>(
     `/tables/by-token/${encodeURIComponent(token)}/request-closing`,
     {
       method: "POST",
+      body: JSON.stringify({ attendanceId }),
     },
   );
 }

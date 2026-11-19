@@ -7,8 +7,8 @@ const database = new URL(env.DATABASE_URL);
 const adapter = new PrismaMariaDb({
   host: database.hostname,
   port: Number(database.port),
-  user: database.username,
-  password: database.password,
+  user: decodeURIComponent(database.username),
+  password: decodeURIComponent(database.password),
   database: database.pathname.substring(1), // Remove the leading slash
   allowPublicKeyRetrieval: true, // Allow public key retrieval for MariaDB
 });
