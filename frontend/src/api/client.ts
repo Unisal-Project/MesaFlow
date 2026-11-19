@@ -7,13 +7,14 @@ import type { ApiErrorResponse } from "./types";
 export { ApiError } from "./api-error";
 
 const DEFAULT_API_PORT = "3333";
+const DEFAULT_API_ORIGIN = `http://localhost:${DEFAULT_API_PORT}`;
 const API_PREFIX = "/api/v1";
 const CONNECTION_ERROR_MESSAGE =
   "Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.";
 
 function getDefaultApiUrl(): string {
   if (typeof window === "undefined") {
-    return `http://localhost:${DEFAULT_API_PORT}${API_PREFIX}`;
+    return `${DEFAULT_API_ORIGIN}${API_PREFIX}`;
   }
 
   return `${window.location.protocol}//${window.location.hostname}:${DEFAULT_API_PORT}${API_PREFIX}`;
@@ -24,10 +25,15 @@ export const API_URL = (
   import.meta.env.VITE_API_URL || getDefaultApiUrl()
 ).replace(/\/+$/, "");
 
+export function getApiBaseUrl(): URL {
+  const origin = typeof window === "undefined" ? undefined : window.location.origin;
+  return new URL(API_URL, origin ?? DEFAULT_API_ORIGIN);
+}
+
 /** Caminhos como /uploads/... são servidos pelo backend, não pelo Vite. */
 export function assetUrl(path: string | null | undefined) {
   if (!path || /^(https?:|data:|blob:)/.test(path)) return path ?? null;
-  return new URL(path, new URL(API_URL, window.location.origin)).toString();
+  return new URL(path, getApiBaseUrl()).toString();
 }
 
 function buildApiUrl(path: string): string {

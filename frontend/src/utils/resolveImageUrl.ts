@@ -1,6 +1,4 @@
-import { API_URL } from "@/api/client";
-
-const API_ORIGIN = new URL(API_URL).origin;
+import { getApiBaseUrl } from "@/api/client";
 
 export function resolveImageUrl(
   imageUrl: string | null,
@@ -11,5 +9,5 @@ export function resolveImageUrl(
     return imageUrl;
   }
 
-  return new URL(imageUrl, API_ORIGIN).href;
+  return new URL(imageUrl, getApiBaseUrl().origin).href;
 }

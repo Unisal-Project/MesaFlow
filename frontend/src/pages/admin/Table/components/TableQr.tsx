@@ -49,7 +49,7 @@ export function TableQr({ table }: { table: RestaurantTable }) {
       <QrCode aria-hidden="true" />
       <h3>QR Code da mesa</h3>
       <p>
-        QR Code de {table.name}. O código abre o cardápio com a mesa
+        QR Code de {table.name}. O código abre a tela de boas-vindas com a mesa
         identificada.
       </p>
       {url ? (

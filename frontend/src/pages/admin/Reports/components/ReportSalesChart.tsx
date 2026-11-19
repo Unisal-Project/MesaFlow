@@ -70,7 +70,7 @@ export function ReportSalesChart({ days, selectedDate, onSelectDay, unavailable 
               const target = event.key === "ArrowRight" ? index + 1 : event.key === "ArrowLeft" ? index - 1 : event.key === "Home" ? 0 : event.key === "End" ? days.length - 1 : null;
               if (target !== null && target >= 0 && target < days.length) { event.preventDefault(); moveFocus(target); }
             }}>
-            <title>{dateLabel}: {formatCurrency(day.revenue)}. {description}</title>
+            <title>{`${dateLabel}: ${formatCurrency(day.revenue)}. ${description}`}</title>
             <rect className="reports-chart-target" x={step * index} y="25" width={step} height="220" />
             <rect x={x - width / 2} y={215 - height} width={width} height={height} rx={Math.min(9, width / 4)} className="reports-chart-bar" />
             {isLow && <text className="reports-low-marker" x={x} y={Math.max(18, 205 - height)} textAnchor="middle" aria-hidden="true">!</text>}

@@ -20,7 +20,7 @@ export class TableService {
   ) {}
 
   private present({ table, attendance }: TableWithAttendance) {
-    const url = new URL("/cardapio", this.frontendUrl);
+    const url = new URL("/cliente", this.frontendUrl);
 
     url.searchParams.set("mesa", table.qrToken);
 
