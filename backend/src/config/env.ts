@@ -1,4 +1,12 @@
-import "dotenv/config.js";
+import { fileURLToPath } from "node:url";
+import { config } from "dotenv";
+
+if (process.env.NODE_ENV !== "test") {
+  config({
+    path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+    quiet: true,
+  });
+}
 
 const getEnv = (name: string): string => {
   const value = process.env[name];
@@ -44,4 +52,7 @@ export const env = {
   FRONTEND_URL: getEnv("FRONTEND_URL"),
   DATABASE_URL: getEnv("DATABASE_URL"),
   VALKEY_URL: optionalRedisUrl("VALKEY_URL"),
+  VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || undefined,
+  VAPID_PRIVATE_KEY: process.env.VAPID_PRIVATE_KEY || undefined,
+  VAPID_SUBJECT: process.env.VAPID_SUBJECT || undefined,
 };

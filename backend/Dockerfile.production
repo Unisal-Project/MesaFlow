@@ -3,7 +3,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY backend ./backend
-RUN DATABASE_URL=mysql://build:build@localhost:3306/build npm run prisma:generate && npm run build:backend && npm prune --omit=dev
+RUN npm run prisma:generate && npm run build:backend && npm prune --omit=dev
 WORKDIR /app/backend
 ENV NODE_ENV=production
 EXPOSE 3333

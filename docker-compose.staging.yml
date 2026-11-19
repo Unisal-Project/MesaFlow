@@ -2,8 +2,18 @@ name: mesaflow-staging
 
 services:
   database:
+    environment:
+      MARIADB_ROOT_PASSWORD: ${STAGING_MARIADB_ROOT_PASSWORD:?Defina STAGING_MARIADB_ROOT_PASSWORD}
+      MARIADB_PASSWORD: ${STAGING_MARIADB_PASSWORD:?Defina STAGING_MARIADB_PASSWORD}
     volumes:
       - ./mesaflow_schema_v1.sql:/docker-entrypoint-initdb.d/001-mesaflow-schema.sql:ro,Z
+
+  backend:
+    environment:
+      DATABASE_URL: ${STAGING_DATABASE_URL:?Defina STAGING_DATABASE_URL}
+      JWT_SECRET: ${STAGING_JWT_SECRET:?Defina STAGING_JWT_SECRET}
+      FRONTEND_URL: ${STAGING_FRONTEND_URL:?Defina STAGING_FRONTEND_URL}
+      VALKEY_URL: ${STAGING_VALKEY_URL:-redis://valkey:6379}
 
   nginx:
     ports: !override

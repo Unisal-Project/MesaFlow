@@ -7,8 +7,9 @@ Mesas existentes conservam seus tokens.
 
 ## Configuração
 
-- Backend: `FRONTEND_URL` deve apontar para a origem pública do frontend,
-  por exemplo `https://menu.seurestaurante.com`.
+- No `.env` da raiz, `FRONTEND_URL` define a origem do frontend em desenvolvimento.
+  Em staging e produção, use `STAGING_FRONTEND_URL` ou `PRODUCTION_FRONTEND_URL`
+  com a origem pública, por exemplo `https://menu.seurestaurante.com`.
 - Frontend: `VITE_API_URL` pode definir a URL completa da API, incluindo
   `/api/v1`. Sem essa variável, usa o hostname da página e a porta 3333.
 - No celular, `localhost` aponta para o próprio celular. Para testar na rede

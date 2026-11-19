@@ -11,11 +11,32 @@ Para construir a pilha com Nginx e proxy reverso, veja
 As dependências do backend e frontend ficam no único `package.json` da raiz,
 com um único `package-lock.json`. Execute os comandos npm na raiz.
 
-Para instalar todas as dependências e gerar o Prisma Client:
+## Configuração de ambiente
+
+Na raiz, copie `.env.example` para `.env` na primeira instalação e instale as dependências:
 
 ```bash
+cp -n .env.example .env
+chmod 600 .env
 npm run setup
 ```
+
+O `.env` local é compartilhado pelo backend, Prisma, Vite e Docker Compose. As
+variáveis `DEV_*` configuram o Compose de desenvolvimento. `DATABASE_URL` e
+`VALKEY_URL` são para o backend executado diretamente no host. Staging e
+produção usam as seções `STAGING_*` e `PRODUCTION_*`, respectivamente.
+O banco de integração usa apenas `TEST_MARIADB_*` e fica em
+`127.0.0.1:3308/mesaflow_test`. Veja [testes de integração](docs/integration-tests.md).
+
+Ao migrar um checkout existente, mantenha as credenciais do seu volume MariaDB.
+Transfira os antigos valores de staging para as chaves `STAGING_*` e os de
+produção para `PRODUCTION_*`. Se configurava URLs públicas em um arquivo do
+frontend, mova `VITE_API_URL` e `VITE_PRINT_URL` para a raiz. Apague os
+arquivos antigos após conferir os valores no `.env`.
+
+O Vite só inclui essas duas URLs no bundle. Mantenha credenciais e as variáveis
+opcionais `VAPID_*` no `.env` privado. Após mudar o arquivo, reinicie os
+processos locais ou recrie os containers que recebem essas variáveis.
 
 Comandos de desenvolvimento:
 
@@ -208,7 +229,7 @@ Para conferir a inicialização e listar as tabelas:
 
 ```bash
 docker compose logs database-init
-docker compose exec database mariadb -uorderflow -porderflow orderflow -e "SHOW TABLES;"
+docker compose exec database sh -c 'exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE" -e "SHOW TABLES;"'
 ```
 
 Módulos Planejados
@@ -399,7 +420,7 @@ A arquitetura, as principais regras de negócio e a estrutura inicial do banco j
 
 ## Homologação (staging)
 
-Após preparar o `.env.staging`, execute `npm run staging:build` e `npm run staging:up`. Acesse `http://127.0.0.1:8080` ou execute `npm run staging:tunnel` para compartilhar o ambiente temporariamente.
+Após preencher a seção `STAGING_*` do `.env`, execute `npm run staging:build` e `npm run staging:up`. Acesse `http://127.0.0.1:8080` ou execute `npm run staging:tunnel` para compartilhar o ambiente temporariamente.
 
 Use `npm run staging:ps` para consultar os serviços, `npm run staging:logs` para acompanhar os logs e `npm run staging:down` para encerrar os containers e preservar os dados.
 

@@ -1,23 +1,18 @@
+import { fileURLToPath } from "node:url";
 import { config } from "dotenv";
+import "./unit-env.mjs";
 
-const result = config({
-  path: ".env.test",
-  override: true,
+const { parsed = {} } = config({
+  path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+  processEnv: {},
+  quiet: true,
 });
-
-if (result.error) {
-  throw result.error;
+const password = process.env.TEST_MARIADB_PASSWORD ?? parsed.TEST_MARIADB_PASSWORD;
+if (!password) {
+  throw new Error("Defina TEST_MARIADB_PASSWORD no .env da raiz.");
 }
 
-const database = new URL(process.env.DATABASE_URL);
-
-if (
-  database.protocol !== "mysql:" ||
-  database.hostname !== "127.0.0.1" ||
-  database.port !== "3308" ||
-  database.pathname !== "/mesaflow_test"
-) {
-  throw new Error(
-    "Os testes de integração devem utilizar o banco exclusivo de testes.",
-  );
-}
+// O host, a porta e o banco são fixos e correspondem ao Compose de testes.
+process.env.DATABASE_URL = `mysql://mesaflow_test:${encodeURIComponent(password)}@127.0.0.1:3308/mesaflow_test`;
+process.env.RUN_TABLES_DB_TESTS = "1";
+process.env.RUN_WAITER_DB_TESTS = "1";

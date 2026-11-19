@@ -4,18 +4,18 @@ O Compose de produção usa Nginx como única entrada HTTP. Ele entrega o React 
 
 ## Preparação
 
-Copie `production.env.example` para `production.env`, gere senhas e um `JWT_SECRET` próprio com pelo menos 32 bytes aleatórios (`openssl rand -base64 48`; em produção o backend não inicia com segredo curto ou de exemplo) e ajuste `FRONTEND_URL` para a origem pública exata, por exemplo `https://mesaflow.exemplo.com`. `DATABASE_URL` deve usar a mesma senha de `MARIADB_PASSWORD`; caracteres reservados na senha precisam estar codificados para URL.
+Na raiz, crie o `.env` a partir de `.env.example` se ele ainda não existir e restrinja o acesso com `chmod 600 .env`. Preencha `PRODUCTION_MARIADB_ROOT_PASSWORD`, `PRODUCTION_MARIADB_PASSWORD`, `PRODUCTION_DATABASE_URL`, `PRODUCTION_JWT_SECRET` e `PRODUCTION_FRONTEND_URL`. Em um volume existente, preserve as senhas do MariaDB. Na URL do banco, use o mesmo valor de `PRODUCTION_MARIADB_PASSWORD`, codificando caracteres reservados. Gere um segredo JWT de pelo menos 32 bytes aleatórios com `openssl rand -base64 48` e use a origem pública exata, por exemplo `https://mesaflow.exemplo.com`.
 
 ```bash
-docker compose --env-file production.env -f docker-compose.production.yml up --build -d
-docker compose --env-file production.env -f docker-compose.production.yml ps
+docker compose --env-file .env -f docker-compose.production.yml up --build -d
+docker compose --env-file .env -f docker-compose.production.yml ps
 ```
 
-Para teste local, use `FRONTEND_URL=http://localhost` e acesse `http://localhost`. O endpoint `http://localhost/api/v1/health` verifica o encaminhamento até o backend.
+Para teste local, use `PRODUCTION_FRONTEND_URL=http://localhost` e acesse `http://localhost`. O endpoint `http://localhost/api/v1/health` verifica o encaminhamento até o backend.
 
 ## Valkey (limite de tentativas de login)
 
-O backend usa o Valkey do Compose (`VALKEY_URL=redis://valkey:6379`, já definido em `docker-compose.production.yml` e `docker-compose.yml`) para contar as tentativas em `/auth/login`, `/auth/register`, `/auth/password` e `/auth/me`: 5 por minuto por IP e rota, com chaves `mf:v1:ratelimit:<rota>:<ip>`. Assim o limite vale para todas as instâncias e sobrevive a reinícios do backend. `VALKEY_URL` é opcional (se definida, precisa ser `redis://` ou `rediss://`). Sem ela, ou com o Valkey fora do ar, o backend não cai: o limite passa a ser contado em memória, por processo, e um aviso aparece no log no máximo 1 vez por minuto. O Valkey não publica porta: só a rede interna do Compose o acessa.
+O backend usa o Valkey do Compose (`PRODUCTION_VALKEY_URL=redis://valkey:6379` por padrão) para contar as tentativas em `/auth/login`, `/auth/register`, `/auth/password` e `/auth/me`: 5 por minuto por IP e rota, com chaves `mf:v1:ratelimit:<rota>:<ip>`. Assim o limite vale para todas as instâncias e sobrevive a reinícios do backend. `VALKEY_URL` é opcional (se definida, precisa ser `redis://` ou `rediss://`). Sem ela, ou com o Valkey fora do ar, o backend não cai: o limite passa a ser contado em memória, por processo, e um aviso aparece no log no máximo 1 vez por minuto. O Valkey não publica porta: só a rede interna do Compose o acessa.
 
 ## Como o proxy funciona
 
@@ -32,7 +32,7 @@ A configuração atual escuta HTTP na porta 80. Configure domínio, certificado 
 Em instalação nova, `mesaflow_schema_v1.sql` já cria tudo e nada abaixo é necessário. Em banco existente, o Compose de produção não reaplica o schema: rode os SQL incrementais de `backend/prisma/sql/` nesta ordem, antes de publicar a nova versão. Todos podem ser executados novamente sem apagar dados: só criam o que falta, e `remove-order-tracking.sql` só tem o que converter na primeira execução.
 
 ```bash
-DC="docker compose --env-file production.env -f docker-compose.production.yml"
+DC="docker compose --env-file .env -f docker-compose.production.yml"
 SQL='exec mariadb -u"$MARIADB_USER" -p"$MARIADB_PASSWORD" "$MARIADB_DATABASE"'
 
 # 1. Backup do banco (copie também o volume de uploads)
@@ -97,7 +97,7 @@ O estágio frontend de `nginx/Dockerfile` define `ARG VITE_API_URL=/api/v1` e ex
 
 Esta configuração está **preparada, mas desligada**: o arquivo ativo continua `nginx/default.conf` HTTP. Não publique sem escolher domínio e obter certificado válido.
 
-1. Aponte os registros DNS A/AAAA do domínio para o servidor (remova AAAA se não houver IPv6 funcional). Libere TCP 80 e 443. Ajuste `FRONTEND_URL` para `https://SEU_DOMINIO` e reconstrua/reinicie o backend para atualizar CORS.
+1. Aponte os registros DNS A/AAAA do domínio para o servidor (remova AAAA se não houver IPv6 funcional). Libere TCP 80 e 443. Ajuste `PRODUCTION_FRONTEND_URL` para `https://SEU_DOMINIO` e reconstrua/reinicie o backend para atualizar CORS.
 2. Instale Certbot pelo gerenciador oficial do sistema. Crie `/var/www/certbot` no host e exponha esse diretório no Nginx como somente leitura. No servidor HTTP ativo, adicione `location /.well-known/acme-challenge/ { root /var/www/certbot; }` e monte o mesmo caminho no container. Verifique pelo domínio um arquivo de teste nesse diretório antes de solicitar o certificado.
 3. No host, emita com Let's Encrypt: `sudo certbot certonly --webroot -w /var/www/certbot -d SEU_DOMINIO`. Não ative o bloco 443 antes de existirem `fullchain.pem` e `privkey.pem`.
 4. Copie `nginx/default.ssl.conf.example` para uma configuração própria. Substitua **todas** as ocorrências de `mesaflow.example.com` pelo domínio real. Monte `/etc/letsencrypt` inteiro como somente leitura (os certificados em live são links para archive), monte `/var/www/certbot` e publique a porta 443 no serviço nginx do Compose. Substitua o arquivo ativo pela configuração preparada só nesta etapa. Mantenha os proxies `/api/v1/` e `/uploads/` e o fallback SPA do exemplo.

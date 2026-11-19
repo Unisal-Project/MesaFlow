@@ -3,10 +3,10 @@ services:
     image: mariadb:11.4
     restart: "no"
     environment:
-      MARIADB_ROOT_PASSWORD: root_test
+      MARIADB_ROOT_PASSWORD: ${TEST_MARIADB_ROOT_PASSWORD:?Defina TEST_MARIADB_ROOT_PASSWORD}
       MARIADB_DATABASE: mesaflow_test
       MARIADB_USER: mesaflow_test
-      MARIADB_PASSWORD: mesaflow_test
+      MARIADB_PASSWORD: ${TEST_MARIADB_PASSWORD:?Defina TEST_MARIADB_PASSWORD}
     ports:
       - "127.0.0.1:3308:3306"
     tmpfs:

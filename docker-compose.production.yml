@@ -12,10 +12,10 @@ services:
     image: mariadb:11.4
     restart: unless-stopped
     environment:
-      MARIADB_ROOT_PASSWORD: ${MARIADB_ROOT_PASSWORD:?Set MARIADB_ROOT_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${PRODUCTION_MARIADB_ROOT_PASSWORD:-}
       MARIADB_DATABASE: mesaflow
       MARIADB_USER: mesaflow
-      MARIADB_PASSWORD: ${MARIADB_PASSWORD:?Set MARIADB_PASSWORD}
+      MARIADB_PASSWORD: ${PRODUCTION_MARIADB_PASSWORD:-}
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./mesaflow_schema_v1.sql:/docker-entrypoint-initdb.d/001-mesaflow-schema.sql:ro
@@ -31,11 +31,14 @@ services:
       dockerfile: backend/Dockerfile.production
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL:?Set FRONTEND_URL}
-      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379}
+      DATABASE_URL: ${PRODUCTION_DATABASE_URL:-}
+      JWT_SECRET: ${PRODUCTION_JWT_SECRET:-}
+      FRONTEND_URL: ${PRODUCTION_FRONTEND_URL:-}
+      VALKEY_URL: ${PRODUCTION_VALKEY_URL:-redis://valkey:6379}
       PORT: 3333
+      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
+      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
+      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     volumes:
       - product_uploads:/app/backend/uploads
     depends_on:
@@ -48,6 +51,8 @@ services:
     build:
       context: .
       dockerfile: nginx/Dockerfile
+      args:
+        VITE_PRINT_URL: ${VITE_PRINT_URL:-}
     restart: unless-stopped
     ports:
       - "80:80"

@@ -20,12 +20,13 @@ Os testes utilizam a aplicação real e um banco de dados isolado, permitindo id
 
 ## 3. Isolamento de ambientes
 
-O MesaFlow possui três configurações Docker, destinadas a diferentes ambientes:
+O MesaFlow possui configurações Docker, destinadas a diferentes ambientes:
 
 | Arquivo | Ambiente |
 |---|---|
 | `docker-compose.yml` | Desenvolvimento |
 | `docker-compose.production.yml` | Produção |
+| `docker-compose.production.yml` + `docker-compose.staging.yml` | Staging |
 | `docker-compose.test.yml` | Testes |
 
 O ambiente de testes possui um banco de dados exclusivo, evitando alterações nos dados de desenvolvimento e produção.
@@ -39,6 +40,10 @@ O ambiente de testes possui um banco de dados exclusivo, evitando alterações n
 - Armazenamento: temporário (tmpfs)
 
 Os dados armazenados no ambiente de testes são descartados ao encerrar o container.
+O Compose lê `TEST_MARIADB_ROOT_PASSWORD` e `TEST_MARIADB_PASSWORD` do
+`.env` da raiz. O executor monta a URL com o usuário, host, porta e banco
+fixos e usa somente a senha de testes. Os testes unitários recebem uma URL
+inoperante e deixam os casos de MariaDB para `npm run test:integration`.
 
 ## 4. Estrutura dos testes
 
@@ -49,7 +54,8 @@ backend/
 │   └── server.ts
 ├── tests/
 │   ├── helpers/
-│   │   └── integration-env.mjs
+│   │   ├── integration-env.mjs
+│   │   └── unit-env.mjs
 │   ├── integration/
 │   │   ├── helpers/
 │   │   │   ├── app.ts
@@ -61,8 +67,7 @@ backend/
 │   │   ├── orders.integration.test.ts
 │   │   ├── closing-request.integration.test.ts
 │   │   └── payments.integration.test.ts
-│   └── ...
-└── .env.test
+    └── ...
 ```
 
 ## 5. Arquitetura dos testes
@@ -167,7 +172,7 @@ Após a execução, os registros criados pelos testes são removidos.
 - Docker.
 - Docker Compose.
 
-Todos os comandos devem ser executados na raiz do projeto.
+Todos os comandos devem ser executados na raiz do projeto. Se o `.env` ainda não existir, crie-o com `cp -n .env.example .env`.
 
 ### Instalar as dependências
 
