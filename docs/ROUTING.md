@@ -26,8 +26,8 @@ A navegação usa React Router em modo declarativo com `BrowserRouter` e URLs re
 | `/admin/cardapio/categorias` | Categorias, prévia |
 | `/admin/cardapio/categorias/todas` | Todas as categorias |
 | `/admin/relatorios` | Relatórios |
-| `/cliente` | Boas-vindas do cliente |
-| `/cardapio` | Cardápio do cliente e destino do QR Code |
+| `/cliente` | Boas-vindas do cliente e destino do QR Code da mesa |
+| `/cardapio` | Cardápio do cliente |
 | `/produto/:productId` | Detalhes de produto; ID desconhecido volta para o cardápio |
 | `/carrinho` | Carrinho |
 | `/confirmar-pedido` | Revisão e confirmação demonstrativa |
@@ -38,9 +38,7 @@ Use `?mesa=<token>` em todas as URLs do cliente. Os callbacks do router preserva
 
 ## QR Code
 
-O backend já gera `/cardapio?mesa=<qrToken>` em `table.service.ts`; esse contrato foi mantido, sem modificar o backend.
-
-A prévia de QR no admin utiliza `table.menuUrl` quando fornecida. Para as mesas demonstrativas sem URL, gera um link `/cardapio?mesa=<numero>` na origem atual. A prévia abre o cliente, mas não cria atendimento real.
+O backend gera `/cliente?mesa=<qrToken>`. A prévia e a impressão do QR Code no admin usam `table.menuUrl`. Na tela de boas-vindas, **Explorar cardápio** abre `/cardapio` com o mesmo token.
 
 O parâmetro `mesa` é transportado na navegação. Esta alteração não resolve tokens em nomes/números de mesa por API, nem implementa envio real de pedidos, autenticação ou pagamentos. O catálogo e os atendimentos continuam demonstrativos.
 

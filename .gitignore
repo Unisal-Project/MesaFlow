@@ -29,6 +29,7 @@ lerna-debug.log*
 .env.*
 !.env.example
 !.env.test
+!.env.staging.example
 production.env
 *.local
 

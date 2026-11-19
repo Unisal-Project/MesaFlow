@@ -397,6 +397,14 @@ Projeto em fase inicial de implementação.
 
 A arquitetura, as principais regras de negócio e a estrutura inicial do banco já foram definidas.
 
+## Homologação (staging)
+
+Após preparar o `.env.staging`, execute `npm run staging:build` e `npm run staging:up`. Acesse `http://127.0.0.1:8080` ou execute `npm run staging:tunnel` para compartilhar o ambiente temporariamente.
+
+Use `npm run staging:ps` para consultar os serviços, `npm run staging:logs` para acompanhar os logs e `npm run staging:down` para encerrar os containers e preservar os dados.
+
+Consulte o [guia de homologação](docs/staging.md) para configurar as credenciais e atualizar a origem pública ao abrir o túnel.
+
 ## Testes automatizados
 
 O MesaFlow possui testes automatizados para validar as regras de negócio, os endpoints da API e a persistência dos dados.

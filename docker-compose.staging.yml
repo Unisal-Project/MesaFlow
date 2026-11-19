@@ -1,0 +1,10 @@
+name: mesaflow-staging
+
+services:
+  database:
+    volumes:
+      - ./mesaflow_schema_v1.sql:/docker-entrypoint-initdb.d/001-mesaflow-schema.sql:ro,Z
+
+  nginx:
+    ports: !override
+      - "127.0.0.1:8080:80"

@@ -167,7 +167,7 @@ test("creation assigns unique tokens; editing preserves the QR URL", async () =>
     active: true,
   });
   assert.match(row().qrToken, /^[0-9a-f-]{36}$/);
-  assert.equal(new URL(first.menuUrl).pathname, "/cardapio");
+  assert.equal(new URL(first.menuUrl).pathname, "/cliente");
   assert.equal(new URL(first.menuUrl).searchParams.get("mesa"), row().qrToken);
   const edited = await service.editTable(
     { id: row().id },

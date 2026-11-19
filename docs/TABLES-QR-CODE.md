@@ -22,7 +22,7 @@ Mesas existentes conservam seus tokens.
 - `GET /api/v1/tables`: retorna mesas reais, `menuUrl` e status derivado do
   atendimento ativo. IDs são strings para preservar a precisão de BigInt.
 - `GET /api/v1/tables/:id/qrcode`: retorna PNG da URL
-  `<FRONTEND_URL>/cardapio?mesa=<token>`, com margem para impressão.
+  `<FRONTEND_URL>/cliente?mesa=<token>`, com margem para impressão.
 - `GET /api/v1/tables/by-token/:token`: consulta pública que retorna apenas
   `id`, `number`, `name`. Token desconhecido ou mesa inativa retorna 404.
 
