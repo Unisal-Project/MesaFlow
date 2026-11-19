@@ -1,12 +1,15 @@
 
 import { useState } from "react";
 
+import { useClientTable } from "@/contexts/ClientTableContext";
 import { requestQrClosing } from "@/services/attendance.service";
 
 export function useTableBill(
   tableToken: string,
+  attendanceId: string | null,
   onSuccess: () => void,
 ) {
+  const { registerPaymentSession } = useClientTable();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
@@ -18,11 +21,14 @@ export function useTableBill(
       return;
     }
 
+    if (!attendanceId) return;
+
     setIsSubmitting(true);
     setRequestError(null);
 
     try {
-      await requestQrClosing(tableToken);
+      const response = await requestQrClosing(tableToken, attendanceId);
+      registerPaymentSession(response.paymentSession);
       onSuccess();
     } catch (reason) {
       setRequestError(

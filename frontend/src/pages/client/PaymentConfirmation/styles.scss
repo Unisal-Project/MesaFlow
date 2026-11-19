@@ -1,0 +1,141 @@
+@use '../../../styles/abstracts/mixins';
+
+.payment-confirmation {
+  @include mixins.client-page;
+  display: grid;
+  place-items: center;
+  padding: max(var(--spacing-8), env(safe-area-inset-top))
+    max(var(--spacing-4), env(safe-area-inset-right))
+    max(var(--spacing-8), env(safe-area-inset-bottom))
+    max(var(--spacing-4), env(safe-area-inset-left));
+
+  &__content {
+    display: grid;
+    gap: var(--spacing-6);
+    width: min(100%, 28rem);
+  }
+
+  &__header,
+  &__footer {
+    display: grid;
+    gap: var(--spacing-2);
+    text-align: center;
+
+    p {
+      color: var(--text-secondary);
+    }
+  }
+
+  &__header {
+    h1 {
+      font-family: var(--font-display);
+      font-size: clamp(var(--font-size-3xl), 6vw, var(--font-size-4xl));
+      font-weight: var(--font-weight-extrabold);
+    }
+
+    .payment-confirmation__restaurant {
+      color: var(--primary-dark);
+      font-weight: var(--font-weight-bold);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__icon {
+    display: grid;
+    place-items: center;
+    justify-self: center;
+    width: var(--spacing-16);
+    aspect-ratio: 1;
+    margin-block: var(--spacing-3);
+    border: 1px solid var(--success-border);
+    border-radius: var(--radius-full);
+    background: var(--success-subtle);
+    color: var(--success-text);
+
+    @media (prefers-reduced-motion: no-preference) {
+      animation: payment-confirmation-appear 380ms ease-out both;
+    }
+
+    svg {
+      width: var(--spacing-8);
+      height: var(--spacing-8);
+    }
+  }
+
+  &__receipt {
+    padding: var(--spacing-4) var(--spacing-5);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-large);
+    background: var(--surface);
+    box-shadow: var(--elevation-1);
+
+    dt {
+      color: var(--text-secondary);
+      font-size: var(--font-size-sm);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-weight: var(--font-weight-bold);
+    }
+  }
+
+  &__total {
+    padding-block: var(--spacing-2) var(--spacing-4);
+    text-align: center;
+
+    dd {
+      font-family: var(--font-heading);
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-extrabold);
+    }
+  }
+
+  &__detail {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--spacing-2);
+    padding-block: var(--spacing-3);
+    border-top: 1px solid var(--border);
+
+    dt {
+      display: flex;
+      gap: var(--spacing-2);
+      align-items: center;
+    }
+
+    dd {
+      font-size: var(--font-size-sm);
+      text-align: end;
+    }
+
+    svg {
+      flex: none;
+      width: var(--spacing-4);
+      height: var(--spacing-4);
+    }
+  }
+
+  &__footer {
+    gap: var(--spacing-4);
+
+    .btn {
+      width: 100%;
+      min-height: var(--spacing-12);
+    }
+  }
+}
+
+@keyframes payment-confirmation-appear {
+  from {
+    opacity: 0;
+    transform: translateY(var(--spacing-2)) scale(.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

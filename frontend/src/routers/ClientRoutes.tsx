@@ -18,9 +18,13 @@ import {
 
 import { ClientWorkspace } from "@/layouts/ClientWorkspace";
 
-import { ClientTableProvider, useClientTable } from "@/contexts/ClientTableContext";
+import { ClientTableProvider, storeCustomerName, useClientTable } from "@/contexts/ClientTableContext";
 
 import { CartProvider } from "@/contexts/CartProvider";
+import { useCart } from "@/contexts/useCart";
+import { usePaymentConfirmation } from "@/hooks/usePaymentConfirmation";
+import { PaymentConfirmation } from "@/pages/client/PaymentConfirmation";
+import { storePaymentSession } from "@/services/payment-confirmation.service";
 
 import { Home } from "@/pages/client/Home";
 import { Menu } from "@/pages/client/Menu";
@@ -241,6 +245,75 @@ function ClientPages() {
   );
 }
 
+const confirmationPath = "/pagamento-confirmado";
+const finishedPath = "/atendimento-finalizado";
+
+function ClientAttendance({ tableToken }: { tableToken: string }) {
+  const { pathname, search } = useLocation();
+  const navigate = useNavigate();
+  const { clearCart } = useCart();
+  const { status, hasSession, registerPaymentSession } =
+    usePaymentConfirmation(tableToken);
+
+  useEffect(() => {
+    if (status?.status === "confirmed" && pathname !== confirmationPath) {
+      navigate(clientTarget(confirmationPath, search), { replace: true });
+    }
+  }, [status, pathname, search, navigate]);
+
+  function finish() {
+    // A mudança de rota desmonta a sessão em memória. Limpar seu estado antes
+    // da navegação dispararia o redirecionamento da confirmação para a conta.
+    storePaymentSession(tableToken, "");
+    clearCart();
+    storeCustomerName(tableToken, "");
+    navigate(finishedPath, { replace: true });
+  }
+
+  return (
+    <Routes>
+      <Route
+        path={confirmationPath}
+        element={
+          status?.status === "confirmed" ? (
+            <PaymentConfirmation {...status.event.receipt} onFinish={finish} />
+          ) : hasSession && !status ? (
+            <main className="payment-confirmation" role="status">
+              Consultando pagamento…
+            </main>
+          ) : (
+            <Navigate
+              to={clientTarget(tableToken ? "/conta" : "/cardapio", search)}
+              replace
+            />
+          )
+        }
+      />
+      <Route
+        path={finishedPath}
+        element={
+          <main className="payment-confirmation" aria-labelledby="payment-finished-title">
+            <div className="payment-confirmation__content payment-confirmation__header">
+              <h1 id="payment-finished-title" tabIndex={-1} ref={(heading) => heading?.focus()}>
+                Atendimento finalizado
+              </h1>
+              <p>Agradecemos sua visita. Até a próxima!</p>
+            </div>
+          </main>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          <ClientTableProvider token={tableToken} registerPaymentSession={registerPaymentSession}>
+            <ClientPages />
+          </ClientTableProvider>
+        }
+      />
+    </Routes>
+  );
+}
+
 export function ClientRoutes() {
   const { search } = useLocation();
   const tableToken = new URLSearchParams(search).get("mesa")?.trim() ?? "";
@@ -250,9 +323,7 @@ export function ClientRoutes() {
       key={tableToken}
       storageKey={tableToken ? `mesaflow:cart:${tableToken}` : "mesaflow:cart"}
     >
-      <ClientTableProvider key={tableToken} token={tableToken}>
-        <ClientPages />
-      </ClientTableProvider>
+      <ClientAttendance tableToken={tableToken} />
     </CartProvider>
   );
 }

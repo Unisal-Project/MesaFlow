@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { ApiError } from "@/api/client";
+import { useClientTable } from "@/contexts/ClientTableContext";
 import { useCart } from "@/contexts/useCart";
 import { createQrOrder } from "@/services/orders.service";
 
@@ -9,6 +10,7 @@ export function useConfirmOrder(
   customerName: string,
 ) {
   const { items, clearCart } = useCart();
+  const { registerPaymentSession } = useClientTable();
 
   const submitting = useRef(false);
 
@@ -40,6 +42,7 @@ export function useConfirmOrder(
         })),
       });
 
+      registerPaymentSession(response.paymentSession);
       setOrderId(response.order.id);
       clearCart();
     } catch (reason) {

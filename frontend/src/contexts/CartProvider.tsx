@@ -99,6 +99,8 @@ export function CartProvider({
   }
 
   function clearCart() {
+    // Persiste mesmo se o encerramento desmontar o carrinho nesta renderização.
+    try { localStorage.removeItem(storageKey); } catch { /* Segue em memória. */ }
     setItems([]);
   }
 

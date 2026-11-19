@@ -10,6 +10,7 @@ let server;
 let AdminRoutes;
 let ClientRoutes;
 let paths;
+let payments;
 const previousWindow = globalThis.window;
 const previousStorage = globalThis.localStorage;
 
@@ -30,6 +31,7 @@ before(async () => {
     "/src/routers/ClientRoutes.tsx",
   ));
   paths = await server.ssrLoadModule("/src/routers/paths.ts");
+  payments = await server.ssrLoadModule("/src/services/payment-confirmation.service.ts");
 });
 
 after(async () => {
@@ -54,6 +56,7 @@ const cases = [
   ["/carrinho?mesa=12", "Identificando sua mesa"],
   ["/conta?mesa=12", "Identificando sua mesa"],
   ["/confirmar-pedido?mesa=12", "Identificando sua mesa"],
+  ["/atendimento-finalizado", "Atendimento finalizado"],
 ];
 
 for (const [url, expected] of cases) {
@@ -266,5 +269,32 @@ test("navegação do cliente preserva o token exato do QR em todos os destinos",
     assert.equal(target.pathname, pathname);
     assert.equal(target.search, search);
     assert.equal(new URLSearchParams(target.search).get("mesa"), "a+b/c");
+  }
+});
+
+test("rota de confirmação carrega somente com a sessão da mesa e não expõe o recibo antes da consulta", () => {
+  const previousSessionStorage = globalThis.sessionStorage;
+  const sessions = new Map();
+  globalThis.sessionStorage = {
+    getItem: (key) => sessions.get(key),
+    setItem: (key, value) => sessions.set(key, value),
+    removeItem: (key) => sessions.delete(key),
+  };
+  try {
+    const renderConfirmation = (table) => renderToString(
+      createElement(MemoryRouter, { initialEntries: [`/pagamento-confirmado?mesa=${table}`] },
+        createElement(Routes, null, createElement(Route, {
+          path: "/*",
+          element: createElement(ClientRoutes),
+        })),
+      ),
+    );
+    payments.storePaymentSession("mesa-a", "sessao-assinada");
+    assert.match(renderConfirmation("mesa-a"), /Consultando pagamento/);
+    assert.doesNotMatch(renderConfirmation("mesa-b"), /Consultando pagamento|Pagamento confirmado/);
+    payments.storePaymentSession("mesa-a", "");
+    assert.doesNotMatch(renderConfirmation("mesa-a"), /Consultando pagamento|Pagamento confirmado/);
+  } finally {
+    globalThis.sessionStorage = previousSessionStorage;
   }
 });

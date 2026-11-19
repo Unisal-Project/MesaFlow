@@ -3,6 +3,7 @@ import { withDailyNumber } from "./helpers/daily-number.js";
 import "./helpers/session.js";
 import { test } from "node:test";
 import Fastify from "fastify";
+import fastifyJwt from "@fastify/jwt";
 import { errorHandler } from "../src/shared/errors/error-handler.js";
 
 process.env.DATABASE_URL ??= "mysql://test:test@127.0.0.1:1/qr_ordering_test";
@@ -152,6 +153,7 @@ test("QR order endpoint validates the customer and returns the created order", a
   };
   const app = Fastify();
   app.setErrorHandler(errorHandler);
+  await app.register(fastifyJwt, { secret: "qr-ordering-test-secret" });
   const controller = new QrOrderController(service as any);
   app.post("/tables/by-token/:token/orders", (request, reply) =>
     controller.submit(request, reply),
@@ -166,10 +168,16 @@ test("QR order endpoint validates the customer and returns the created order", a
       },
     });
     assert.equal(created.statusCode, 201);
-    assert.deepEqual(created.json(), {
+    const { paymentSession, ...order } = created.json();
+    assert.deepEqual(order, {
       attendanceId: "12",
       order: { id: "21", customerName: "Ana", items: [] },
     });
+    const claims = app.jwt.verify<{ purpose: string; attendanceId: string }>(
+      paymentSession,
+    );
+    assert.equal(claims.purpose, "customer-payment-confirmation");
+    assert.equal(claims.attendanceId, "12");
     const malformed = await app.inject({
       method: "POST",
       url: "/tables/by-token/table-token/orders",

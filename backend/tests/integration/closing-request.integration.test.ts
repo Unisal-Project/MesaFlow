@@ -290,3 +290,56 @@ test("concurrent QR closing requests create only one bill print job", async () =
 
   assert.equal(await countBillPrintJobs(attendanceId), 1);
 });
+
+test("recovers the committed receipt with the customer sessions after table reuse", async () => {
+  const order = await submitOrder();
+  assert.equal(order.statusCode, 201, order.body);
+  const { attendanceId, paymentSession } = order.json();
+
+  const closing = await app.inject({
+    method: "POST",
+    url: `${BASE_URL}/tables/by-token/${qrToken}/request-closing`,
+    payload: { attendanceId },
+  });
+  assert.equal(closing.statusCode, 200, closing.body);
+  const closingSession = closing.json().paymentSession;
+
+  const read = (session: string) =>
+    app.inject({
+      url: `${BASE_URL}/client/payment-confirmation`,
+      headers: { authorization: `Bearer ${session}` },
+    });
+  const close = (amount: number) =>
+    app.inject({
+      method: "POST",
+      url: `${BASE_URL}/attendances/${attendanceId}/close`,
+      headers,
+      payload: {
+        serviceFeeWaived: true,
+        payments: [{ method: "PIX", amount }],
+      },
+    });
+
+  assert.equal((await read(qrToken)).statusCode, 403);
+  assert.deepEqual((await read(closingSession)).json(), { status: "pending" });
+  assert.equal((await close(19)).statusCode, 409);
+  assert.deepEqual((await read(paymentSession)).json(), { status: "pending" });
+  const paid = await close(20);
+  assert.equal(paid.statusCode, 200, paid.body);
+
+  const replacement = await submitOrder();
+  assert.equal(replacement.statusCode, 201, replacement.body);
+  assert.notEqual(replacement.json().attendanceId, attendanceId);
+  assert.deepEqual((await read(replacement.json().paymentSession)).json(), {
+    status: "pending",
+  });
+
+  const confirmed = await read(paymentSession);
+  assert.equal(confirmed.statusCode, 200, confirmed.body);
+  const { status, event } = confirmed.json();
+  assert.equal(status, "confirmed");
+  assert.equal(event.type, "attendance.payment-confirmed");
+  assert.equal(event.attendanceId, attendanceId);
+  assert.equal(event.receipt.totalInCents, 2000);
+  assert.deepEqual((await read(closingSession)).json(), { status, event });
+});
